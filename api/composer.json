@@ -1,0 +1,7 @@
+{
+    "require": {
+        "smsup/smsup-api-bundle": "*",
+        "smsup/smsuplib": "*",
+        "zelenin/smsru": "*"
+    }
+}
