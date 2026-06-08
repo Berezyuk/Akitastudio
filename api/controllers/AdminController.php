@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/MinioHelper.php';
 require_once __DIR__ . '/../models/Service.php';
 require_once __DIR__ . '/../models/Portfolio.php';
 require_once __DIR__ . '/../models/Client.php';
@@ -15,15 +16,17 @@ require_once __DIR__ . '/../models/OrderStatus.php';
 
 class AdminController {
     
-    // Проверка роли admin (сессия)
     private static function checkAdmin() {
-        if(!isset($_SESSION['user_id'])) {
+        if (!isset($_SESSION['user_id'])) {
             http_response_code(401);
             echo json_encode(['error' => 'Не авторизован']);
             exit;
         }
-        // Здесь можно дополнительно проверить роль, но у нас только админ
-        return true;
+        if (($_SESSION['role'] ?? '') !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Доступ запрещён']);
+            exit;
+        }
     }
     
     // ========== УПРАВЛЕНИЕ УСЛУГАМИ ==========
@@ -134,13 +137,47 @@ class AdminController {
     
     
 
+    public static function deleteOrder($id) {
+        self::checkAdmin();
+        $db = (new Database())->getConnection();
+        $stmt = $db->prepare('DELETE FROM orders WHERE order_id = :id');
+        $stmt->execute([':id' => $id]);
+        echo json_encode(['success' => true]);
+    }
+
+    // Обновление редактируемых полей заказа (дата, время, сумма, заметки)
+    public static function updateOrder($id) {
+        self::checkAdmin();
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        $db     = (new Database())->getConnection();
+        $fields = [];
+        $params = [':id' => $id];
+
+        $allowed = ['desired_date', 'desired_time', 'total_price', 'admin_notes', 'status_id'];
+        foreach ($allowed as $field) {
+            if (array_key_exists($field, $data)) {
+                $fields[] = "{$field} = :{$field}";
+                $params[":{$field}"] = $data[$field] === '' ? null : $data[$field];
+            }
+        }
+
+        if (empty($fields)) {
+            echo json_encode(['error' => 'Нет полей для обновления']);
+            return;
+        }
+
+        $stmt = $db->prepare('UPDATE orders SET ' . implode(', ', $fields) . ' WHERE order_id = :id');
+        $stmt->execute($params);
+        echo json_encode(['success' => true]);
+    }
+
     public static function updateOrderStatus($id) {
-    self::checkAdmin();
-    $data = json_decode(file_get_contents('php://input'), true);
-    $statusId = $data['status_id'];
-    $order = new Order();
-    $result = $order->updateStatus($id, $statusId);
-    echo json_encode($result);
+        self::checkAdmin();
+        $data     = json_decode(file_get_contents('php://input'), true);
+        $statusId = $data['status_id'];
+        $order    = new Order();
+        echo json_encode($order->updateStatus($id, $statusId));
     }
    
 
@@ -293,10 +330,46 @@ class AdminController {
     // В AdminController.php добавить или заменить:
 
     public static function getOrders() {
-    self::checkAdmin();
-    $order = new Order();
-    $orders = $order->getAllWithDetails(); // вызываем правильный метод
-    echo json_encode(['success' => true, 'orders' => $orders]);
+        self::checkAdmin();
+
+        $page  = max(1, (int)($_GET['page']  ?? 1));
+        $limit = min(100, max(1, (int)($_GET['limit'] ?? 50)));
+        $offset = ($page - 1) * $limit;
+
+        $db = (new Database())->getConnection();
+
+        // Общее кол-во для пагинатора
+        $total = (int)$db->query("SELECT COUNT(*) FROM orders")->fetchColumn();
+
+        $stmt = $db->prepare(
+            "SELECT o.order_id, o.order_date, o.total_price, o.prepayment, o.notes,
+                    o.desired_date, o.desired_time, o.client_notes, o.admin_notes,
+                    o.status_id,
+                    c.first_name, c.last_name, c.phone_number,
+                    cb.name AS brand_name, cm.name AS model_name,
+                    (SELECT STRING_AGG(s.name, ', ')
+                     FROM order_services osv JOIN services s ON osv.service_id = s.service_id
+                     WHERE osv.order_id = o.order_id) AS service_names,
+                    os.name AS status_name
+             FROM orders o
+             LEFT JOIN clients c ON o.client_id = c.client_id
+             LEFT JOIN car_brands cb ON o.brand_id = cb.brand_id
+             LEFT JOIN car_models cm ON o.model_id = cm.model_id
+             LEFT JOIN order_statuses os ON o.status_id = os.status_id
+             ORDER BY o.order_date DESC, o.order_id DESC
+             LIMIT :limit OFFSET :offset"
+        );
+        $stmt->bindValue(':limit',  $limit,  \PDO::PARAM_INT);
+        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        echo json_encode([
+            'success' => true,
+            'orders'  => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'total'   => $total,
+            'page'    => $page,
+            'limit'   => $limit,
+        ]);
     }
 
     public static function exportOrders() {
@@ -310,6 +383,7 @@ class AdminController {
     header('Content-Disposition: attachment; filename="' . $filename . '"');
 
     $output = fopen('php://output', 'w');
+    fwrite($output, "\xEF\xBB\xBF");
     fputcsv($output, ['ID', 'Клиент', 'Телефон', 'Услуга', 'Автомобиль', 'Статус', 'Дата заказа', 'Желаемая дата', 'Сумма']);
 
     foreach ($orders as $order) {
@@ -333,29 +407,50 @@ class AdminController {
 
 // Получить список клиентов с поиском
     public static function getClientsList() {
-    self::checkAdmin();
-    $search = $_GET['search'] ?? '';
-    $db = new Database();
-    $conn = $db->getConnection();
+        self::checkAdmin();
 
-    $sql = "SELECT client_id, first_name, last_name, patronymic, phone_number, email 
-            FROM clients WHERE 1=1";
-    $params = [];
+        $search = $_GET['search'] ?? '';
+        $page   = max(1, (int)($_GET['page']  ?? 1));
+        $limit  = min(100, max(1, (int)($_GET['limit'] ?? 30)));
+        $offset = ($page - 1) * $limit;
 
-    if (!empty($search)) {
-        $sql .= " AND (first_name ILIKE :search OR last_name ILIKE :search OR phone_number ILIKE :search OR email ILIKE :search)";
-        $params[':search'] = "%$search%";
-    }
+        $conn   = (new Database())->getConnection();
+        $where  = '1=1';
+        $params = [];
 
-    $sql .= " ORDER BY client_id DESC";
-    $stmt = $conn->prepare($sql);
-    foreach ($params as $key => $val) {
-        $stmt->bindValue($key, $val);
-    }
-    $stmt->execute();
-    $clients = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (!empty($search)) {
+            $where .= " AND (first_name ILIKE :s OR last_name ILIKE :s OR phone_number ILIKE :s OR email ILIKE :s)";
+            $params[':s'] = "%{$search}%";
+        }
 
-    echo json_encode(['success' => true, 'clients' => $clients]);
+        $total = (int)$conn->prepare("SELECT COUNT(*) FROM clients WHERE {$where}")
+                           ->execute($params) ? $conn->query("SELECT COUNT(*) FROM clients WHERE {$where}")->fetchColumn() : 0;
+
+        // Более надёжный способ получить total
+        $stmtCount = $conn->prepare("SELECT COUNT(*) FROM clients WHERE {$where}");
+        $stmtCount->execute($params);
+        $total = (int)$stmtCount->fetchColumn();
+
+        $stmtData = $conn->prepare(
+            "SELECT client_id, first_name, last_name, patronymic, phone_number, email
+             FROM clients WHERE {$where}
+             ORDER BY client_id DESC
+             LIMIT :limit OFFSET :offset"
+        );
+        foreach ($params as $k => $v) {
+            $stmtData->bindValue($k, $v);
+        }
+        $stmtData->bindValue(':limit',  $limit,  \PDO::PARAM_INT);
+        $stmtData->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmtData->execute();
+
+        echo json_encode([
+            'success' => true,
+            'clients' => $stmtData->fetchAll(PDO::FETCH_ASSOC),
+            'total'   => $total,
+            'page'    => $page,
+            'limit'   => $limit,
+        ]);
     }
 
 // Получить детали клиента и его заказы
@@ -415,6 +510,7 @@ class AdminController {
     header('Content-Disposition: attachment; filename="' . $filename . '"');
 
     $output = fopen('php://output', 'w');
+    fwrite($output, "\xEF\xBB\xBF");
     fputcsv($output, ['ID', 'Имя', 'Фамилия', 'Телефон', 'Email']);
 
     foreach ($clients as $client) {
@@ -451,25 +547,27 @@ class AdminController {
     $stmt = $conn->query("SELECT COUNT(*) as count FROM clients");
     $totalClients = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
-    // Количество новых заказов за сегодня (не просмотренных – но пока просто за сегодня)
-    $stmt = $conn->query("SELECT COUNT(*) as count FROM orders WHERE order_date = CURRENT_DATE");
-    $newOrdersToday = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
-
-    // Количество заказов в статусе "ожидание" (status_id = 1)
+    // Одним запросом: ожидание + статистика для дублированных счётчиков
     $stmt = $conn->query("SELECT COUNT(*) as count FROM orders WHERE status_id = 1");
     $pendingOrders = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+    $newOrdersToday = $todayOrders; // дублировался тот же запрос
 
-    // Данные для графика (последние 7 дней)
-    $chartData = ['labels' => [], 'values' => []];
+    // Данные для графика — заказы и выручка за последние 7 дней
+    $chartData = ['labels' => [], 'values' => [], 'revenue' => []];
+    $fromDate = date('Y-m-d', strtotime('-6 days'));
+    $stmt = $conn->prepare(
+        "SELECT order_date::date::text AS day, COUNT(*) AS cnt, COALESCE(SUM(total_price), 0) AS revenue
+         FROM orders WHERE order_date::date >= :from_date
+         GROUP BY order_date::date ORDER BY order_date::date ASC"
+    );
+    $stmt->execute([':from_date' => $fromDate]);
+    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $byDate = array_column($rows, null, 'day');
     for ($i = 6; $i >= 0; $i--) {
-        $date = date('Y-m-d', strtotime("-$i days"));
-        $label = date('d.m', strtotime($date));
-        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM orders WHERE order_date = :date");
-        $stmt->bindParam(':date', $date);
-        $stmt->execute();
-        $count = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
-        $chartData['labels'][] = $label;
-        $chartData['values'][] = $count;
+        $date = date('Y-m-d', strtotime("-{$i} days"));
+        $chartData['labels'][] = date('d.m', strtotime($date));
+        $chartData['values'][] = (int)($byDate[$date]['cnt'] ?? 0);
+        $chartData['revenue'][] = (float)($byDate[$date]['revenue'] ?? 0);
     }
 
     // Популярные услуги (топ 5)
@@ -611,61 +709,78 @@ public static function updateServiceProgress($orderId, $serviceId) {
     $stmt->bindParam(':progress', $progress);
     $stmt->bindParam(':status', $status);
     $stmt->execute();
-    
+
+    // Авто-синхронизация статуса заказа по агрегированному прогрессу услуг
+    $aggStmt = $db->prepare(
+        "SELECT COUNT(*) AS total,
+                SUM(CASE WHEN osp.progress_percent = 100 THEN 1 ELSE 0 END) AS done,
+                COALESCE(MAX(osp.progress_percent), 0) AS max_p
+         FROM order_services osrv
+         LEFT JOIN order_services_progress osp
+               ON osrv.order_id = osp.order_id AND osrv.service_id = osp.service_id
+         WHERE osrv.order_id = :order_id"
+    );
+    $aggStmt->execute([':order_id' => $orderId]);
+    $agg = $aggStmt->fetch(PDO::FETCH_ASSOC);
+
+    $newStatusId = 1; // Новый
+    if ((int)$agg['max_p'] > 0)  $newStatusId = 2; // В работе
+    if ((int)$agg['total'] > 0 && (int)$agg['done'] >= (int)$agg['total']) $newStatusId = 3; // Готово
+
+    // Не перезаписываем «Выдан» (4) и «Отменён» (5) — только автоуправляемые статусы
+    $db->prepare("UPDATE orders SET status_id = :sid WHERE order_id = :oid AND status_id NOT IN (4, 5)")
+       ->execute([':sid' => $newStatusId, ':oid' => $orderId]);
+
     echo json_encode(['success' => true]);
     }
     
-    // Загрузить фото для заказа
-public static function uploadOrderPhoto($orderId) {
-    $admin = requireRole('admin');
-    
-    if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
-        echo json_encode(['error' => 'Ошибка загрузки файла']);
-        return;
-    }
-    
-    $file = $_FILES['photo'];
-    $caption = $_POST['caption'] ?? '';
-    
-    // Проверка типа файла
-    $allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-    if (!in_array($file['type'], $allowedTypes)) {
-        echo json_encode(['error' => 'Можно загружать только JPG, PNG или WEBP']);
-        return;
-    }
-    
-    // Проверка размера (макс 5MB)
-    if ($file['size'] > 5 * 1024 * 1024) {
-        echo json_encode(['error' => 'Файл слишком большой. Максимум 5MB']);
-        return;
-    }
-    
-    // Создаём уникальное имя файла
-    $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-    $fileName = uniqid() . '_' . time() . '.' . $extension;
-    $uploadPath = __DIR__ . '/../uploads/order_photos/' . $fileName;
-    
-    // Перемещаем файл
-    if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+    // Загрузить фото для заказа → MinIO
+    public static function uploadOrderPhoto($orderId) {
+        requireRole('admin');
+
+        if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['error' => 'Ошибка загрузки файла']);
+            return;
+        }
+
+        $file    = $_FILES['photo'];
+        $caption = trim($_POST['caption'] ?? '');
+
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['error' => 'Разрешены только JPG, PNG и WEBP']);
+            return;
+        }
+
+        if ($file['size'] > 10 * 1024 * 1024) {
+            echo json_encode(['error' => 'Файл слишком большой. Максимум 10 МБ']);
+            return;
+        }
+
+        $key = MinioHelper::generateKey("orders/{$orderId}", $file['name']);
+
+        try {
+            $photoUrl = MinioHelper::upload('order-photos', $key, $file['tmp_name'], $file['type']);
+        } catch (Exception $e) {
+            error_log('MinIO upload error: ' . $e->getMessage());
+            echo json_encode(['error' => 'Не удалось загрузить файл в хранилище']);
+            return;
+        }
+
         $db = (new Database())->getConnection();
-        
-        $photoUrl = '/api/uploads/order_photos/' . $fileName;
-        
-        $query = "INSERT INTO order_photos (order_id, photo_url, caption, uploaded_by, sort_order) 
-                  VALUES (:order_id, :photo_url, :caption, 'admin', 
-                  (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM order_photos WHERE order_id = :order_id))";
-        
-        $stmt = $db->prepare($query);
-        $stmt->bindParam(':order_id', $orderId);
+
+        $stmt = $db->prepare(
+            "INSERT INTO order_photos (order_id, photo_url, caption, uploaded_by, sort_order)
+             VALUES (:order_id, :photo_url, :caption, 'admin',
+             (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM order_photos WHERE order_id = :order_id))"
+        );
+        $stmt->bindParam(':order_id',  $orderId);
         $stmt->bindParam(':photo_url', $photoUrl);
-        $stmt->bindParam(':caption', $caption);
+        $stmt->bindParam(':caption',   $caption);
         $stmt->execute();
-        
+
         echo json_encode(['success' => true, 'photo_url' => $photoUrl]);
-    } else {
-        echo json_encode(['error' => 'Не удалось сохранить файл']);
     }
-}
 
 
 // Получить все фото по заказу (админ)
@@ -688,35 +803,75 @@ public static function getOrderPhotos($orderId) {
     echo json_encode(['success' => true, 'photos' => $photos]);
 }
 
-// Удалить фото
-   public static function deleteOrderPhoto($photoId) {
-    $admin = requireRole('admin');
-    
-    $db = (new Database())->getConnection();
-    
-    // Получаем путь к файлу
-    $query = "SELECT photo_url FROM order_photos WHERE id = :photo_id";
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':photo_id', $photoId);
-    $stmt->execute();
-    $photo = $stmt->fetch();
-    
-    if ($photo) {
-        // Удаляем физический файл
-        $filePath = __DIR__ . '/../' . str_replace('/api/', '', $photo['photo_url']);
-        if (file_exists($filePath)) {
-            unlink($filePath);
+    // Удалить фото из MinIO и БД
+    public static function deleteOrderPhoto($photoId) {
+        requireRole('admin');
+
+        $db   = (new Database())->getConnection();
+        $stmt = $db->prepare("SELECT photo_url FROM order_photos WHERE id = :id");
+        $stmt->bindParam(':id', $photoId);
+        $stmt->execute();
+        $photo = $stmt->fetch();
+
+        if (!$photo) {
+            echo json_encode(['error' => 'Фото не найдено']);
+            return;
         }
-        
-        // Удаляем запись из БД
-        $delete = $db->prepare("DELETE FROM order_photos WHERE id = :photo_id");
-        $delete->bindParam(':photo_id', $photoId);
-        $delete->execute();
-        
+
+        // Удаляем объект из MinIO (если URL относится к MinIO)
+        $info = MinioHelper::parseUrl($photo['photo_url']);
+        if ($info) {
+            try {
+                MinioHelper::delete($info['bucket'], $info['key']);
+            } catch (Exception $e) {
+                error_log('MinIO delete error: ' . $e->getMessage());
+            }
+        }
+
+        $db->prepare("DELETE FROM order_photos WHERE id = :id")
+           ->execute([':id' => $photoId]);
+
         echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['error' => 'Фото не найдено']);
     }
+
+    // ── Загрузка медиафайла для портфолио ────────────────────────────────────
+    // POST /api/admin/portfolio/upload  (multipart, поле 'media')
+    // Возвращает { success: true, url: '...' } — URL вставляется в поле video_url формы.
+    public static function uploadPortfolioMedia() {
+        requireRole('admin');
+
+        if (!isset($_FILES['media']) || $_FILES['media']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['error' => 'Ошибка загрузки файла']);
+            return;
+        }
+
+        $file = $_FILES['media'];
+
+        $allowedTypes = [
+            'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+            'video/mp4', 'video/webm', 'video/ogg',
+        ];
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['error' => 'Разрешены: JPG, PNG, WEBP, GIF, MP4, WEBM, OGG']);
+            return;
+        }
+
+        if ($file['size'] > 100 * 1024 * 1024) {
+            echo json_encode(['error' => 'Файл слишком большой. Максимум 100 МБ']);
+            return;
+        }
+
+        $key = MinioHelper::generateKey('media', $file['name']);
+
+        try {
+            $url = MinioHelper::upload('portfolio', $key, $file['tmp_name'], $file['type']);
+        } catch (Exception $e) {
+            error_log('MinIO portfolio upload error: ' . $e->getMessage());
+            echo json_encode(['error' => 'Не удалось загрузить файл в хранилище']);
+            return;
+        }
+
+        echo json_encode(['success' => true, 'url' => $url]);
     }
 
 }

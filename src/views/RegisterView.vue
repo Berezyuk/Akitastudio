@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { API_BASE } from '@/config/api.js'
 
 const router = useRouter()
 
@@ -17,8 +18,6 @@ const form = ref({
 const error = ref('')
 const isLoading = ref(false)
 const success = ref(false)
-
-const API_URL = 'http://localhost:8000/api'
 
 const handleRegister = async () => {
     // Валидация
@@ -49,7 +48,7 @@ const handleRegister = async () => {
     error.value = ''
     
     try {
-        const response = await fetch(`${API_URL}/auth/register`, {
+        const response = await fetch(`${API_BASE}/auth/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

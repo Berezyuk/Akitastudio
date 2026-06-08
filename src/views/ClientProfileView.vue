@@ -225,6 +225,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { API_BASE } from '@/config/api.js'
 
 const authStore = useAuthStore()
 const activeTab = ref('orders')
@@ -269,7 +270,7 @@ const minDate = new Date().toISOString().split('T')[0]
 const fetchOrders = async () => {
   loading.value.orders = true
   try {
-    const res = await fetch('http://localhost:8000/api/user/orders', { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/user/orders`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
       orders.value = data.orders
@@ -288,7 +289,7 @@ const fetchOrders = async () => {
 const fetchProfile = async () => {
   loading.value.profile = true
   try {
-    const res = await fetch('http://localhost:8000/api/user/profile', { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/user/profile`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
       profile.value = data.profile
@@ -304,7 +305,7 @@ const fetchProfile = async () => {
 const fetchProgress = async () => {
   loading.value.progress = true
   try {
-    const res = await fetch('http://localhost:8000/api/user/orders/progress', { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/user/orders/progress`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
       const progress = {}
@@ -323,7 +324,7 @@ const fetchProgress = async () => {
 
 const fetchOrderPhotos = async (orderId) => {
   try {
-    const res = await fetch(`http://localhost:8000/api/user/orders/${orderId}/photos`, { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/user/orders/${orderId}/photos`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
       orderPhotos.value[orderId] = data.photos
@@ -345,7 +346,7 @@ const getOrderProgress = (orderId) => {
 const updateProfile = async () => {
   loading.value.profile = true
   try {
-    const res = await fetch('http://localhost:8000/api/user/profile', {
+    const res = await fetch(`${API_BASE}/user/profile`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -368,7 +369,7 @@ const cancelOrder = async (orderId) => {
   if (!confirm('Вы уверены, что хотите отменить запись?')) return
 
   try {
-    const res = await fetch(`http://localhost:8000/api/user/orders/${orderId}/cancel`, {
+    const res = await fetch(`${API_BASE}/user/orders/${orderId}/cancel`, {
       method: 'POST',
       credentials: 'include',
     })
@@ -401,7 +402,7 @@ const submitReschedule = async () => {
 
   loading.value.reschedule = true
   try {
-    const res = await fetch(`http://localhost:8000/api/user/orders/${rescheduleModal.value.orderId}/reschedule`, {
+    const res = await fetch(`${API_BASE}/user/orders/${rescheduleModal.value.orderId}/reschedule`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

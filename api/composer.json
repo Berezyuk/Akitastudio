@@ -1,7 +1,6 @@
 {
     "require": {
-        "smsup/smsup-api-bundle": "*",
-        "smsup/smsuplib": "*",
+        "aws/aws-sdk-php": "^3",
         "zelenin/smsru": "*"
     }
 }

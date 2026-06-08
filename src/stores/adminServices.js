@@ -1,39 +1,19 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+import { API_BASE } from '@/config/api.js'
 
 export const useAdminServicesStore = defineStore('adminServices', () => {
-    const API_URL = 'http://localhost:8000/api'
-    
     const services = ref([])
-    const categories = ref([
-        'Детейлинг-уход',
-        'Оклейка плёнкой',
-        'Полировка автомобиля',
-        'Керамические покрытия',
-        'Ремонт салона',
-        'Малярные работы',
-        'Дооснащение',
-        'Фирменные комплексы'
-    ])
     const loading = ref(false)
     const error = ref(null)
-    
-    const getHeaders = () => {
-        const headers = {
-            'Content-Type': 'application/json'
-        }
-        const token = localStorage.getItem('token')
-        if (token) {
-            headers['Authorization'] = `Bearer ${token}`
-        }
-        return headers
-    }
+
+    const getHeaders = () => ({ 'Content-Type': 'application/json' })
     
     // Загрузка всех услуг
     const fetchServices = async () => {
         loading.value = true
         try {
-            const response = await fetch(`${API_URL}/admin/services`, {
+            const response = await fetch(`${API_BASE}/admin/services`, {
                 credentials: 'include',
                 headers: getHeaders()
             })
@@ -53,7 +33,7 @@ export const useAdminServicesStore = defineStore('adminServices', () => {
     const addService = async (serviceData) => {
         loading.value = true
         try {
-            const response = await fetch(`${API_URL}/admin/services`, {
+            const response = await fetch(`${API_BASE}/admin/services`, {
                 method: 'POST',
                 headers: getHeaders(),
                 credentials: 'include',
@@ -76,7 +56,7 @@ export const useAdminServicesStore = defineStore('adminServices', () => {
     const updateService = async (serviceId, serviceData) => {
         loading.value = true
         try {
-            const response = await fetch(`${API_URL}/admin/services/${serviceId}`, {
+            const response = await fetch(`${API_BASE}/admin/services/${serviceId}`, {
                 method: 'PUT',
                 headers: getHeaders(),
                 credentials: 'include',
@@ -99,7 +79,7 @@ export const useAdminServicesStore = defineStore('adminServices', () => {
     const deleteService = async (serviceId) => {
         loading.value = true
         try {
-            const response = await fetch(`${API_URL}/admin/services/${serviceId}`, {
+            const response = await fetch(`${API_BASE}/admin/services/${serviceId}`, {
                 method: 'DELETE',
                 credentials: 'include',
                 headers: getHeaders()
@@ -121,7 +101,7 @@ export const useAdminServicesStore = defineStore('adminServices', () => {
     const toggleServiceActive = async (serviceId, isActive) => {
         loading.value = true
         try {
-            const response = await fetch(`${API_URL}/admin/services/${serviceId}/toggle`, {
+            const response = await fetch(`${API_BASE}/admin/services/${serviceId}/toggle`, {
                 method: 'PUT',
                 headers: getHeaders(),
                 credentials: 'include',
@@ -142,7 +122,6 @@ export const useAdminServicesStore = defineStore('adminServices', () => {
     
     return {
         services,
-        categories,
         loading,
         error,
         fetchServices,

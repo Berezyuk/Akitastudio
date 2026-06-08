@@ -48,42 +48,57 @@ class FeedbackController {
             echo json_encode(['error' => 'Не авторизован']);
             exit;
         }
+        if (($_SESSION['role'] ?? '') !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['error' => 'Доступ запрещён']);
+            exit;
+        }
     }
     
     // Получить все заявки
     public static function getAllFeedbacks() {
         self::checkAdmin();
-        
+
         $status = $_GET['status'] ?? null;
         $search = $_GET['search'] ?? null;
-        
-        $db = new Database();
-        $conn = $db->getConnection();
-        
-        $sql = "SELECT * FROM feedbacks WHERE 1=1";
+        $page   = max(1, (int)($_GET['page']  ?? 1));
+        $limit  = min(100, max(1, (int)($_GET['limit'] ?? 30)));
+        $offset = ($page - 1) * $limit;
+
+        $conn   = (new Database())->getConnection();
+        $where  = '1=1';
         $params = [];
-        
+
         if ($status && $status !== 'all') {
-            $sql .= " AND status = :status";
+            $where .= ' AND status = :status';
             $params[':status'] = $status;
         }
-        
         if ($search) {
-            $sql .= " AND (name ILIKE :search OR phone ILIKE :search OR email ILIKE :search OR message ILIKE :search)";
-            $params[':search'] = "%$search%";
+            $where .= ' AND (name ILIKE :search OR phone ILIKE :search OR email ILIKE :search OR message ILIKE :search)';
+            $params[':search'] = "%{$search}%";
         }
-        
-        $sql .= " ORDER BY feedback_id DESC";
-        
-        $stmt = $conn->prepare($sql);
-        foreach ($params as $key => $val) {
-            $stmt->bindValue($key, $val);
+
+        $stmtCount = $conn->prepare("SELECT COUNT(*) FROM feedbacks WHERE {$where}");
+        $stmtCount->execute($params);
+        $total = (int)$stmtCount->fetchColumn();
+
+        $stmtData = $conn->prepare(
+            "SELECT * FROM feedbacks WHERE {$where} ORDER BY feedback_id DESC LIMIT :limit OFFSET :offset"
+        );
+        foreach ($params as $k => $v) {
+            $stmtData->bindValue($k, $v);
         }
-        $stmt->execute();
-        
-        $feedbacks = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        
-        echo json_encode(['success' => true, 'feedbacks' => $feedbacks]);
+        $stmtData->bindValue(':limit',  $limit,  \PDO::PARAM_INT);
+        $stmtData->bindValue(':offset', $offset, \PDO::PARAM_INT);
+        $stmtData->execute();
+
+        echo json_encode([
+            'success'   => true,
+            'feedbacks' => $stmtData->fetchAll(PDO::FETCH_ASSOC),
+            'total'     => $total,
+            'page'      => $page,
+            'limit'     => $limit,
+        ]);
     }
     
     // Получить одну заявку

@@ -226,6 +226,7 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import Chart from "chart.js/auto";
+import { API_BASE } from '@/config/api.js'
 
 const stats = ref({});
 const newOrdersToday = ref(0);
@@ -254,7 +255,7 @@ const pluralize = (count) => {
 
 const fetchDashboard = async () => {
   try {
-    const res = await fetch("http://localhost:8000/api/admin/dashboard", {
+    const res = await fetch(`${API_BASE}/admin/dashboard`, {
       credentials: "include",
     });
     const data = await res.json();
@@ -282,24 +283,75 @@ const renderChart = (chartData) => {
       labels: chartData.labels,
       datasets: [
         {
-          label: "Количество заказов",
+          label: "Заказов",
           data: chartData.values,
           borderColor: "#fc9303",
           backgroundColor: "rgba(252, 147, 3, 0.1)",
           tension: 0.3,
           fill: true,
+          yAxisID: "yOrders",
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+        {
+          label: "Выручка, ₽",
+          data: chartData.revenue || [],
+          borderColor: "#60a5fa",
+          backgroundColor: "rgba(96, 165, 250, 0.07)",
+          tension: 0.3,
+          fill: false,
+          yAxisID: "yRevenue",
+          borderDash: [4, 3],
+          pointRadius: 4,
+          pointHoverRadius: 6,
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
+      interaction: { mode: "index", intersect: false },
       plugins: {
-        legend: { labels: { color: "#fff" } },
+        legend: { labels: { color: "#fff", usePointStyle: true, pointStyleWidth: 10 } },
+        tooltip: {
+          callbacks: {
+            label(ctx) {
+              if (ctx.dataset.yAxisID === "yRevenue") {
+                return ` ${ctx.dataset.label}: ${Number(ctx.parsed.y).toLocaleString("ru-RU")} ₽`;
+              }
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y}`;
+            },
+          },
+        },
       },
       scales: {
-        y: { ticks: { color: "#fff" }, grid: { color: "#4d4d4d" } },
-        x: { ticks: { color: "#fff" }, grid: { color: "#4d4d4d" } },
+        yOrders: {
+          type: "linear",
+          position: "left",
+          title: { display: true, text: "Заказов", color: "#fc9303" },
+          ticks: {
+            color: "#fc9303",
+            stepSize: 1,
+            precision: 0,
+            callback: (v) => Number.isInteger(v) ? v : null,
+          },
+          grid: { color: "#4d4d4d" },
+          beginAtZero: true,
+          min: 0,
+        },
+        yRevenue: {
+          type: "linear",
+          position: "right",
+          title: { display: true, text: "Выручка, ₽", color: "#60a5fa" },
+          ticks: {
+            color: "#60a5fa",
+            callback: (v) => v >= 1000 ? (v / 1000).toFixed(0) + " тыс." : v + " ₽",
+          },
+          grid: { drawOnChartArea: false },
+          beginAtZero: true,
+          min: 0,
+        },
+        x: { ticks: { color: "#9ca3af" }, grid: { color: "#374151" } },
       },
     },
   });

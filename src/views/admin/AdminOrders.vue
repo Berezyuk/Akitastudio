@@ -41,11 +41,7 @@
             class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-[#fc9303] focus:outline-none transition"
           >
             <option value="all">Все статусы</option>
-            <option value="pending">Ожидание</option>
-            <option value="confirmed">Подтверждён</option>
-            <option value="in_progress">В работе</option>
-            <option value="completed">Выполнен</option>
-            <option value="cancelled">Отменён</option>
+            <option v-for="s in statuses" :key="s.status_id" :value="s.status_id">{{ s.name }}</option>
           </select>
         </div>
 
@@ -94,7 +90,7 @@
           <button @click="filters.service = 'all'" class="hover:text-white">×</button>
         </span>
         <span v-if="filters.status !== 'all'" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg text-sm text-[#fc9303]">
-          Статус: {{ getStatusName(filters.status) }}
+          Статус: {{ statuses.find(s => s.status_id == filters.status)?.name || filters.status }}
           <button @click="filters.status = 'all'" class="hover:text-white">×</button>
         </span>
         <span v-if="filters.dateFrom" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg text-sm text-[#fc9303]">
@@ -115,16 +111,16 @@
         <p class="text-xs text-gray-400">Всего заказов</p>
       </div>
       <div class="bg-gray-900/50 rounded-xl border border-gray-800 p-4 text-center">
-        <p class="text-2xl font-bold text-yellow-400">{{ statusCounts.pending }}</p>
-        <p class="text-xs text-gray-400">Ожидание</p>
+        <p class="text-2xl font-bold text-yellow-400">{{ statusCounts[1] || 0 }}</p>
+        <p class="text-xs text-gray-400">Новых</p>
       </div>
       <div class="bg-gray-900/50 rounded-xl border border-gray-800 p-4 text-center">
-        <p class="text-2xl font-bold text-blue-400">{{ statusCounts.confirmed }}</p>
-        <p class="text-xs text-gray-400">Подтверждены</p>
+        <p class="text-2xl font-bold text-orange-400">{{ statusCounts[2] || 0 }}</p>
+        <p class="text-xs text-gray-400">В работе</p>
       </div>
       <div class="bg-gray-900/50 rounded-xl border border-gray-800 p-4 text-center">
-        <p class="text-2xl font-bold text-green-400">{{ statusCounts.completed }}</p>
-        <p class="text-xs text-gray-400">Выполнены</p>
+        <p class="text-2xl font-bold text-green-400">{{ (statusCounts[3] || 0) + (statusCounts[4] || 0) }}</p>
+        <p class="text-xs text-gray-400">Завершены</p>
       </div>
       <div class="bg-gray-900/50 rounded-xl border border-gray-800 p-4 text-center">
         <p class="text-xl font-bold text-[#fc9303] truncate" :title="totalAmount.toLocaleString() + ' ₽'">
@@ -182,17 +178,13 @@
             </td>
             <td class="p-4 font-semibold text-[#fc9303]">{{ formatPrice(order.total_price) }}</td>
             <td class="p-4">
-              <span :class="['px-3 py-1 rounded-full text-xs font-semibold', getStatusColor(order.status_name)]">
-                {{ getStatusName(order.status_name) }}
+              <span :class="['px-3 py-1 rounded-full text-xs font-semibold', getStatusColor(order.status_id)]">
+                {{ order.status_name }}
               </span>
             </td>
             <td class="p-4" @click.stop>
               <select @change="updateStatus(order.order_id, $event.target.value)" :value="order.status_id" class="bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-sm focus:border-[#fc9303] focus:outline-none">
-                <option value="1">Ожидание</option>
-                <option value="2">Подтверждён</option>
-                <option value="3">В работе</option>
-                <option value="4">Выполнен</option>
-                <option value="5">Отменён</option>
+                <option v-for="s in statuses" :key="s.status_id" :value="s.status_id">{{ s.name }}</option>
               </select>
             </td>
           </tr>
@@ -203,9 +195,17 @@
       </table>
     </div>
 
+    <ThePagination
+      :page="pagination.page"
+      :limit="pagination.limit"
+      :total="pagination.total"
+      @update:page="onPageChange"
+      class="mt-2"
+    />
+
     <!-- Модальное окно для управления прогрессом -->
-    <AdminOrderModal 
-      :visible="modalVisible" 
+    <AdminOrderModal
+      :visible="modalVisible"
       :order="selectedOrder"
       @close="modalVisible = false"
       @updated="refreshOrders"
@@ -216,9 +216,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import AdminOrderModal from '@/components/AdminOrderModal.vue'
+import { API_BASE } from '@/config/api.js'
+import ThePagination from '@/components/ThePagination.vue'
 
 const orders = ref([])
+const statuses = ref([])
 const loading = ref(false)
+const pagination = ref({ page: 1, limit: 50, total: 0 })
 const sortField = ref('order_date')
 const sortOrder = ref('desc')
 const modalVisible = ref(false)
@@ -286,7 +290,7 @@ const filteredOrders = computed(() => {
   }
 
   if (filters.value.status !== 'all') {
-    result = result.filter(order => order.status_name === filters.value.status)
+    result = result.filter(order => String(order.status_id) === String(filters.value.status))
   }
 
   if (filters.value.dateFrom) {
@@ -344,9 +348,10 @@ const sortedAndFilteredOrders = computed(() => {
 })
 
 const statusCounts = computed(() => {
-  const counts = { pending: 0, confirmed: 0, in_progress: 0, completed: 0, cancelled: 0 }
+  const counts = {}
   filteredOrders.value.forEach(order => {
-    if (counts[order.status_name] !== undefined) counts[order.status_name]++
+    const id = order.status_id
+    counts[id] = (counts[id] || 0) + 1
   })
   return counts
 })
@@ -385,12 +390,27 @@ const resetFilters = () => {
   }
 }
 
+const fetchStatuses = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/admin/order-statuses`, { credentials: 'include' })
+    const data = await res.json()
+    if (data.success) statuses.value = data.statuses
+  } catch (err) { console.error(err) }
+}
+
 const fetchOrders = async () => {
   loading.value = true
   try {
-    const res = await fetch('http://localhost:8000/api/admin/orders', { credentials: 'include' })
+    const params = new URLSearchParams({
+      page:  pagination.value.page,
+      limit: pagination.value.limit,
+    })
+    const res  = await fetch(`${API_BASE}/admin/orders?${params}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success) orders.value = data.orders
+    if (data.success) {
+      orders.value = data.orders
+      pagination.value.total = data.total ?? orders.value.length
+    }
   } catch (err) {
     console.error(err)
   } finally {
@@ -398,9 +418,14 @@ const fetchOrders = async () => {
   }
 }
 
+const onPageChange = (p) => {
+  pagination.value.page = p
+  fetchOrders()
+}
+
 const updateStatus = async (orderId, newStatusId) => {
   try {
-    const res = await fetch(`http://localhost:8000/api/admin/orders/${orderId}/status`, {
+    const res = await fetch(`${API_BASE}/admin/orders/${orderId}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -420,7 +445,7 @@ const updateStatus = async (orderId, newStatusId) => {
 
 const exportFilteredCSV = () => {
   const headers = [
-    'ID заказа', 'Клиент', 'Телефон', 'Услуги', 'Автомобиль', 'Госномер',
+    'ID заказа', 'Клиент', 'Телефон', 'Услуги', 'Автомобиль',
     'Дата заявки', 'Желаемая дата', 'Желаемое время', 'Сумма', 'Статус'
   ]
 
@@ -430,7 +455,6 @@ const exportFilteredCSV = () => {
     order.phone_number || '',
     order.service_names || '',
     `${order.brand_name || ''} ${order.model_name || ''}`.trim(),
-    order.license_plate || '',
     formatDateForCSV(order.order_date),
     formatDateForCSV(order.desired_date),
     order.desired_time || '',
@@ -475,29 +499,21 @@ const formatDateForCSV = (dateStr) => {
   return new Date(dateStr).toLocaleDateString('ru-RU')
 }
 
-const getStatusColor = (statusName) => {
+const getStatusColor = (statusId) => {
   const colors = {
-    pending: 'bg-yellow-500/20 text-yellow-400',
-    confirmed: 'bg-blue-500/20 text-blue-400',
-    in_progress: 'bg-orange-500/20 text-orange-400',
-    completed: 'bg-green-500/20 text-green-400',
-    cancelled: 'bg-red-500/20 text-red-400'
+    1: 'bg-yellow-500/20 text-yellow-400',
+    2: 'bg-orange-500/20 text-orange-400',
+    3: 'bg-blue-500/20 text-blue-400',
+    4: 'bg-green-500/20 text-green-400',
+    5: 'bg-red-500/20 text-red-400'
   }
-  return colors[statusName] || 'bg-gray-500/20 text-gray-400'
+  return colors[statusId] || 'bg-gray-500/20 text-gray-400'
 }
 
-const getStatusName = (statusName) => {
-  const names = {
-    pending: 'Ожидание',
-    confirmed: 'Подтверждён',
-    in_progress: 'В работе',
-    completed: 'Выполнен',
-    cancelled: 'Отменён'
-  }
-  return names[statusName] || statusName
-}
+const getStatusName = (statusName) => statusName || '—'
 
 onMounted(() => {
+  fetchStatuses()
   fetchOrders()
 })
 </script>

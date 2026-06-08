@@ -101,16 +101,27 @@
         </div>
       </div>
     </div>
+
+    <ThePagination
+      :page="pagination.page"
+      :limit="pagination.limit"
+      :total="pagination.total"
+      @update:page="onPageChange"
+      class="mt-4"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { API_BASE } from '@/config/api.js'
+import ThePagination from '@/components/ThePagination.vue'
 
 const feedbacks = ref([])
 const loading = ref(false)
 const search = ref('')
 const statusFilter = ref('all')
+const pagination = ref({ page: 1, limit: 30, total: 0 })
 let debounceTimer = null
 
 const viewModalVisible = ref(false)
@@ -121,27 +132,25 @@ const editAdminNotes = ref('')
 const fetchFeedbacks = async () => {
   loading.value = true
   try {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ page: pagination.value.page, limit: pagination.value.limit })
     if (search.value) params.append('search', search.value)
     if (statusFilter.value !== 'all') params.append('status', statusFilter.value)
-    const url = `http://localhost:8000/api/admin/feedbacks?${params.toString()}`
-    const res = await fetch(url, { credentials: 'include' })
-    
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`)
-    }
-    
+    const res  = await fetch(`${API_BASE}/admin/feedbacks?${params}`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
       feedbacks.value = data.feedbacks
-    } else {
-      console.error('API error:', data.error)
+      pagination.value.total = data.total ?? feedbacks.value.length
     }
   } catch (err) {
     console.error('Fetch error:', err)
   } finally {
     loading.value = false
   }
+}
+
+const onPageChange = (p) => {
+  pagination.value.page = p
+  fetchFeedbacks()
 }
 
 const debouncedFetch = () => {
@@ -158,7 +167,7 @@ const openViewModal = (feedback) => {
 
 const saveChanges = async () => {
   try {
-    const res = await fetch(`http://localhost:8000/api/admin/feedbacks/${selectedFeedback.value.feedback_id}/status`, {
+    const res = await fetch(`${API_BASE}/admin/feedbacks/${selectedFeedback.value.feedback_id}/status`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -180,7 +189,7 @@ const saveChanges = async () => {
 const deleteFeedback = async (id) => {
   if (confirm('Удалить заявку?')) {
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/feedbacks/${id}`, {
+      const res = await fetch(`${API_BASE}/admin/feedbacks/${id}`, {
         method: 'DELETE',
         credentials: 'include'
       })

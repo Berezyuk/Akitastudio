@@ -51,6 +51,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { API_BASE } from '@/config/api.js'
 
 const form = ref({
   old_password: '',
@@ -67,7 +68,7 @@ const changePassword = async () => {
   errorMessage.value = ''
   
   try {
-    const res = await fetch('http://localhost:8000/api/admin/change-password', {
+    const res = await fetch(`${API_BASE}/admin/change-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

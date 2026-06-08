@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { API_BASE } from '@/config/api.js'
 
 export const useAdminPortfolioStore = defineStore('adminPortfolio', () => {
-    const API_URL = 'http://localhost:8000/api'
     
     const portfolio = ref([])
     const loading = ref(false)
@@ -15,7 +15,7 @@ export const useAdminPortfolioStore = defineStore('adminPortfolio', () => {
     const fetchPortfolio = async () => {
         loading.value = true
         try {
-            const response = await fetch(`${API_URL}/admin/portfolio`, {
+            const response = await fetch(`${API_BASE}/admin/portfolio`, {
                 credentials: 'include',
                 headers: getHeaders()
             })
@@ -36,7 +36,7 @@ export const useAdminPortfolioStore = defineStore('adminPortfolio', () => {
     const addPortfolioItem = async (item) => {
         loading.value = true
         try {
-            const response = await fetch(`${API_URL}/admin/portfolio`, {
+            const response = await fetch(`${API_BASE}/admin/portfolio`, {
                 method: 'POST',
                 headers: getHeaders(),
                 credentials: 'include',
@@ -58,7 +58,7 @@ export const useAdminPortfolioStore = defineStore('adminPortfolio', () => {
     const deletePortfolioItem = async (id) => {
         loading.value = true
         try {
-            const response = await fetch(`${API_URL}/admin/portfolio/${id}`, {
+            const response = await fetch(`${API_BASE}/admin/portfolio/${id}`, {
                 method: 'DELETE',
                 credentials: 'include',
                 headers: getHeaders()

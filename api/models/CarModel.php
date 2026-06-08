@@ -15,6 +15,19 @@ class CarModel {
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    public function getByBrandName($brandName) {
+        $query = "SELECT cm.model_id, cm.name
+                  FROM car_models cm
+                  JOIN car_brands cb ON cm.brand_id = cb.brand_id
+                  WHERE cb.name ILIKE :brand
+                  ORDER BY cm.name
+                  LIMIT 50";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':brand', $brandName);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
     
     public function findOrCreateByName($brandId, $modelName) {
         $modelName = trim($modelName);

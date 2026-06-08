@@ -18,10 +18,7 @@ class AuthController {
 
     public static function register() {
     $data = json_decode(file_get_contents('php://input'), true);
-    
-    // Логируем что пришло (для отладки)
-    error_log('Register data: ' . json_encode($data));
-    
+
     // Валидация
     if(empty($data['login']) || empty($data['password']) || empty($data['first_name']) || empty($data['last_name']) || empty($data['phone'])) {
         echo json_encode(['error' => 'Заполните все обязательные поля']);

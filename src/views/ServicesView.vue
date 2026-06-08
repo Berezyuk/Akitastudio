@@ -155,6 +155,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { API_BASE } from '@/config/api.js'
 
 const router = useRouter()
 const categories = ref([])
@@ -177,7 +178,7 @@ const categoryIcons = {
 // Загрузка категорий и услуг
 const fetchCategories = async () => {
   try {
-    const res = await fetch('http://localhost:8000/api/categories')
+    const res = await fetch(`${API_BASE}/categories`)
     const data = await res.json()
     if (data.success) categories.value = data.categories
   } catch (err) {
@@ -187,7 +188,7 @@ const fetchCategories = async () => {
 
 const fetchServices = async () => {
   try {
-    const res = await fetch('http://localhost:8000/api/services')
+    const res = await fetch(`${API_BASE}/services`)
     const data = await res.json()
     if (data.success) services.value = data.services
   } catch (err) {

@@ -112,15 +112,27 @@
                     </li>
                   </ul>
                 </div>
-                <div>
+                <div class="relative">
                   <label class="block text-sm text-gray-400 mb-2">Модель *</label>
-                  <input 
-                    v-model="form.carModel" 
-                    type="text" 
-                    @blur="validateModel"
-                    class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" 
-                    placeholder="Например: Camry"
+                  <input
+                    v-model="form.carModel"
+                    type="text"
+                    @input="onModelInput"
+                    @focus="onModelFocus"
+                    @blur="onModelBlur"
+                    class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
+                    :placeholder="allModelsForBrand.length ? 'Начните вводить или выберите из списка' : 'Например: Camry'"
                   />
+                  <ul v-if="modelSuggestions.length" class="absolute z-20 w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-60 overflow-y-auto custom-scroll">
+                    <li
+                      v-for="model in modelSuggestions"
+                      :key="model.model_id"
+                      @mousedown.prevent="selectModel(model)"
+                      class="px-5 py-3 hover:bg-gray-700 cursor-pointer text-white transition-colors"
+                    >
+                      {{ model.name }}
+                    </li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -223,6 +235,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { API_BASE } from '@/config/api.js'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 // Данные
 const services = ref([])
@@ -250,12 +266,15 @@ const form = ref({
 
 const agreed = ref(false)
 
-// DaData для марок
-const DADATA_TOKEN = '92fb0c168035ebecb044510a0ee4e92fbefd17d0'
+// DaData для марок (запросы идут через наш backend-прокси, токен в JS не хранится)
 const carBrandQuery = ref('')
 const brandSuggestions = ref([])
 const selectedBrandId = ref(null)
 const selectedBrandName = ref('')
+
+// Autocomplete для моделей (из нашей БД, пополняется через DaData cleaner)
+const allModelsForBrand = ref([])
+const modelSuggestions = ref([])
 
 // Минимальная дата
 const minDate = new Date().toISOString().split('T')[0]
@@ -263,7 +282,7 @@ const minDate = new Date().toISOString().split('T')[0]
 // API вызовы
 const fetchCategories = async () => {
   try {
-    const res = await fetch('http://localhost:8000/api/categories')
+    const res = await fetch(`${API_BASE}/categories`)
     const data = await res.json()
     if (data.success) categories.value = data.categories
   } catch (err) { console.error(err) }
@@ -271,7 +290,7 @@ const fetchCategories = async () => {
 
 const fetchServices = async () => {
   try {
-    const res = await fetch('http://localhost:8000/api/services')
+    const res = await fetch(`${API_BASE}/services`)
     const data = await res.json()
     if (data.success) services.value = data.services
   } catch (err) { console.error(err) }
@@ -288,7 +307,7 @@ const currentCategoryName = computed(() => {
   return cat ? cat.name : ''
 })
 
-// DaData для марок
+// Подсказки марок — через backend-прокси (токен DaData скрыт на сервере)
 const fetchBrandSuggestions = async () => {
   const query = carBrandQuery.value.trim()
   if (!query) {
@@ -296,27 +315,61 @@ const fetchBrandSuggestions = async () => {
     return
   }
   try {
-    const res = await fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/car_brand', {
+    const res = await fetch(`${API_BASE}/car-brand-suggest`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Token ' + DADATA_TOKEN
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, count: 20 })
     })
     const data = await res.json()
     brandSuggestions.value = data.suggestions || []
   } catch (err) {
-    console.error('DaData brand error:', err)
+    console.error('Brand suggest error:', err)
   }
 }
 
-const selectBrand = (brand) => {
+const selectBrand = async (brand) => {
   selectedBrandId.value = brand.data.id
   selectedBrandName.value = brand.value
   carBrandQuery.value = brand.value
   brandSuggestions.value = []
+  // Сбрасываем модель и грузим варианты для выбранной марки
+  form.value.carModel = ''
+  allModelsForBrand.value = []
+  modelSuggestions.value = []
+  try {
+    const res = await fetch(`${API_BASE}/car-models?brand_name=${encodeURIComponent(brand.value)}`)
+    const data = await res.json()
+    if (data.success) allModelsForBrand.value = data.models
+  } catch (err) {
+    console.error('Model load error:', err)
+  }
+}
+
+const onModelInput = () => {
+  const q = form.value.carModel.trim().toLowerCase()
+  modelSuggestions.value = q
+    ? allModelsForBrand.value.filter(m => m.name.toLowerCase().includes(q))
+    : allModelsForBrand.value.slice(0, 20)
+}
+
+const onModelFocus = () => {
+  const q = form.value.carModel.trim().toLowerCase()
+  modelSuggestions.value = q
+    ? allModelsForBrand.value.filter(m => m.name.toLowerCase().includes(q))
+    : allModelsForBrand.value.slice(0, 20)
+}
+
+const selectModel = (model) => {
+  form.value.carModel = model.name
+  modelSuggestions.value = []
+}
+
+const onModelBlur = () => {
+  // Даём time для mousedown на элементе списка
+  setTimeout(() => {
+    modelSuggestions.value = []
+    validateModel()
+  }, 200)
 }
 
 // ========== Валидация модели через DaData ==========
@@ -324,7 +377,7 @@ const validateModel = async () => {
   if (!form.value.carModel.trim() || !carBrandQuery.value.trim()) return
 
   try {
-    const res = await fetch('http://localhost:8000/api/validate-car', {
+    const res = await fetch(`${API_BASE}/validate-car`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ brand: carBrandQuery.value, model: form.value.carModel })
@@ -428,9 +481,14 @@ const handleSubmit = async () => {
       comment: form.value.comment
     }
 
-    const res = await fetch('http://localhost:8000/api/order/create', {
+    if (authStore.isAuthenticated && authStore.user?.client_id) {
+      payload.client_id = authStore.user.client_id
+    }
+
+    const res = await fetch(`${API_BASE}/order/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(payload)
     })
     const data = await res.json()

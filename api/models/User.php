@@ -85,9 +85,12 @@ public function register($data) {
         return ['error' => 'Пользователь с таким логином уже существует'];
     }
     
+    // Нормализуем телефон (только цифры) для консистентного хранения
+    $normalizedPhone = preg_replace('/[^0-9]/', '', $data['phone']);
+
     // Проверка на существование телефона в clients
     $checkPhone = $this->conn->prepare("SELECT client_id FROM clients WHERE phone_number = :phone");
-    $checkPhone->bindParam(':phone', $data['phone']);
+    $checkPhone->bindParam(':phone', $normalizedPhone);
     $checkPhone->execute();
     
     $hash = password_hash($data['password'], PASSWORD_BCRYPT);
@@ -109,14 +112,14 @@ public function register($data) {
             $clientStmt->bindParam(':first_name', $data['first_name']);
             $clientStmt->bindParam(':last_name', $data['last_name']);
             $clientStmt->bindParam(':email', $data['email']);
-            $clientStmt->bindParam(':phone', $data['phone']);
+            $clientStmt->bindParam(':phone', $normalizedPhone);
             $clientStmt->execute();
         } else {
             $clientStmt = $this->conn->prepare("INSERT INTO clients (user_id, first_name, last_name, phone_number, email) VALUES (:user_id, :first_name, :last_name, :phone, :email)");
             $clientStmt->bindParam(':user_id', $userId);
             $clientStmt->bindParam(':first_name', $data['first_name']);
             $clientStmt->bindParam(':last_name', $data['last_name']);
-            $clientStmt->bindParam(':phone', $data['phone']);
+            $clientStmt->bindParam(':phone', $normalizedPhone);
             $clientStmt->bindParam(':email', $data['email']);
             $clientStmt->execute();
         }

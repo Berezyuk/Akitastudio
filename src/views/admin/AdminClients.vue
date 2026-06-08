@@ -236,15 +236,26 @@
         </div>
       </div>
     </div>
+
+    <ThePagination
+      :page="pagination.page"
+      :limit="pagination.limit"
+      :total="pagination.total"
+      @update:page="onPageChange"
+      class="mt-4"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { API_BASE } from '@/config/api.js'
+import ThePagination from '@/components/ThePagination.vue'
 
 const clients = ref([])
 const loading = ref(false)
 const search = ref('')
+const pagination = ref({ page: 1, limit: 30, total: 0 })
 let debounceTimer = null
 
 const editModalVisible = ref(false)
@@ -259,8 +270,7 @@ const services = ref([])
 const categories = ref([])
 const selectedCategoryId = ref(null)
 
-// DaData для марок
-const DADATA_TOKEN = '92fb0c168035ebecb044510a0ee4e92fbefd17d0'
+// DaData для марок (через backend-прокси)
 const carBrandQuery = ref('')
 const brandSuggestions = ref([])
 const selectedBrandId = ref(null)
@@ -309,7 +319,7 @@ const validateDateTime = () => {
   return true
 }
 
-// DaData для марок
+// Подсказки марок — через backend-прокси
 const fetchBrandSuggestions = async () => {
   const query = carBrandQuery.value.trim()
   if (!query) {
@@ -317,19 +327,15 @@ const fetchBrandSuggestions = async () => {
     return
   }
   try {
-    const res = await fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/car_brand', {
+    const res = await fetch(`${API_BASE}/car-brand-suggest`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': 'Token ' + DADATA_TOKEN
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, count: 20 })
     })
     const data = await res.json()
     brandSuggestions.value = data.suggestions || []
   } catch (err) {
-    console.error('DaData brand error:', err)
+    console.error('Brand suggest error:', err)
   }
 }
 
@@ -344,12 +350,14 @@ const selectBrand = (brand) => {
 const fetchClients = async () => {
   loading.value = true
   try {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams({ page: pagination.value.page, limit: pagination.value.limit })
     if (search.value) params.append('search', search.value)
-    const url = `http://localhost:8000/api/admin/clients?${params.toString()}`
-    const res = await fetch(url, { credentials: 'include' })
+    const res  = await fetch(`${API_BASE}/admin/clients?${params}`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success) clients.value = data.clients
+    if (data.success) {
+      clients.value = data.clients
+      pagination.value.total = data.total ?? clients.value.length
+    }
   } catch (err) {
     console.error(err)
   } finally {
@@ -357,9 +365,14 @@ const fetchClients = async () => {
   }
 }
 
+const onPageChange = (p) => {
+  pagination.value.page = p
+  fetchClients()
+}
+
 const fetchCategories = async () => {
   try {
-    const res = await fetch('http://localhost:8000/api/categories')
+    const res = await fetch(`${API_BASE}/categories`)
     const data = await res.json()
     if (data.success) categories.value = data.categories
   } catch (err) {
@@ -369,7 +382,7 @@ const fetchCategories = async () => {
 
 const fetchServices = async () => {
   try {
-    const res = await fetch('http://localhost:8000/api/services')
+    const res = await fetch(`${API_BASE}/services`)
     const data = await res.json()
     if (data.success) services.value = data.services
   } catch (err) {
@@ -389,7 +402,7 @@ const openEditModal = (client) => {
 
 const saveClient = async () => {
   try {
-    const res = await fetch(`http://localhost:8000/api/admin/clients/${editForm.value.client_id}`, {
+    const res = await fetch(`${API_BASE}/admin/clients/${editForm.value.client_id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -411,7 +424,7 @@ const saveClient = async () => {
 const viewDetails = async (client) => {
   selectedClient.value = client
   try {
-    const res = await fetch(`http://localhost:8000/api/admin/clients/${client.client_id}`, { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/admin/clients/${client.client_id}`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) {
       clientOrders.value = data.orders
@@ -458,7 +471,7 @@ const submitNewOrder = async () => {
       desired_time: newOrder.value.desired_time,
       comment: newOrder.value.comment
     }
-    const res = await fetch('http://localhost:8000/api/order/create', {
+    const res = await fetch(`${API_BASE}/order/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -482,7 +495,7 @@ const submitNewOrder = async () => {
 const exportCSV = () => {
   const params = new URLSearchParams()
   if (search.value) params.append('search', search.value)
-  window.open(`http://localhost:8000/api/admin/clients/export?${params.toString()}`, '_blank')
+  window.open(`${API_BASE}/admin/clients/export?${params.toString()}`, '_blank')
 }
 
 const formatDate = (dateStr) => {

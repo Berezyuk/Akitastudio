@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import ServiceCard from "../components/ServiceCard.vue";
+import { API_BASE } from '@/config/api.js'
 
 import uhodImage from "../assets/Images/uhod.webp";
 import plenkaImage from "../assets/Images/plenka.webp";
@@ -101,7 +102,7 @@ const categoryCards = computed(() => {
 const fetchServices = async () => {
   loading.value = true;
   try {
-    const response = await fetch("http://localhost:8000/api/services");
+    const response = await fetch("${API_BASE}/services");
     const data = await response.json();
     if (data.success) {
       services.value = data.services;
@@ -150,7 +151,7 @@ const submitFeedback = async () => {
       message: message
     }
     
-    const res = await fetch('http://localhost:8000/api/feedback', {
+    const res = await fetch('${API_BASE}/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

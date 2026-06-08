@@ -12,7 +12,11 @@ import AdminFeedbacks from './admin/AdminFeedbacks.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
-const activeAdminTab = ref('services')
+const STORAGE_KEY = 'admin_active_tab'
+const validTabs = ['dashboard', 'services', 'portfolio', 'orders', 'clients', 'feedbacks', 'settings']
+const savedTab = localStorage.getItem(STORAGE_KEY)
+const activeAdminTab = ref(validTabs.includes(savedTab) ? savedTab : 'services')
+watch(activeAdminTab, (val) => localStorage.setItem(STORAGE_KEY, val))
 const sidebarCollapsed = ref(false)
 const mobileMenuOpen = ref(false)
 const isMobile = ref(false)

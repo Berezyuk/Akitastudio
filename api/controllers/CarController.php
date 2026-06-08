@@ -12,13 +12,20 @@ class CarController {
     }
     
     public static function getModels() {
-        $brandId = isset($_GET['brand_id']) ? (int)$_GET['brand_id'] : null;
-        if (!$brandId) {
-            echo json_encode(['error' => 'brand_id is required']);
+        $brandName = isset($_GET['brand_name']) ? trim($_GET['brand_name']) : null;
+        $brandId   = isset($_GET['brand_id'])   ? (int)$_GET['brand_id']   : null;
+        $carModel  = new CarModel();
+
+        if ($brandName) {
+            $models = $carModel->getByBrandName($brandName);
+            echo json_encode(['success' => true, 'models' => $models]);
             return;
         }
-        $model = new CarModel();
-        $models = $model->getByBrand($brandId);
+        if (!$brandId) {
+            echo json_encode(['error' => 'brand_id or brand_name is required']);
+            return;
+        }
+        $models = $carModel->getByBrand($brandId);
         echo json_encode(['success' => true, 'models' => $models]);
     }
 }

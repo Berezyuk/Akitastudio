@@ -1,10 +1,13 @@
 <?php
 // api/index.php
 
+require_once __DIR__ . '/config/env.php';
+
 session_start();
 
+$corsOrigin = getenv('CORS_ORIGIN') ?: 'http://localhost:5173';
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: http://localhost:5173');
+header('Access-Control-Allow-Origin: ' . $corsOrigin);
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Access-Control-Allow-Credentials: true');
@@ -44,11 +47,6 @@ if ($path === 'auth/me' && $requestMethod === 'GET') {
     AuthController::me();
     exit;
 }
-if ($path === 'auth/create-test-admin' && $requestMethod === 'POST') {
-    AuthController::createTestAdmin();
-    exit;
-}
-
 if ($path === 'order/create' && $requestMethod === 'POST') {
     require_once __DIR__ . '/controllers/OrderController.php';
     OrderController::createOrder();
@@ -57,6 +55,12 @@ if ($path === 'order/create' && $requestMethod === 'POST') {
 if ($path === 'validate-car' && $requestMethod === 'POST') {
     require_once __DIR__ . '/controllers/CarValidationController.php';
     CarValidationController::validateCar();
+    exit;
+}
+// Прокси для DaData (токен остаётся на сервере)
+if ($path === 'car-brand-suggest' && $requestMethod === 'POST') {
+    require_once __DIR__ . '/controllers/CarValidationController.php';
+    CarValidationController::suggestBrand();
     exit;
 }
 // Обратная связь (публичный)
@@ -198,6 +202,10 @@ if ($path === 'admin/portfolio' && $requestMethod === 'GET') {
     AdminController::getPortfolio();
     exit;
 }
+if ($path === 'admin/portfolio/upload' && $requestMethod === 'POST') {
+    AdminController::uploadPortfolioMedia();
+    exit;
+}
 if ($path === 'admin/portfolio' && $requestMethod === 'POST') {
     AdminController::addPortfolio();
     exit;
@@ -219,10 +227,6 @@ if ($path === 'admin/clients' && $requestMethod === 'GET') {
 }
 if (preg_match('/^admin\/clients\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
     AdminController::getClientDetails($matches[1]);
-    exit;
-}
-if ($path === 'admin/clients' && $requestMethod === 'GET') {
-    AdminController::getClients();
     exit;
 }
 if ($path === 'admin/clients' && $requestMethod === 'POST') {
@@ -249,6 +253,10 @@ if ($path === 'admin/orders' && $requestMethod === 'GET') {
 }
 if ($path === 'admin/orders/export' && $requestMethod === 'GET') {
     AdminController::exportOrders();
+    exit;
+}
+if (preg_match('/^admin\/orders\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
+    AdminController::getOrder($matches[1]);
     exit;
 }
 if (preg_match('/^admin\/orders\/(\d+)$/', $path, $matches) && $requestMethod === 'PUT') {
@@ -351,11 +359,6 @@ if (preg_match('/^admin\/orders\/(\d+)\/status$/', $path, $matches) && $requestM
     exit;
 }
 
-// Получение категорий услуг (для админки)
-if ($path === 'admin/service-categories' && $requestMethod === 'GET') {
-    AdminController::getServiceCategories();
-    exit;
-}
 // Получение услуг по категории (для админки)
 if (preg_match('/^admin\/services-by-category\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
     AdminController::getServicesByCategory($matches[1]);
@@ -363,10 +366,6 @@ if (preg_match('/^admin\/services-by-category\/(\d+)$/', $path, $matches) && $re
 }
 
 // Публичные маршруты
-//if ($path === 'categories' && $requestMethod === 'GET') {
-   // CategoryController::getCategories();
-   // exit;
-//}
 if (preg_match('/^services-by-category\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
     ServiceController::getServicesByCategory($matches[1]);
     exit;

@@ -74,6 +74,7 @@
             class="group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-default portfolio-item"
           >
             <video
+              v-if="isVideo(item.video_url)"
               :ref="(el) => setVideoRef(el, getOriginalIndex(item.id))"
               :src="item.video_url"
               class="absolute inset-0 w-full h-full object-cover transition-all duration-700"
@@ -82,9 +83,20 @@
                 'scale-100': hoveredItem !== item.id
               }"
               loop
+              muted
               playsinline
-              preload="auto"
+              preload="none"
             ></video>
+            <img
+              v-else
+              :src="getMediaSrc(item.video_url)"
+              :alt="item.title"
+              class="absolute inset-0 w-full h-full object-cover transition-all duration-700"
+              :class="{
+                'scale-110 brightness-110': hoveredItem === item.id,
+                'scale-100': hoveredItem !== item.id
+              }"
+            />
 
             <div 
               class="absolute inset-0 transition-opacity duration-500"
@@ -198,6 +210,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { API_BASE } from '@/config/api.js'
 
 const portfolioItems = ref([])
 const loading = ref(true)
@@ -236,7 +249,7 @@ const getOriginalIndex = (itemId) => {
 const fetchPortfolio = async () => {
   loading.value = true
   try {
-    const res = await fetch('http://localhost:8000/api/portfolio')
+    const res = await fetch(`${API_BASE}/portfolio`)
     const data = await res.json()
     if (data.success) portfolioItems.value = data.portfolio
   } catch (err) {
@@ -246,12 +259,27 @@ const fetchPortfolio = async () => {
   }
 }
 
+const isVideo = (url) => /\.(mp4|webm|ogg)(\?|$)/i.test(url || '')
+
+const getYouTubeId = (url) => {
+  if (!url) return null
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s?]+)/)
+  return m ? m[1] : null
+}
+
+const getMediaSrc = (url) => {
+  const ytId = getYouTubeId(url)
+  if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+  return url
+}
+
 const handleMouseEnter = (item, index) => {
   hoveredItem.value = item.id
+  if (!isVideo(item.video_url)) return
   const video = videoRefs.value[index]
   if (video) {
     video.volume = soundEnabled.value[item.id] ? 0.3 : 0
-    video.play()
+    video.play().catch(() => {})
   }
 }
 

@@ -1,13 +1,14 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import { API_BASE } from '@/config/api.js'
 
+// ── Услуги ──────────────────────────────────────────────────────────────────
 const services = ref([])
 const categories = ref([])
 const loading = ref(false)
 const showModal = ref(false)
 const editingService = ref(null)
 
-// Поле для длительности в часах (для удобства пользователя)
 const durationHours = ref(0)
 
 const form = ref({
@@ -21,32 +22,16 @@ const form = ref({
   sort_order: 0
 })
 
-// Конвертация минут в часы
-const minutesToHours = (minutes) => {
-  return minutes / 60
-}
+const minutesToHours = (minutes) => minutes / 60
+const hoursToMinutes = (hours) => Math.round(hours * 60)
 
-// Конвертация часов в минуты
-const hoursToMinutes = (hours) => {
-  return Math.round(hours * 60)
-}
-
-// Следим за изменением durationHours и обновляем form.duration_minutes
-watch(durationHours, (newValue) => {
-  form.value.duration_minutes = hoursToMinutes(newValue)
-})
-
-// Следим за изменением form.duration_minutes (при редактировании)
-watch(() => form.value.duration_minutes, (newValue) => {
-  if (newValue) {
-    durationHours.value = minutesToHours(newValue)
-  }
-})
+watch(durationHours, (v) => { form.value.duration_minutes = hoursToMinutes(v) })
+watch(() => form.value.duration_minutes, (v) => { if (v) durationHours.value = minutesToHours(v) })
 
 const fetchServices = async () => {
   loading.value = true
   try {
-    const res = await fetch('http://localhost:8000/api/admin/services', { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/admin/services`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) services.value = data.services
   } catch (err) {
@@ -58,7 +43,7 @@ const fetchServices = async () => {
 
 const fetchCategories = async () => {
   try {
-    const res = await fetch('http://localhost:8000/api/admin/service-categories', { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/admin/service-categories`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) categories.value = data.categories
   } catch (err) {
@@ -91,8 +76,8 @@ const openEditModal = (service) => {
 
 const saveService = async () => {
   const url = editingService.value
-    ? `http://localhost:8000/api/admin/services/${editingService.value.service_id}`
-    : 'http://localhost:8000/api/admin/services'
+    ? `${API_BASE}/admin/services/${editingService.value.service_id}`
+    : `${API_BASE}/admin/services`
   const method = editingService.value ? 'PUT' : 'POST'
 
   const res = await fetch(url, {
@@ -112,7 +97,7 @@ const saveService = async () => {
 
 const deleteService = async (id, name) => {
   if (confirm(`Удалить услугу "${name}"?`)) {
-    const res = await fetch(`http://localhost:8000/api/admin/services/${id}`, {
+    const res = await fetch(`${API_BASE}/admin/services/${id}`, {
       method: 'DELETE',
       credentials: 'include'
     })
@@ -125,6 +110,70 @@ const deleteService = async (id, name) => {
   }
 }
 
+// ── Категории ────────────────────────────────────────────────────────────────
+const showCatModal = ref(false)
+const editingCat = ref(null)
+const catForm = ref({ name: '', sort_order: 0 })
+const catError = ref('')
+
+const openAddCatModal = () => {
+  editingCat.value = null
+  catForm.value = { name: '', sort_order: categories.value.length + 1 }
+  catError.value = ''
+  showCatModal.value = true
+}
+
+const openEditCatModal = (cat) => {
+  editingCat.value = cat
+  catForm.value = { name: cat.name, sort_order: cat.sort_order }
+  catError.value = ''
+  showCatModal.value = true
+}
+
+const saveCat = async () => {
+  catError.value = ''
+  if (!catForm.value.name.trim()) {
+    catError.value = 'Введите название категории'
+    return
+  }
+  const url = editingCat.value
+    ? `${API_BASE}/admin/service-categories/${editingCat.value.category_id}`
+    : `${API_BASE}/admin/service-categories`
+  const method = editingCat.value ? 'PUT' : 'POST'
+
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(catForm.value)
+  })
+  const data = await res.json()
+  if (data.success || data.category_id) {
+    await fetchCategories()
+    showCatModal.value = false
+  } else {
+    catError.value = data.error || 'Не удалось сохранить'
+  }
+}
+
+const deleteCat = async (cat) => {
+  const count = services.value.filter(s => s.category_id === cat.category_id).length
+  const warn = count > 0 ? ` В ней ${count} усл. — они тоже будут удалены.` : ''
+  if (confirm(`Удалить категорию "${cat.name}"?${warn}`)) {
+    const res = await fetch(`${API_BASE}/admin/service-categories/${cat.category_id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    const data = await res.json()
+    if (data.success) {
+      await fetchCategories()
+      await fetchServices()
+    } else {
+      alert('Ошибка удаления: ' + (data.error || ''))
+    }
+  }
+}
+
 onMounted(() => {
   fetchCategories()
   fetchServices()
@@ -133,13 +182,67 @@ onMounted(() => {
 
 <template>
   <div>
+    <!-- Заголовок страницы -->
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-2xl font-bold">Управление услугами</h2>
-      <button @click="openAddModal" class="px-4 py-2 bg-[#fc9303] rounded-lg text-black font-semibold hover:scale-105 transition">
+      <button @click="openAddModal"
+              class="px-4 py-2 bg-[#fc9303] rounded-lg text-black font-semibold hover:scale-105 transition">
         + Добавить услугу
       </button>
     </div>
 
+    <!-- Блок управления категориями -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl mb-8">
+      <div class="flex justify-between items-center px-6 py-4 border-b border-gray-800">
+        <h3 class="text-lg font-bold">Категории услуг</h3>
+        <button @click="openAddCatModal"
+                class="flex items-center gap-2 px-3 py-1.5 border border-[#fc9303] text-[#fc9303] rounded-lg text-sm font-semibold hover:bg-[#fc9303] hover:text-black transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          Добавить категорию
+        </button>
+      </div>
+
+      <div v-if="categories.length === 0" class="px-6 py-8 text-center text-gray-500">
+        Категорий пока нет. Создайте первую.
+      </div>
+
+      <div v-else class="divide-y divide-gray-800">
+        <div v-for="cat in categories" :key="cat.category_id"
+             class="flex items-center justify-between px-6 py-3 hover:bg-gray-800/50 transition">
+          <div class="flex items-center gap-4">
+            <span class="w-6 h-6 flex items-center justify-center text-xs text-gray-500 bg-gray-800 rounded-full">
+              {{ cat.sort_order }}
+            </span>
+            <span class="font-medium">{{ cat.name }}</span>
+            <span class="text-xs text-gray-500">
+              {{ services.filter(s => s.category_id === cat.category_id).length }} усл.
+            </span>
+          </div>
+          <div class="flex gap-2">
+            <button @click="openEditCatModal(cat)"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                    title="Редактировать">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+            </button>
+            <button @click="deleteCat(cat)"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-gray-700 transition"
+                    title="Удалить">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Список услуг по категориям -->
     <div v-if="loading" class="text-center py-12">
       <div class="w-10 h-10 border-4 border-[#fc9303] border-t-transparent rounded-full animate-spin mx-auto"></div>
     </div>
@@ -148,23 +251,33 @@ onMounted(() => {
       <div v-for="cat in categories" :key="cat.category_id">
         <h3 class="text-lg font-bold mb-2">{{ cat.name }}</h3>
         <div class="bg-gray-800 rounded-lg overflow-hidden mb-4">
-          <div v-for="service in services.filter(s => s.category_id === cat.category_id)" :key="service.service_id"
+          <div v-if="services.filter(s => s.category_id === cat.category_id).length === 0"
+               class="p-4 text-sm text-gray-500 italic">
+            Нет услуг в этой категории
+          </div>
+          <div v-for="service in services.filter(s => s.category_id === cat.category_id)"
+               :key="service.service_id"
                class="p-4 border-b border-gray-700 flex justify-between items-center hover:bg-gray-700">
             <div>
               <div class="font-semibold">{{ service.name }}</div>
               <div class="text-sm text-gray-400">{{ service.description || '—' }}</div>
-              <div class="text-sm text-[#fc9303]">{{ service.base_price }} ₽ | {{ Math.floor(service.duration_minutes / 60) }} ч {{ service.duration_minutes % 60 }} мин</div>
+              <div class="text-sm text-[#fc9303]">
+                {{ service.base_price }} ₽ |
+                {{ Math.floor(service.duration_minutes / 60) }} ч {{ service.duration_minutes % 60 }} мин
+              </div>
               <div class="text-xs text-gray-500">Статус: {{ service.is_active ? 'Активна' : 'Неактивна' }}</div>
             </div>
             <div class="flex gap-2">
               <button @click="openEditModal(service)" class="text-gray-400 hover:text-white">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                 </svg>
               </button>
               <button @click="deleteService(service.service_id, service.name)" class="text-gray-400 hover:text-red-500">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                 </svg>
               </button>
             </div>
@@ -173,15 +286,64 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Модальное окно (улучшенное для десктопа) -->
+    <!-- Модал: добавить/редактировать категорию -->
     <Transition name="modal">
-      <div v-if="showModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="showModal = false">
+      <div v-if="showCatModal"
+           class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+           @click.self="showCatModal = false">
+        <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md">
+          <div class="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
+            <h3 class="text-xl font-bold">
+              {{ editingCat ? 'Редактировать категорию' : 'Новая категория' }}
+            </h3>
+            <button @click="showCatModal = false" class="text-gray-400 hover:text-white">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div class="p-6 space-y-4">
+            <div>
+              <label class="block text-sm text-gray-400 mb-1">Название <span class="text-red-500">*</span></label>
+              <input v-model="catForm.name"
+                     type="text"
+                     placeholder="Например: Полировка"
+                     class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:border-[#fc9303] focus:outline-none transition"
+                     @keyup.enter="saveCat">
+            </div>
+            <div>
+              <label class="block text-sm text-gray-400 mb-1">Порядок сортировки</label>
+              <input v-model.number="catForm.sort_order"
+                     type="number" min="1"
+                     class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-[#fc9303] focus:outline-none transition">
+            </div>
+            <p v-if="catError" class="text-sm text-red-400">{{ catError }}</p>
+          </div>
+          <div class="px-6 py-4 border-t border-gray-800 flex gap-3">
+            <button @click="showCatModal = false"
+                    class="flex-1 px-4 py-3 border border-gray-700 rounded-xl text-gray-400 hover:text-white transition">
+              Отмена
+            </button>
+            <button @click="saveCat"
+                    class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold hover:opacity-90 transition">
+              Сохранить
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Модал: добавить/редактировать услугу -->
+    <Transition name="modal">
+      <div v-if="showModal"
+           class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+           @click.self="showModal = false">
         <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <div class="sticky top-0 bg-gray-900 px-6 py-4 border-b border-gray-800 flex justify-between items-center">
             <h3 class="text-xl font-bold">{{ editingService ? 'Редактировать' : 'Добавить' }} услугу</h3>
             <button @click="showModal = false" class="text-gray-400 hover:text-white">
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
               </svg>
             </button>
           </div>
@@ -189,45 +351,62 @@ onMounted(() => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Категория</label>
-                <select v-model="form.category_id" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
+                <select v-model="form.category_id"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
                   <option v-for="cat in categories" :key="cat.category_id" :value="cat.category_id">{{ cat.name }}</option>
                 </select>
               </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Название</label>
-                <input v-model="form.name" type="text" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
+                <input v-model="form.name" type="text"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
               </div>
               <div class="md:col-span-2">
                 <label class="block text-sm text-gray-400 mb-1">Описание</label>
-                <textarea v-model="form.description" rows="3" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white"></textarea>
+                <textarea v-model="form.description" rows="3"
+                          class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white"></textarea>
               </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Цена (₽)</label>
-                <input v-model.number="form.base_price" type="number" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
+                <input v-model.number="form.base_price" type="number"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
               </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Длительность (часы)</label>
-                <input v-model.number="durationHours" type="number" step="0.5" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white" placeholder="Например: 2.5">
+                <input v-model.number="durationHours" type="number" step="0.5"
+                       placeholder="Например: 2.5"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
               </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">URL иконки</label>
-                <input v-model="form.icon_url" type="text" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
+                <input v-model="form.icon_url" type="text"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
               </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Порядок сортировки</label>
-                <input v-model.number="form.sort_order" type="number" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
+                <input v-model.number="form.sort_order" type="number"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
               </div>
               <div class="flex items-center justify-between md:col-span-2">
                 <label class="text-sm text-gray-400">Активна</label>
-                <button @click="form.is_active = !form.is_active" class="relative w-12 h-6 rounded-full transition-colors" :class="form.is_active ? 'bg-[#fc9303]' : 'bg-gray-700'">
-                  <span class="absolute top-1 w-4 h-4 bg-white rounded-full transition-all" :class="form.is_active ? 'left-7' : 'left-1'"></span>
+                <button @click="form.is_active = !form.is_active"
+                        class="relative w-12 h-6 rounded-full transition-colors"
+                        :class="form.is_active ? 'bg-[#fc9303]' : 'bg-gray-700'">
+                  <span class="absolute top-1 w-4 h-4 bg-white rounded-full transition-all"
+                        :class="form.is_active ? 'left-7' : 'left-1'"></span>
                 </button>
               </div>
             </div>
           </div>
           <div class="sticky bottom-0 bg-gray-900 px-6 py-4 border-t border-gray-800 flex gap-3">
-            <button @click="showModal = false" class="flex-1 px-4 py-3 border border-gray-700 rounded-xl text-gray-400 hover:text-white">Отмена</button>
-            <button @click="saveService" class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold">Сохранить</button>
+            <button @click="showModal = false"
+                    class="flex-1 px-4 py-3 border border-gray-700 rounded-xl text-gray-400 hover:text-white transition">
+              Отмена
+            </button>
+            <button @click="saveService"
+                    class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold">
+              Сохранить
+            </button>
           </div>
         </div>
       </div>

@@ -117,6 +117,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { API_BASE } from '@/config/api.js'
 
 const props = defineProps({
   visible: Boolean,
@@ -139,7 +140,7 @@ const fetchServices = async () => {
   if (!props.order) return
   loading.value.services = true
   try {
-    const res = await fetch(`http://localhost:8000/api/admin/orders/${props.order.order_id}/progress`, {
+    const res = await fetch(`${API_BASE}/admin/orders/${props.order.order_id}/progress`, {
       credentials: 'include'
     })
     const data = await res.json()
@@ -156,7 +157,7 @@ const fetchPhotos = async () => {
   if (!props.order) return
   loading.value.photos = true
   try {
-    const res = await fetch(`http://localhost:8000/api/admin/orders/${props.order.order_id}/photos`, {
+    const res = await fetch(`${API_BASE}/admin/orders/${props.order.order_id}/photos`, {
       credentials: 'include'
     })
     const data = await res.json()
@@ -171,7 +172,7 @@ const fetchPhotos = async () => {
 // Обновление прогресса
 const updateProgress = async (serviceId, progress) => {
   try {
-    await fetch(`http://localhost:8000/api/admin/orders/${props.order.order_id}/services/${serviceId}/progress`, {
+    await fetch(`${API_BASE}/admin/orders/${props.order.order_id}/services/${serviceId}/progress`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -198,7 +199,7 @@ const uploadFile = async (file) => {
 
   uploading.value = true
   try {
-    const res = await fetch(`http://localhost:8000/api/admin/orders/${props.order.order_id}/photos/upload`, {
+    const res = await fetch(`${API_BASE}/admin/orders/${props.order.order_id}/photos/upload`, {
       method: 'POST',
       credentials: 'include',
       body: formData
@@ -224,7 +225,7 @@ const uploadFile = async (file) => {
 const deletePhoto = async (photoId) => {
   if (!confirm('Удалить это фото?')) return
   try {
-    const res = await fetch(`http://localhost:8000/api/admin/photos/${photoId}`, {
+    const res = await fetch(`${API_BASE}/admin/photos/${photoId}`, {
       method: 'DELETE',
       credentials: 'include'
     })

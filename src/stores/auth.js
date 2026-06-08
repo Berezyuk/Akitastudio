@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { API_BASE } from '@/config/api.js'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
@@ -10,7 +11,7 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(login, password) {
     loading.value = true
     try {
-      const res = await fetch('http://localhost:8000/api/auth/login', {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -31,7 +32,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
-    await fetch('http://localhost:8000/api/auth/logout', {
+    await fetch(`${API_BASE}/auth/logout`, {
       method: 'POST',
       credentials: 'include'
     })
@@ -40,7 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function checkAuth() {
     try {
-      const res = await fetch('http://localhost:8000/api/auth/me', { credentials: 'include' })
+      const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
       const data = await res.json()
       if (data.success) {
         user.value = data.user
