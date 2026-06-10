@@ -277,23 +277,104 @@ class AdminController {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $cat = new ServiceCategory();
-        $result = $cat->create($data['name'], $data['sort_order']);
+        $result = $cat->create(
+            $data['name'],
+            $data['sort_order'],
+            $data['icon'] ?? '',
+            !empty($data['show_on_home'])
+        );
         echo json_encode($result);
     }
-    
+
     public static function updateServiceCategory($id) {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $cat = new ServiceCategory();
-        $result = $cat->update($id, $data['name'], $data['sort_order']);
+        $result = $cat->update(
+            $id,
+            $data['name'],
+            $data['sort_order'],
+            $data['icon'] ?? '',
+            !empty($data['show_on_home'])
+        );
         echo json_encode($result);
     }
-    
+
     public static function deleteServiceCategory($id) {
         self::checkAdmin();
         $cat = new ServiceCategory();
+        // Удаляем медиа из MinIO если есть
+        $existing = $cat->getMediaUrl($id);
+        if ($existing) {
+            $parsed = MinioHelper::parseUrl($existing);
+            if ($parsed) {
+                try { MinioHelper::delete($parsed['bucket'], $parsed['key']); } catch (\Exception $e) {}
+            }
+        }
         $result = $cat->delete($id);
         echo json_encode($result);
+    }
+
+    // POST /api/admin/service-categories/:id/media  (multipart, поле 'media')
+    public static function uploadCategoryMedia($id) {
+        self::checkAdmin();
+
+        if (!isset($_FILES['media']) || $_FILES['media']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['error' => 'Ошибка загрузки файла']);
+            return;
+        }
+
+        $file = $_FILES['media'];
+        $allowedTypes = [
+            'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
+            'video/mp4', 'video/webm', 'video/ogg',
+        ];
+        if (!in_array($file['type'], $allowedTypes)) {
+            echo json_encode(['error' => 'Разрешены: JPG, PNG, WEBP, GIF, MP4, WEBM, OGG']);
+            return;
+        }
+        if ($file['size'] > 100 * 1024 * 1024) {
+            echo json_encode(['error' => 'Максимум 100 МБ']);
+            return;
+        }
+
+        $cat = new ServiceCategory();
+
+        // Удаляем старое медиа
+        $existing = $cat->getMediaUrl($id);
+        if ($existing) {
+            $parsed = MinioHelper::parseUrl($existing);
+            if ($parsed) {
+                try { MinioHelper::delete($parsed['bucket'], $parsed['key']); } catch (\Exception $e) {}
+            }
+        }
+
+        $key = MinioHelper::generateKey('category-media', $file['name']);
+        try {
+            $url = MinioHelper::upload('portfolio', $key, $file['tmp_name'], $file['type']);
+        } catch (\Exception $e) {
+            error_log('MinIO category media upload error: ' . $e->getMessage());
+            echo json_encode(['error' => 'Не удалось загрузить файл']);
+            return;
+        }
+
+        $cat->updateMedia($id, $url);
+        echo json_encode(['success' => true, 'url' => $url]);
+    }
+
+    // DELETE /api/admin/service-categories/:id/media
+    public static function deleteCategoryMedia($id) {
+        self::checkAdmin();
+        $cat = new ServiceCategory();
+        $existing = $cat->getMediaUrl($id);
+        if ($existing) {
+            $parsed = MinioHelper::parseUrl($existing);
+            if ($parsed) {
+                try { MinioHelper::delete($parsed['bucket'], $parsed['key']); } catch (\Exception $e) {}
+            }
+        }
+        $cat->updateMedia($id, null);
+        echo json_encode(['success' => true]);
     }
     
     // Сотрудники (мастера)

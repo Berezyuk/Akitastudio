@@ -97,18 +97,17 @@ docker compose up -d
 # Посмотреть статус
 docker compose ps
 
-# Остановить (данные сохраняются)
-docker compose stop
-
-# Запустить снова
-docker compose start
-
-# Полная остановка и удаление контейнеров (данные в volumes сохраняются)
+# Остановить и удалить контейнеры (данные в volumes сохраняются)
 docker compose down
+
+# Запустить заново (всегда используйте down + up, не stop/start)
+docker compose up -d
 
 # Удалить всё включая данные БД и MinIO
 docker compose down -v
 ```
+
+> **Важно:** используйте `docker compose down` + `docker compose up -d`, а не `stop`/`start`. При простом `start` после `stop` контейнеры postgres и minio теряют сетевое соединение внутри Docker-сети.
 
 ---
 

@@ -334,6 +334,14 @@ if (preg_match('/^admin\/service-categories\/(\d+)$/', $path, $matches) && $requ
     AdminController::deleteServiceCategory($matches[1]);
     exit;
 }
+if (preg_match('/^admin\/service-categories\/(\d+)\/media$/', $path, $matches) && $requestMethod === 'POST') {
+    AdminController::uploadCategoryMedia($matches[1]);
+    exit;
+}
+if (preg_match('/^admin\/service-categories\/(\d+)\/media$/', $path, $matches) && $requestMethod === 'DELETE') {
+    AdminController::deleteCategoryMedia($matches[1]);
+    exit;
+}
 
 // Сотрудники (админ)
 if ($path === 'admin/employees' && $requestMethod === 'GET') {

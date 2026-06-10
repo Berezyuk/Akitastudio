@@ -46,21 +46,10 @@ const scrollToTop = () => {
 
 // Данные из API
 const services = ref([]);
+const categories = ref([]);
 const loading = ref(true);
 
-// Маппинг категорий на иконки (порядок важен)
-const categoryIcons = {
-  "Детейлинг-уход": uhodImage,
-  "Оклейка плёнкой": plenkaImage,
-  "Полировка автомобиля": polishImage,
-  "Керамические покрытия": ceramicImage,
-  "Ремонт, реставрация и защита элементов салона": salonImage,
-  "Малярные работы": okrasImage,
-  "Дооснащение": dopImage,
-  "Фирменные комплексы Akita": firmaImage,
-};
-
-// Группировка услуг по категориям
+// Группировка услуг по имени категории
 const servicesByCategory = computed(() => {
   const map = {};
   services.value.forEach((service) => {
@@ -71,38 +60,21 @@ const servicesByCategory = computed(() => {
   return map;
 });
 
-// Порядок категорий (сохраняем старый порядок, но добавляем любые новые в конец)
-const orderedCategories = computed(() => {
-  const existing = Object.keys(servicesByCategory.value);
-  const ordered = [];
-  // сначала категории из categoryIcons, которые есть в данных
-  for (const cat of Object.keys(categoryIcons)) {
-    if (existing.includes(cat)) {
-      ordered.push(cat);
-    }
-  }
-  // потом остальные, которых нет в categoryIcons
-  for (const cat of existing) {
-    if (!ordered.includes(cat)) {
-      ordered.push(cat);
-    }
-  }
-  return ordered;
-});
-
-// Формируем карточки: для каждой категории берём массив услуг и иконку
+// Карточки для главной — только категории с show_on_home === true
 const categoryCards = computed(() => {
-  return orderedCategories.value.map((cat) => ({
-    title: cat,
-    imageUrl: categoryIcons[cat] || uhodImage,
-    items: servicesByCategory.value[cat] || [],
-  }));
+  return categories.value
+    .filter((cat) => cat.show_on_home)
+    .map((cat) => ({
+      title: cat.name,
+      imageUrl: cat.home_media_url || uhodImage,
+      items: servicesByCategory.value[cat.name] || [],
+    }));
 });
 
 const fetchServices = async () => {
   loading.value = true;
   try {
-    const response = await fetch("${API_BASE}/services");
+    const response = await fetch(`${API_BASE}/services`);
     const data = await response.json();
     if (data.success) {
       services.value = data.services;
@@ -113,6 +85,16 @@ const fetchServices = async () => {
     console.error("Error fetching services:", error);
   } finally {
     loading.value = false;
+  }
+};
+
+const fetchCategories = async () => {
+  try {
+    const res = await fetch(`${API_BASE}/categories`);
+    const data = await res.json();
+    if (data.success) categories.value = data.categories;
+  } catch (e) {
+    console.error("Error fetching categories:", e);
   }
 };
 
@@ -151,7 +133,7 @@ const submitFeedback = async () => {
       message: message
     }
     
-    const res = await fetch('${API_BASE}/feedback', {
+    const res = await fetch(`${API_BASE}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -180,6 +162,7 @@ const submitFeedback = async () => {
 onMounted(() => {
   window.addEventListener("mousemove", handleMouseMove);
   fetchServices();
+  fetchCategories();
 });
 
 onUnmounted(() => {

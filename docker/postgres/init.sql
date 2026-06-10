@@ -23,9 +23,12 @@ CREATE TABLE IF NOT EXISTS clients (
 );
 
 CREATE TABLE IF NOT EXISTS service_categories (
-    category_id SERIAL PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL,
-    sort_order  INT NOT NULL DEFAULT 0
+    category_id    SERIAL PRIMARY KEY,
+    name           VARCHAR(100) NOT NULL,
+    sort_order     INT NOT NULL DEFAULT 0,
+    icon           VARCHAR(100) NOT NULL DEFAULT '',
+    show_on_home   BOOLEAN NOT NULL DEFAULT FALSE,
+    home_media_url TEXT
 );
 
 CREATE TABLE IF NOT EXISTS services (

@@ -113,19 +113,23 @@ const deleteService = async (id, name) => {
 // ── Категории ────────────────────────────────────────────────────────────────
 const showCatModal = ref(false)
 const editingCat = ref(null)
-const catForm = ref({ name: '', sort_order: 0 })
+const catForm = ref({ name: '', sort_order: 0, icon: '', show_on_home: false })
+const catMediaUploading = ref(false)
+const catMediaPreview = ref(null)
 const catError = ref('')
 
 const openAddCatModal = () => {
   editingCat.value = null
-  catForm.value = { name: '', sort_order: categories.value.length + 1 }
+  catForm.value = { name: '', sort_order: categories.value.length + 1, icon: '', show_on_home: false }
+  catMediaPreview.value = null
   catError.value = ''
   showCatModal.value = true
 }
 
 const openEditCatModal = (cat) => {
   editingCat.value = cat
-  catForm.value = { name: cat.name, sort_order: cat.sort_order }
+  catForm.value = { name: cat.name, sort_order: cat.sort_order, icon: cat.icon || '', show_on_home: !!cat.show_on_home }
+  catMediaPreview.value = cat.home_media_url || null
   catError.value = ''
   showCatModal.value = true
 }
@@ -153,6 +157,46 @@ const saveCat = async () => {
     showCatModal.value = false
   } else {
     catError.value = data.error || 'Не удалось сохранить'
+  }
+}
+
+const uploadCatMedia = async (event) => {
+  const file = event.target.files[0]
+  if (!file || !editingCat.value) return
+  catMediaUploading.value = true
+  const fd = new FormData()
+  fd.append('media', file)
+  try {
+    const res = await fetch(`${API_BASE}/admin/service-categories/${editingCat.value.category_id}/media`, {
+      method: 'POST',
+      credentials: 'include',
+      body: fd
+    })
+    const data = await res.json()
+    if (data.success) {
+      catMediaPreview.value = data.url
+      await fetchCategories()
+    } else {
+      catError.value = data.error || 'Ошибка загрузки'
+    }
+  } catch {
+    catError.value = 'Ошибка соединения'
+  } finally {
+    catMediaUploading.value = false
+    event.target.value = ''
+  }
+}
+
+const removeCatMedia = async () => {
+  if (!editingCat.value) return
+  const res = await fetch(`${API_BASE}/admin/service-categories/${editingCat.value.category_id}/media`, {
+    method: 'DELETE',
+    credentials: 'include'
+  })
+  const data = await res.json()
+  if (data.success) {
+    catMediaPreview.value = null
+    await fetchCategories()
   }
 }
 
@@ -211,13 +255,18 @@ onMounted(() => {
       <div v-else class="divide-y divide-gray-800">
         <div v-for="cat in categories" :key="cat.category_id"
              class="flex items-center justify-between px-6 py-3 hover:bg-gray-800/50 transition">
-          <div class="flex items-center gap-4">
-            <span class="w-6 h-6 flex items-center justify-center text-xs text-gray-500 bg-gray-800 rounded-full">
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="w-6 h-6 flex items-center justify-center text-xs text-gray-500 bg-gray-800 rounded-full flex-shrink-0">
               {{ cat.sort_order }}
             </span>
+            <span class="text-lg flex-shrink-0">{{ cat.icon || '📁' }}</span>
             <span class="font-medium">{{ cat.name }}</span>
             <span class="text-xs text-gray-500">
               {{ services.filter(s => s.category_id === cat.category_id).length }} усл.
+            </span>
+            <span v-if="cat.show_on_home"
+                  class="text-xs px-2 py-0.5 rounded-full bg-[#fc9303]/20 text-[#fc9303] border border-[#fc9303]/30">
+              На главной
             </span>
           </div>
           <div class="flex gap-2">
@@ -303,6 +352,7 @@ onMounted(() => {
             </button>
           </div>
           <div class="p-6 space-y-4">
+            <!-- Название -->
             <div>
               <label class="block text-sm text-gray-400 mb-1">Название <span class="text-red-500">*</span></label>
               <input v-model="catForm.name"
@@ -311,12 +361,86 @@ onMounted(() => {
                      class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:border-[#fc9303] focus:outline-none transition"
                      @keyup.enter="saveCat">
             </div>
+
+            <!-- Иконка (эмодзи) -->
+            <div>
+              <label class="block text-sm text-gray-400 mb-1">Иконка категории (эмодзи)</label>
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-xl bg-gray-800 border border-gray-700 flex items-center justify-center text-2xl flex-shrink-0">
+                  {{ catForm.icon || '📁' }}
+                </div>
+                <input v-model="catForm.icon"
+                       type="text"
+                       placeholder="🔧 Вставьте эмодзи"
+                       maxlength="10"
+                       class="flex-1 px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-600 focus:border-[#fc9303] focus:outline-none transition">
+              </div>
+              <p class="text-xs text-gray-500 mt-1">Отображается на странице «Услуги»</p>
+            </div>
+
+            <!-- Порядок сортировки -->
             <div>
               <label class="block text-sm text-gray-400 mb-1">Порядок сортировки</label>
               <input v-model.number="catForm.sort_order"
                      type="number" min="1"
                      class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-[#fc9303] focus:outline-none transition">
             </div>
+
+            <!-- Показывать на главной -->
+            <div class="flex items-center justify-between py-2">
+              <div>
+                <p class="text-sm font-medium">Показывать на главной странице</p>
+                <p class="text-xs text-gray-500">Карточка категории появится в секции «Наши услуги»</p>
+              </div>
+              <button @click="catForm.show_on_home = !catForm.show_on_home"
+                      class="relative w-12 h-6 rounded-full transition-colors flex-shrink-0"
+                      :class="catForm.show_on_home ? 'bg-[#fc9303]' : 'bg-gray-700'">
+                <span class="absolute top-1 w-4 h-4 bg-white rounded-full transition-all"
+                      :class="catForm.show_on_home ? 'left-7' : 'left-1'"></span>
+              </button>
+            </div>
+
+            <!-- Медиа для главной (только при редактировании существующей категории с show_on_home) -->
+            <div v-if="catForm.show_on_home && editingCat" class="border border-gray-700 rounded-xl p-4 space-y-3">
+              <p class="text-sm font-medium text-gray-300">Медиа для карточки на главной</p>
+              <p class="text-xs text-gray-500">Фото или видео (JPG, PNG, WEBP, MP4, WEBM). До 100 МБ.</p>
+
+              <!-- Превью -->
+              <div v-if="catMediaPreview" class="relative rounded-xl overflow-hidden h-40 bg-gray-900">
+                <video v-if="/\.(mp4|webm|ogg)/i.test(catMediaPreview)"
+                       :src="catMediaPreview" class="w-full h-full object-cover"
+                       autoplay muted loop playsinline></video>
+                <img v-else :src="catMediaPreview" class="w-full h-full object-cover" alt="превью">
+                <button @click="removeCatMedia"
+                        class="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 hover:bg-red-600 flex items-center justify-center transition"
+                        title="Удалить медиа">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Загрузка -->
+              <label class="flex items-center gap-3 cursor-pointer px-4 py-3 bg-gray-800 border border-dashed border-gray-600 rounded-xl hover:border-[#fc9303] transition">
+                <svg class="w-5 h-5 text-[#fc9303] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                </svg>
+                <span class="text-sm text-gray-400">
+                  <template v-if="catMediaUploading">Загрузка…</template>
+                  <template v-else>{{ catMediaPreview ? 'Заменить медиа' : 'Загрузить медиа' }}</template>
+                </span>
+                <input type="file" class="hidden"
+                       accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
+                       :disabled="catMediaUploading"
+                       @change="uploadCatMedia">
+              </label>
+            </div>
+
+            <!-- Подсказка: медиа доступно только для существующих категорий -->
+            <div v-if="catForm.show_on_home && !editingCat" class="text-xs text-gray-500 bg-gray-800/50 rounded-xl px-4 py-3">
+              Сохраните категорию — затем откройте её снова, чтобы загрузить медиа для главной страницы.
+            </div>
+
             <p v-if="catError" class="text-sm text-red-400">{{ catError }}</p>
           </div>
           <div class="px-6 py-4 border-t border-gray-800 flex gap-3">

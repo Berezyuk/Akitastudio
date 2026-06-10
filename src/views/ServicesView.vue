@@ -28,7 +28,7 @@
           >
             <div class="flex items-center gap-4 flex-1 min-w-0">
               <div class="w-10 h-10 rounded-full bg-[#fc9303]/20 flex items-center justify-center group-hover:scale-110 transition flex-shrink-0">
-                <span class="text-xl">{{ categoryIcons[cat.name] || '📁' }}</span>
+                <span class="text-xl">{{ cat.icon || '📁' }}</span>
               </div>
               <div class="text-left overflow-hidden">
                 <h2 class="text-xl font-bold break-words">{{ cat.name }}</h2>
@@ -163,17 +163,8 @@ const services = ref([])
 const openCategories = ref([])
 const selectedService = ref(null)
 
-// Маппинг категорий на иконки
-const categoryIcons = {
-  'Детейлинг-уход': '🧼',
-  'Оклейка плёнкой': '🛡️',
-  'Полировка автомобиля': '✨',
-  'Керамические покрытия': '💎',
-  'Ремонт и реставрация салона': '🪑',
-  'Малярные работы': '🎨',
-  'Дооснащение': '🔧',
-  'Фирменные комплексы Akita': '🏆'
-}
+// Иконка категории: берётся из поля icon, либо запасная
+const categoryIcons = {}  // оставляем для обратной совместимости (не используется)
 
 // Загрузка категорий и услуг
 const fetchCategories = async () => {

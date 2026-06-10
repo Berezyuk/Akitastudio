@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-defineProps({
+const props = defineProps({
   imageUrl: {
     type: String,
     required: true,
@@ -16,6 +16,8 @@ defineProps({
     default: () => [],
   },
 })
+
+const isVideo = computed(() => /\.(mp4|webm|ogg)(\?|$)/i.test(props.imageUrl))
 
 // Определяем мобильное устройство (ширина < 768px)
 const isMobile = ref(false)
@@ -47,7 +49,8 @@ onUnmounted(() => {
     :class="{ active: isOpen }"
     @click="toggleContent"
   >
-    <img :src="imageUrl" alt="Картинка для услуги" class="services_img" />
+    <video v-if="isVideo" :src="imageUrl" class="services_img" autoplay muted loop playsinline></video>
+    <img v-else :src="imageUrl" alt="Картинка для услуги" class="services_img" />
     <h4 class="services_title">{{ title }}</h4>
     <div class="card_hover-content" :class="{ show: isOpen }">
       <div class="services_list_wrapper">
