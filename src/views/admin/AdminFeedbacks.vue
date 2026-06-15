@@ -109,6 +109,14 @@
       @update:page="onPageChange"
       class="mt-4"
     />
+
+    <ConfirmModal
+      :show="confirmModal.show"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      @confirm="onConfirmOk"
+      @cancel="onConfirmCancel"
+    />
   </div>
 </template>
 
@@ -116,6 +124,7 @@
 import { ref, onMounted } from 'vue'
 import { API_BASE } from '@/config/api.js'
 import ThePagination from '@/components/ThePagination.vue'
+import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
 const feedbacks = ref([])
 const loading = ref(false)
@@ -123,6 +132,15 @@ const search = ref('')
 const statusFilter = ref('all')
 const pagination = ref({ page: 1, limit: 30, total: 0 })
 let debounceTimer = null
+
+const confirmModal = ref({ show: false, title: '', message: '' })
+let confirmResolve = null
+const askConfirm = (title, message = '') => new Promise(resolve => {
+  confirmModal.value = { show: true, title, message }
+  confirmResolve = resolve
+})
+const onConfirmOk = () => { confirmModal.value.show = false; confirmResolve?.(true) }
+const onConfirmCancel = () => { confirmModal.value.show = false; confirmResolve?.(false) }
 
 const viewModalVisible = ref(false)
 const selectedFeedback = ref(null)
@@ -187,22 +205,21 @@ const saveChanges = async () => {
 }
 
 const deleteFeedback = async (id) => {
-  if (confirm('Удалить заявку?')) {
-    try {
-      const res = await fetch(`${API_BASE}/admin/feedbacks/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      })
-      const data = await res.json()
-      if (data.success) {
-        fetchFeedbacks()
-      } else {
-        alert('Ошибка: ' + (data.error || 'Не удалось удалить'))
-      }
-    } catch (err) {
-      console.error(err)
-      alert('Ошибка соединения')
+  if (!await askConfirm('Удалить заявку?', 'Это действие нельзя отменить.')) return
+  try {
+    const res = await fetch(`${API_BASE}/admin/feedbacks/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    const data = await res.json()
+    if (data.success) {
+      fetchFeedbacks()
+    } else {
+      alert('Ошибка: ' + (data.error || 'Не удалось удалить'))
     }
+  } catch (err) {
+    console.error(err)
+    alert('Ошибка соединения')
   }
 }
 

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
+import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
 const portfolio = ref([])
 const categories = ref([])
@@ -9,6 +10,15 @@ const loading = ref(false)
 const showModal = ref(false)
 const showLimitModal = ref(false)
 const editingItem = ref(null)
+
+const confirmModal = ref({ show: false, title: '', message: '' })
+let confirmResolve = null
+const askConfirm = (title, message = '') => new Promise(resolve => {
+  confirmModal.value = { show: true, title, message }
+  confirmResolve = resolve
+})
+const onConfirmOk = () => { confirmModal.value.show = false; confirmResolve?.(true) }
+const onConfirmCancel = () => { confirmModal.value.show = false; confirmResolve?.(false) }
 
 // Загрузка медиа
 const mediaFile = ref(null)
@@ -145,7 +155,7 @@ const saveItem = async () => {
 }
 
 const deleteItem = async (id, title) => {
-  if (!confirm(`Удалить "${title || 'элемент'}" из портфолио?`)) return
+  if (!await askConfirm('Удалить из портфолио?', `«${title || 'элемент'}» будет удалён без возможности восстановления.`)) return
   const res = await fetch(`${API_BASE}/admin/portfolio/${id}`, {
     method: 'DELETE',
     credentials: 'include'
@@ -334,6 +344,14 @@ onMounted(() => {
         </div>
       </div>
     </Transition>
+
+    <ConfirmModal
+      :show="confirmModal.show"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      @confirm="onConfirmOk"
+      @cancel="onConfirmCancel"
+    />
   </div>
 </template>
 

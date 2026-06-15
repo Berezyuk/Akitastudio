@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
+import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
 // ── Услуги ──────────────────────────────────────────────────────────────────
 const services = ref([])
@@ -8,6 +9,15 @@ const categories = ref([])
 const loading = ref(false)
 const showModal = ref(false)
 const editingService = ref(null)
+
+const confirmModal = ref({ show: false, title: '', message: '' })
+let confirmResolve = null
+const askConfirm = (title, message = '') => new Promise(resolve => {
+  confirmModal.value = { show: true, title, message }
+  confirmResolve = resolve
+})
+const onConfirmOk = () => { confirmModal.value.show = false; confirmResolve?.(true) }
+const onConfirmCancel = () => { confirmModal.value.show = false; confirmResolve?.(false) }
 
 const durationHours = ref(0)
 
@@ -96,17 +106,16 @@ const saveService = async () => {
 }
 
 const deleteService = async (id, name) => {
-  if (confirm(`Удалить услугу "${name}"?`)) {
-    const res = await fetch(`${API_BASE}/admin/services/${id}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    })
-    const data = await res.json()
-    if (data.success) {
-      await fetchServices()
-    } else {
-      alert('Ошибка удаления')
-    }
+  if (!await askConfirm('Удалить услугу?', `«${name}» будет удалена без возможности восстановления.`)) return
+  const res = await fetch(`${API_BASE}/admin/services/${id}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  })
+  const data = await res.json()
+  if (data.success) {
+    await fetchServices()
+  } else {
+    alert('Ошибка удаления')
   }
 }
 
@@ -205,19 +214,20 @@ const removeCatMedia = async () => {
 
 const deleteCat = async (cat) => {
   const count = services.value.filter(s => s.category_id === cat.category_id).length
-  const warn = count > 0 ? ` В ней ${count} усл. — они тоже будут удалены.` : ''
-  if (confirm(`Удалить категорию "${cat.name}"?${warn}`)) {
-    const res = await fetch(`${API_BASE}/admin/service-categories/${cat.category_id}`, {
-      method: 'DELETE',
-      credentials: 'include'
-    })
-    const data = await res.json()
-    if (data.success) {
-      await fetchCategories()
-      await fetchServices()
-    } else {
-      alert('Ошибка удаления: ' + (data.error || ''))
-    }
+  const message = count > 0
+    ? `В категории ${count} усл. — они тоже будут удалены. Это действие нельзя отменить.`
+    : `«${cat.name}» будет удалена без возможности восстановления.`
+  if (!await askConfirm(`Удалить категорию «${cat.name}»?`, message)) return
+  const res = await fetch(`${API_BASE}/admin/service-categories/${cat.category_id}`, {
+    method: 'DELETE',
+    credentials: 'include'
+  })
+  const data = await res.json()
+  if (data.success) {
+    await fetchCategories()
+    await fetchServices()
+  } else {
+    alert('Ошибка удаления: ' + (data.error || ''))
   }
 }
 
@@ -555,6 +565,14 @@ onMounted(() => {
         </div>
       </div>
     </Transition>
+
+    <ConfirmModal
+      :show="confirmModal.show"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      @confirm="onConfirmOk"
+      @cancel="onConfirmCancel"
+    />
   </div>
 </template>
 
