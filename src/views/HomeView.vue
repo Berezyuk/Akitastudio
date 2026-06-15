@@ -596,11 +596,11 @@ onUnmounted(() => {
           ></div>
         </div>
 
-        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 justify-items-center">
           <div
             v-for="item in portfolioItems"
             :key="item.id"
-            class="group relative aspect-[3/4] rounded-xl overflow-hidden bg-gray-800 hover:border hover:border-[#fc9303] transition-all duration-300"
+            class="group relative w-full max-w-[260px] aspect-[4/3] rounded-xl overflow-hidden bg-gray-800 hover:border hover:border-[#fc9303] transition-all duration-300"
           >
             <video
               autoplay
