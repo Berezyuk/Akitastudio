@@ -229,12 +229,17 @@ onUnmounted(() => {
             <div
               class="text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium"
             >
-              ПРОФЕССИОНАЛЬНЫЙ
+              ПРОФЕССИОНАЛЬНАЯ
             </div>
             <div
               class="text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium mt-1 sm:mt-2 md:mt-3"
             >
-              ДЕТЕЙЛИНГ В ХАБАРОВСКЕ
+              ТЮНИНГ-СТУДИЯ
+            </div>
+            <div
+              class="text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium mt-1 sm:mt-2 md:mt-3"
+            >
+              В ХАБАРОВСКЕ
             </div>
           </div>
           <p
