@@ -13,19 +13,6 @@ import dopImage from "../assets/Images/dop.webp";
 import firmaImage from "../assets/Images/firma.webp";
 import welcomeImage from "../assets/Images/Welcome.webp";
 
-import washMotorVideo from "../assets/Video/Wash_motor.mp4";
-import portfolio2Video from "../assets/Video/portfolio2.mp4";
-import portfolio3Video from "../assets/Video/portfolio3.mp4";
-import portfolio4Video from "../assets/Video/portfolio4.mp4";
-import portfolio5Video from "../assets/Video/portfolio5.mp4";
-
-const portfolioVideos = [
-  washMotorVideo,
-  portfolio2Video,
-  portfolio3Video,
-  portfolio4Video,
-  portfolio5Video,
-];
 
 const mousePosition = ref({ x: 0, y: 0 });
 const heroRef = ref(null);
@@ -48,6 +35,8 @@ const scrollToTop = () => {
 const services = ref([]);
 const categories = ref([]);
 const loading = ref(true);
+const portfolioItems = ref([]);
+const portfolioLoading = ref(true);
 
 // Группировка услуг по имени категории
 const servicesByCategory = computed(() => {
@@ -95,6 +84,21 @@ const fetchCategories = async () => {
     if (data.success) categories.value = data.categories;
   } catch (e) {
     console.error("Error fetching categories:", e);
+  }
+};
+
+const fetchPortfolio = async () => {
+  portfolioLoading.value = true;
+  try {
+    const res = await fetch(`${API_BASE}/portfolio`);
+    const data = await res.json();
+    if (data.success) {
+      portfolioItems.value = data.portfolio.filter((item) => item.video_url).slice(0, 5);
+    }
+  } catch (e) {
+    console.error("Error fetching portfolio:", e);
+  } finally {
+    portfolioLoading.value = false;
   }
 };
 
@@ -163,6 +167,7 @@ onMounted(() => {
   window.addEventListener("mousemove", handleMouseMove);
   fetchServices();
   fetchCategories();
+  fetchPortfolio();
 });
 
 onUnmounted(() => {
@@ -536,10 +541,16 @@ onUnmounted(() => {
           </h2>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div v-if="portfolioLoading" class="flex justify-center py-20">
           <div
-            v-for="video in portfolioVideos"
-            :key="video"
+            class="w-10 h-10 border-4 border-[#fc9303] border-t-transparent rounded-full animate-spin"
+          ></div>
+        </div>
+
+        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div
+            v-for="item in portfolioItems"
+            :key="item.id"
             class="group relative aspect-[3/4] rounded-xl overflow-hidden bg-gray-800 hover:border hover:border-[#fc9303] transition-all duration-300"
           >
             <video
@@ -549,7 +560,7 @@ onUnmounted(() => {
               playsinline
               class="w-full h-full object-cover"
             >
-              <source :src="video" type="video/mp4" />
+              <source :src="item.video_url" type="video/mp4" />
             </video>
             <div
               class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
