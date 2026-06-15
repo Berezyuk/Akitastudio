@@ -93,7 +93,7 @@ const fetchPortfolio = async () => {
     const res = await fetch(`${API_BASE}/portfolio`);
     const data = await res.json();
     if (data.success) {
-      portfolioItems.value = data.portfolio.filter((item) => item.video_url).slice(0, 5);
+      portfolioItems.value = data.portfolio.filter((item) => item.video_url && item.show_on_home);
     }
   } catch (e) {
     console.error("Error fetching portfolio:", e);

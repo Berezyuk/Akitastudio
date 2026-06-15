@@ -101,13 +101,14 @@ CREATE TABLE IF NOT EXISTS order_photos (
 );
 
 CREATE TABLE IF NOT EXISTS portfolio (
-    id          SERIAL PRIMARY KEY,
-    video_url   TEXT,
-    title       VARCHAR(255),
-    description TEXT,
-    category_id INT REFERENCES service_categories(category_id) ON DELETE SET NULL,
-    service_id  INT REFERENCES services(service_id) ON DELETE SET NULL,
-    sort_order  INT NOT NULL DEFAULT 0
+    id           SERIAL PRIMARY KEY,
+    video_url    TEXT,
+    title        VARCHAR(255),
+    description  TEXT,
+    category_id  INT REFERENCES service_categories(category_id) ON DELETE SET NULL,
+    service_id   INT REFERENCES services(service_id) ON DELETE SET NULL,
+    sort_order   INT NOT NULL DEFAULT 0,
+    show_on_home BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS feedbacks (

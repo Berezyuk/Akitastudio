@@ -72,16 +72,24 @@ class AdminController {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $portfolio = new Portfolio();
+        if (!empty($data['show_on_home']) && $portfolio->countHomeItems() >= 5) {
+            echo json_encode(['success' => false, 'home_limit_exceeded' => true]);
+            return;
+        }
         $result = $portfolio->create($data);
         echo json_encode($result);
     }
-    
+
     public static function updatePortfolio($id) {
-    self::checkAdmin();
-    $data = json_decode(file_get_contents('php://input'), true);
-    $portfolio = new Portfolio();
-    $result = $portfolio->update($id, $data);
-    echo json_encode($result);
+        self::checkAdmin();
+        $data = json_decode(file_get_contents('php://input'), true);
+        $portfolio = new Portfolio();
+        if (!empty($data['show_on_home']) && $portfolio->countHomeItems($id) >= 5) {
+            echo json_encode(['success' => false, 'home_limit_exceeded' => true]);
+            return;
+        }
+        $result = $portfolio->update($id, $data);
+        echo json_encode($result);
     }
 
 

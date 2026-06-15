@@ -7,6 +7,7 @@ const categories = ref([])
 const services = ref([])
 const loading = ref(false)
 const showModal = ref(false)
+const showLimitModal = ref(false)
 const editingItem = ref(null)
 
 // Загрузка медиа
@@ -21,7 +22,8 @@ const form = ref({
   description: '',
   category_id: null,
   service_id: null,
-  sort_order: 0
+  sort_order: 0,
+  show_on_home: false
 })
 
 const fetchPortfolio = async () => {
@@ -66,7 +68,8 @@ const openAddModal = () => {
     description: '',
     category_id: categories.value[0]?.category_id || null,
     service_id: null,
-    sort_order: 0
+    sort_order: 0,
+    show_on_home: false
   }
   if (form.value.category_id) fetchServicesByCategory(form.value.category_id)
   showModal.value = true
@@ -134,6 +137,8 @@ const saveItem = async () => {
   if (data.success) {
     await fetchPortfolio()
     showModal.value = false
+  } else if (data.home_limit_exceeded) {
+    showLimitModal.value = true
   } else {
     alert('Ошибка: ' + (data.error || 'Не удалось сохранить'))
   }
@@ -177,6 +182,14 @@ onMounted(() => {
         <!-- Превью: видео или изображение -->
         <video v-if="isVideo(item.video_url)" :src="item.video_url" class="w-full h-40 object-cover" muted></video>
         <img v-else :src="item.video_url" class="w-full h-40 object-cover" :alt="item.title" @error="$event.target.style.display='none'" />
+
+        <!-- Бейдж «На главной» -->
+        <div v-if="item.show_on_home" class="absolute top-2 left-2 flex items-center gap-1 bg-[#fc9303] text-black text-xs font-bold px-2 py-0.5 rounded-full shadow">
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7A1 1 0 003 11h1v6a1 1 0 001 1h4v-4h2v4h4a1 1 0 001-1v-6h1a1 1 0 00.707-1.707l-7-7z"/>
+          </svg>
+          На главной
+        </div>
 
         <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
           <button @click="openEditModal(item)" class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-semibold px-3 py-1 rounded-lg text-sm hover:brightness-110 transition">Изменить</button>
@@ -261,6 +274,12 @@ onMounted(() => {
                 <label class="block text-sm text-gray-400 mb-1">Порядок сортировки</label>
                 <input v-model.number="form.sort_order" type="number" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-[#fc9303] focus:outline-none" />
               </div>
+              <div class="md:col-span-2 flex items-center gap-3 px-1">
+                <input id="show_on_home" v-model="form.show_on_home" type="checkbox" class="w-5 h-5 accent-[#fc9303] rounded flex-shrink-0 cursor-pointer" />
+                <label for="show_on_home" class="text-sm text-gray-300 cursor-pointer select-none">
+                  Показывать на главной странице <span class="text-gray-500">(макс. 5)</span>
+                </label>
+              </div>
               <div class="md:col-span-2">
                 <label class="block text-sm text-gray-400 mb-1">Описание</label>
                 <textarea v-model="form.description" rows="3" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white resize-none focus:border-[#fc9303] focus:outline-none"></textarea>
@@ -294,6 +313,24 @@ onMounted(() => {
             </button>
           </div>
 
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Модалка: превышен лимит на главной ────────────────────────────────── -->
+    <Transition name="modal">
+      <div v-if="showLimitModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="showLimitModal = false">
+        <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-sm p-6 text-center">
+          <div class="w-14 h-14 bg-[#fc9303]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-[#fc9303]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold mb-2">Лимит превышен</h3>
+          <p class="text-gray-400 text-sm mb-6">На главной странице можно разместить не более <span class="text-white font-semibold">5 работ портфолио</span>. Снимите отметку «На главной» у одной из существующих работ и попробуйте снова.</p>
+          <button @click="showLimitModal = false" class="w-full px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold transition hover:brightness-110">
+            Понятно
+          </button>
         </div>
       </div>
     </Transition>

@@ -57,9 +57,23 @@ class Portfolio {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
     
+    public function countHomeItems($excludeId = null) {
+        $sql = "SELECT COUNT(*) FROM portfolio WHERE show_on_home = TRUE";
+        if ($excludeId !== null) {
+            $sql .= " AND id != :exclude_id";
+        }
+        $stmt = $this->conn->prepare($sql);
+        if ($excludeId !== null) {
+            $stmt->bindValue(':exclude_id', (int)$excludeId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return (int)$stmt->fetchColumn();
+    }
+
     public function create($data) {
-        $query = "INSERT INTO portfolio (video_url, title, description, category_id, service_id, sort_order)
-                  VALUES (:video_url, :title, :description, :category_id, :service_id, :sort_order)";
+        $showOnHome = !empty($data['show_on_home']) ? 'TRUE' : 'FALSE';
+        $query = "INSERT INTO portfolio (video_url, title, description, category_id, service_id, sort_order, show_on_home)
+                  VALUES (:video_url, :title, :description, :category_id, :service_id, :sort_order, {$showOnHome})";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':video_url', $data['video_url']);
         $stmt->bindParam(':title', $data['title']);
@@ -67,21 +81,23 @@ class Portfolio {
         $stmt->bindParam(':category_id', $data['category_id']);
         $stmt->bindParam(':service_id', $data['service_id']);
         $stmt->bindParam(':sort_order', $data['sort_order']);
-        
+
         if ($stmt->execute()) {
             return ['success' => true, 'id' => $this->conn->lastInsertId()];
         }
         return ['error' => 'Ошибка добавления видео'];
     }
-    
+
     public function update($id, $data) {
-        $query = "UPDATE portfolio SET 
+        $showOnHome = !empty($data['show_on_home']) ? 'TRUE' : 'FALSE';
+        $query = "UPDATE portfolio SET
                   video_url = :video_url,
                   title = :title,
                   description = :description,
                   category_id = :category_id,
                   service_id = :service_id,
-                  sort_order = :sort_order
+                  sort_order = :sort_order,
+                  show_on_home = {$showOnHome}
                   WHERE id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
@@ -91,7 +107,7 @@ class Portfolio {
         $stmt->bindParam(':category_id', $data['category_id']);
         $stmt->bindParam(':service_id', $data['service_id']);
         $stmt->bindParam(':sort_order', $data['sort_order']);
-        
+
         return ['success' => $stmt->execute()];
     }
     
