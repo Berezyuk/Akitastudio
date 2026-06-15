@@ -190,7 +190,7 @@ onUnmounted(() => {
     </section>
 
     <!-- ФИНАЛЬНЫЙ ЭКРАН: До встречи (без изменений) -->
-    <section class="relative h-screen flex items-center justify-center overflow-hidden">
+    <section class="relative py-20 flex items-center justify-center overflow-hidden">
       <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover opacity-20">
         <source src="@/assets/Video/portfolio3.mp4" type="video/mp4">
       </video>
