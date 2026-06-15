@@ -24,7 +24,7 @@ const closeMenu = () => {
   <header class="header sticky top-0 z-50 bg-black/80 backdrop-blur-md">
     <div class="container mx-auto flex justify-between items-center px-4 py-4 md:py-4">
       <!-- Логотип -->
-      <router-link to="/" class="flex-shrink-0">
+      <router-link to="/" class="flex-shrink-0 md:pt-[36px] md:pb-[32px] md:px-[46px]">
         <img src="../assets/Images/Logo.svg" alt="logo" class="h-8 md:h-auto" />
       </router-link>
       
