@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 // Актуальные соцсети
 const socialLinks = {
@@ -32,6 +32,18 @@ const contactMethods = [
   }
 ]
 
+// Режим работы: 10:00–20:00 по хабаровскому времени (UTC+10)
+const now = ref(new Date())
+let clockTimer = null
+
+const isOpen = computed(() => {
+  const hour = parseInt(
+    new Intl.DateTimeFormat('ru', { hour: 'numeric', hour12: false, timeZone: 'Asia/Vladivostok' })
+      .format(now.value)
+  )
+  return hour >= 10 && hour < 20
+})
+
 // Для параллакс-эффекта на карте
 const mouseX = ref(0)
 const mouseY = ref(0)
@@ -48,10 +60,12 @@ const handleMouseMove = (e) => {
 
 onMounted(() => {
   window.addEventListener('mousemove', handleMouseMove)
+  clockTimer = setInterval(() => { now.value = new Date() }, 60000)
 })
 
 onUnmounted(() => {
   window.removeEventListener('mousemove', handleMouseMove)
+  clearInterval(clockTimer)
 })
 </script>
 
@@ -149,8 +163,8 @@ onUnmounted(() => {
               <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Режим работы</span>
             </h2>
             <div class="flex items-center justify-center gap-3 mb-8">
-              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span class="text-gray-400">Сейчас открыто</span>
+              <div class="w-2 h-2 rounded-full animate-pulse" :class="isOpen ? 'bg-green-500' : 'bg-red-500'"></div>
+              <span class="text-gray-400">{{ isOpen ? 'Сейчас открыто' : 'Сейчас закрыто' }}</span>
             </div>
             <div class="space-y-4 text-left max-w-xs mx-auto">
               <div class="flex justify-between items-center py-3 border-b border-gray-800">
