@@ -81,7 +81,7 @@ footer {
 }
 
 .footer-logo {
-  width: 120px;
+  width: 48px;
   height: auto;
   margin-bottom: 20px;
   filter: brightness(0) invert(1);
