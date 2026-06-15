@@ -10,7 +10,7 @@ class FeedbackController {
         $data = json_decode(file_get_contents('php://input'), true);
         
         // Валидация
-        if (empty($data['name']) || empty($data['phone']) || empty($data['message'])) {
+        if (empty($data['name']) || empty($data['phone'])) {
             echo json_encode(['error' => 'Заполните обязательные поля']);
             return;
         }

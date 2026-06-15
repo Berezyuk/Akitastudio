@@ -113,53 +113,84 @@ const feedbackForm = ref({
   agree: false
 })
 const feedbackLoading = ref(false)
+const feedbackModal = ref({ show: false, type: '', title: '', message: '' })
+
+const showFeedbackModal = (type, title, message) => {
+  feedbackModal.value = { show: true, type, title, message }
+}
+
+const applyPhoneMask = (digits) => {
+  if (!digits) return ''
+  let r = '+7 (' + digits.slice(0, 3)
+  if (digits.length >= 3) r += ')'
+  if (digits.length > 3) r += ' ' + digits.slice(3, 6)
+  if (digits.length > 6) r += '-' + digits.slice(6, 8)
+  if (digits.length > 8) r += '-' + digits.slice(8, 10)
+  return r
+}
+
+const formatPhone = (e) => {
+  const prevFormatted = feedbackForm.value.phone
+
+  let raw = e.target.value.replace(/\D/g, '')
+  if (raw.startsWith('7') || raw.startsWith('8')) raw = raw.slice(1)
+  raw = raw.slice(0, 10)
+
+  let result = applyPhoneMask(raw)
+
+  // Пользователь удалил разделитель — форматтер его восстановил.
+  // Дополнительно удаляем предыдущую цифру, чтобы дать возможность стереть.
+  if (result === prevFormatted && e.target.value.length < prevFormatted.length && raw.length > 0) {
+    raw = raw.slice(0, -1)
+    result = applyPhoneMask(raw)
+  }
+
+  feedbackForm.value.phone = result
+  e.target.value = result
+}
+
+const isFeedbackValid = computed(() => {
+  const phoneDigits = feedbackForm.value.phone.replace(/\D/g, '')
+  return (
+    feedbackForm.value.name.trim() &&
+    phoneDigits.length >= 11 &&
+    feedbackForm.value.agree
+  )
+})
 
 const submitFeedback = async () => {
   feedbackLoading.value = true
-  
+
   const phoneDigits = feedbackForm.value.phone.replace(/\D/g, '')
   if (phoneDigits.length < 11) {
-    alert('Введите корректный номер телефона')
+    showFeedbackModal('error', 'Проверьте данные', 'Введите корректный номер телефона.')
     feedbackLoading.value = false
     return
   }
-  
-  // Обрезаем сообщение до 255 символов
-  let message = feedbackForm.value.message
-  if (message.length > 255) {
-    message = message.substring(0, 255)
-    alert('Сообщение обрезано до 255 символов')
-  }
-  
+
+  const message = feedbackForm.value.message.substring(0, 255)
+
   try {
-    const payload = {
-      name: feedbackForm.value.name,
-      phone: phoneDigits,
-      email: feedbackForm.value.email,
-      message: message
-    }
-    
     const res = await fetch(`${API_BASE}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({
+        name: feedbackForm.value.name,
+        phone: phoneDigits,
+        email: feedbackForm.value.email,
+        message
+      })
     })
-    
+
     const data = await res.json()
     if (data.success) {
-      feedbackForm.value = {
-        name: '',
-        phone: '',
-        email: '',
-        message: '',
-        agree: false
-      }
-      alert('Сообщение отправлено! Мы свяжемся с вами.')
+      feedbackForm.value = { name: '', phone: '', email: '', message: '', agree: false }
+      showFeedbackModal('success', 'Сообщение отправлено!', 'Мы свяжемся с вами в ближайшее время.')
     } else {
-      alert(data.error || 'Ошибка отправки')
+      showFeedbackModal('error', 'Ошибка', data.error || 'Не удалось отправить сообщение.')
     }
-  } catch (err) {
-    alert('Ошибка соединения с сервером')
+  } catch {
+    showFeedbackModal('error', 'Ошибка соединения', 'Не удалось отправить сообщение. Попробуйте позже.')
   } finally {
     feedbackLoading.value = false
   }
@@ -651,19 +682,20 @@ onUnmounted(() => {
                 </div>
                 <div>
                   <label class="block text-sm text-gray-400 mb-2"
-                    >Телефон *</label
+                    >Номер телефона *</label
                   >
                   <input
-                    v-model="feedbackForm.phone"
+                    :value="feedbackForm.phone"
+                    @input="formatPhone"
                     type="tel"
-                    required
+                    inputmode="numeric"
                     class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] transition-colors"
                     placeholder="+7 (___) ___-__-__"
                   />
                 </div>
               </div>
               <div>
-                <label class="block text-sm text-gray-400 mb-2">Email</label>
+                <label class="block text-sm text-gray-400 mb-2">Электронная почта</label>
                 <input
                   v-model="feedbackForm.email"
                   type="email"
@@ -672,13 +704,10 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="block text-sm text-gray-400 mb-2"
-                  >Сообщение *</label
-                >
+                <label class="block text-sm text-gray-400 mb-2">Сообщение</label>
                 <textarea
                   v-model="feedbackForm.message"
                   rows="4"
-                  required
                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] transition-colors resize-none"
                   placeholder="Ваш вопрос или сообщение..."
                 ></textarea>
@@ -700,8 +729,8 @@ onUnmounted(() => {
               </div>
               <button
                 type="submit"
-                :disabled="feedbackLoading"
-                class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-3 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50"
+                :disabled="feedbackLoading || !isFeedbackValid"
+                class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-3 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ feedbackLoading ? "Отправка..." : "Отправить сообщение" }}
               </button>
@@ -710,6 +739,38 @@ onUnmounted(() => {
         </div>
       </div>
     </section>
+
+    <!-- Модал уведомлений формы обратной связи -->
+    <Transition name="modal">
+      <div v-if="feedbackModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="feedbackModal.show = false"></div>
+        <div
+          class="relative bg-gray-900 border rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl"
+          :class="feedbackModal.type === 'success' ? 'border-[#fc9303]' : 'border-red-500'"
+        >
+          <div
+            class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            :class="feedbackModal.type === 'success' ? 'bg-[#fc9303]/20' : 'bg-red-500/20'"
+          >
+            <svg v-if="feedbackModal.type === 'success'" class="w-8 h-8 text-[#fc9303]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <svg v-else class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-white mb-2">{{ feedbackModal.title }}</h3>
+          <p class="text-gray-400 mb-6">{{ feedbackModal.message }}</p>
+          <button
+            @click="feedbackModal.show = false"
+            class="px-8 py-2.5 rounded-xl font-semibold text-white transition-all duration-300"
+            :class="feedbackModal.type === 'success' ? 'bg-gradient-to-r from-[#fc9303] to-[#ff6b00] hover:scale-105' : 'bg-red-600 hover:bg-red-500'"
+          >
+            Закрыть
+          </button>
+        </div>
+      </div>
+    </Transition>
 
     <!-- CTA -->
     <section
@@ -777,4 +838,6 @@ onUnmounted(() => {
 .hero-3d {
   transition: transform 0.3s ease-out;
 }
+.modal-enter-active, .modal-leave-active { transition: opacity 0.2s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
 </style>
