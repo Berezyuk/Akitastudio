@@ -169,17 +169,17 @@ onUnmounted(() => {
             <h2 class="text-3xl md:text-4xl font-bold mb-8">
               <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Режим работы</span>
             </h2>
-            <div class="flex items-center justify-center gap-3 mb-8">
+            <div class="flex items-center justify-center gap-3 mb-6">
               <div class="w-2 h-2 rounded-full animate-pulse" :class="isOpen ? 'bg-green-500' : 'bg-red-500'"></div>
               <span class="text-gray-400">{{ isOpen ? 'Сейчас открыто' : 'Сейчас закрыто' }}</span>
             </div>
-            <div class="space-y-4 text-left max-w-xs mx-auto">
-              <div class="flex justify-between items-center py-3">
+            <div class="text-left max-w-xs mx-auto">
+              <div class="flex justify-between items-center">
                 <span class="text-gray-400">Ежедневно</span>
                 <span class="text-white font-bold">10:00 - 20:00</span>
               </div>
             </div>
-            <div class="mt-10 pt-6 border-t border-gray-800">
+            <div class="mt-6 pt-6 border-t border-gray-800">
               <a href="tel:+79098029868" class="text-2xl md:text-3xl font-bold text-white hover:text-[#fc9303] transition-colors duration-300">
                 +7 909 802-98-68
               </a>
