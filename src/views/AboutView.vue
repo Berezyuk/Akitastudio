@@ -23,13 +23,13 @@ const principles = [
   {
     icon: "✨",
     title: "Премиальные материалы",
-    description: "Используем только лучшие бренды: Gtechniq, Koch Chemie, Ceramic Pro. Никаких компромиссов в качестве.",
+    description: "Используем только лучшие бренды: Koch Chemie, Chemical Guys, Shine Systems, Letech.",
     color: "from-[#ff6b00]/20 to-transparent"
   },
   {
     icon: "🔧",
     title: "Гарантия качества",
-    description: "Даём гарантию до 3 лет на все виды работ. Ваша уверенность — наша репутация.",
+    description: "Даём гарантию на все виды работ. Ваша уверенность — наша репутация.",
     color: "from-[#fc9303]/20 to-transparent"
   }
 ]
