@@ -1,5 +1,5 @@
 <template>
-  <div class="services-page bg-black text-white min-h-screen">
+  <div class="services-page bg-black text-white">
     <!-- Hero секция -->
     <section class="relative pt-24 pb-16 overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-b from-black via-black to-[#4d4d4d]/20"></div>
@@ -18,7 +18,7 @@
     </section>
 
     <!-- Аккордеон категорий -->
-    <section class="py-16">
+    <section class="pt-8 pb-10">
       <div class="container mx-auto px-4 max-w-4xl">
         <div v-for="cat in categories" :key="cat.category_id" class="mb-6">
           <!-- Заголовок категории -->
@@ -140,15 +140,6 @@
       </div>
     </Transition>
 
-    <!-- Кнопка возврата на главную -->
-    <div class="text-center pb-16">
-      <router-link to="/" class="inline-flex items-center gap-2 text-gray-400 hover:text-white transition">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-        </svg>
-        Вернуться на главную
-      </router-link>
-    </div>
   </div>
 </template>
 
