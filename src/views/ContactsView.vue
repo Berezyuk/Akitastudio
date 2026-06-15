@@ -29,6 +29,13 @@ const contactMethods = [
     value: '+7 909 802-98-68',
     link: 'https://wa.me/79098029868',
     color: 'from-green-400/20 to-transparent'
+  },
+  {
+    icon: '✉️',
+    title: 'Электронная почта',
+    value: 'auto.akita.studio@gmail.com',
+    link: 'mailto:auto.akita.studio@gmail.com',
+    color: 'from-red-500/20 to-transparent'
   }
 ]
 
@@ -167,7 +174,7 @@ onUnmounted(() => {
               <span class="text-gray-400">{{ isOpen ? 'Сейчас открыто' : 'Сейчас закрыто' }}</span>
             </div>
             <div class="space-y-4 text-left max-w-xs mx-auto">
-              <div class="flex justify-between items-center py-3 border-b border-gray-800">
+              <div class="flex justify-between items-center py-3">
                 <span class="text-gray-400">Ежедневно</span>
                 <span class="text-white font-bold">10:00 - 20:00</span>
               </div>
