@@ -562,8 +562,7 @@ onUnmounted(() => {
                 <p
                   class="text-sm md:text-base text-gray-400 leading-relaxed text-justify"
                 >
-                  Контроль на каждом этапе и гарантия до 3 лет на все виды
-                  работ.
+                  Контроль на каждом этапе и гарантия на все виды работ.
                 </p>
               </div>
             </div>
