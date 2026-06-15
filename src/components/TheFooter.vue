@@ -11,8 +11,6 @@ const navLinks = [
 <template>
   <footer>
     <div class="container">
-      <hr class="footer-divider" />
-      
       <div class="footer-content">
         <div class="footer-brand">
           <img src="../assets/Images/Logo.svg" alt="logo" class="footer-logo" />
@@ -21,7 +19,7 @@ const navLinks = [
             согласия правообладателей.
           </p>
         </div>
-        
+
         <nav class="footer-nav">
           <div class="footer-nav-column">
             <h3 class="footer-column-title">Навигация</h3>
@@ -69,15 +67,6 @@ footer {
   font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
-.footer-divider {
-  height: 1px;
-  background: linear-gradient(90deg, #fc9303, transparent);
-  border: none;
-  margin: 0 auto 40px;
-  width: 100%;
-  max-width: 1200px;
-}
-
 .footer-content {
   display: flex;
   justify-content: space-between;
@@ -85,7 +74,6 @@ footer {
   gap: 60px;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 0 20px;
 }
 
 .footer-brand {
@@ -203,11 +191,13 @@ footer {
   .footer-brand {
     flex: 0 0 auto;
     width: 100%;
-    text-align: center;
+    margin-left: 0;
+    order: 1;
   }
-  
+
   .footer-nav {
     width: 100%;
+    margin-left: 0;
   }
 }
 
@@ -229,9 +219,6 @@ footer {
     margin-bottom: 10px;
   }
   
-  .footer-divider {
-    margin-bottom: 32px;
-  }
 }
 
 /* Фокус для доступности */
