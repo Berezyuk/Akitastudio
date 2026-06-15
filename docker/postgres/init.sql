@@ -111,6 +111,12 @@ CREATE TABLE IF NOT EXISTS portfolio (
     show_on_home BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+CREATE TABLE IF NOT EXISTS site_settings (
+    key   VARCHAR(100) PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT ''
+);
+INSERT INTO site_settings (key, value) VALUES ('about_video_url', '') ON CONFLICT DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS feedbacks (
     feedback_id  SERIAL PRIMARY KEY,
     name         VARCHAR(100),

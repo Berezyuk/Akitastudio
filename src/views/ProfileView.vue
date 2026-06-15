@@ -9,11 +9,12 @@ import AdminClients from './admin/AdminClients.vue'
 import AdminOrders from './admin/AdminOrders.vue'
 import AdminSettings from './admin/AdminSettings.vue'
 import AdminFeedbacks from './admin/AdminFeedbacks.vue'
+import AdminGeneral from './admin/AdminGeneral.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const STORAGE_KEY = 'admin_active_tab'
-const validTabs = ['dashboard', 'services', 'portfolio', 'orders', 'clients', 'feedbacks', 'settings']
+const validTabs = ['dashboard', 'services', 'portfolio', 'orders', 'clients', 'feedbacks', 'general', 'settings']
 const savedTab = localStorage.getItem(STORAGE_KEY)
 const activeAdminTab = ref(validTabs.includes(savedTab) ? savedTab : 'services')
 watch(activeAdminTab, (val) => localStorage.setItem(STORAGE_KEY, val))
@@ -28,6 +29,7 @@ const adminTabs = [
   { id: 'orders', name: 'Заказы', icon: '📋' },
   { id: 'clients', name: 'Клиенты', icon: '👥' },
   { id: 'feedbacks', name: 'Обратная связь', icon: '💬' },
+  { id: 'general', name: 'Общее', icon: '🌐' },
   { id: 'settings', name: 'Настройки', icon: '⚙️' }
 ]
 
@@ -177,6 +179,7 @@ const handleLogout = async () => {
         <div v-if="activeAdminTab === 'clients'"><AdminClients /></div>
         <div v-if="activeAdminTab === 'orders'"><AdminOrders /></div>
         <div v-if="activeAdminTab === 'feedbacks'"><AdminFeedbacks /></div>
+        <div v-if="activeAdminTab === 'general'"><AdminGeneral /></div>
         <div v-if="activeAdminTab === 'settings'"><AdminSettings /></div>
       </div>
     </main>

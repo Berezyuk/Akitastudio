@@ -7,6 +7,7 @@ use Aws\Exception\AwsException;
 
 class MinioHelper {
     private static ?S3Client $client = null;
+    private static array $publicPolicySet = [];
 
     // ── Внутренний клиент (соединение к MinIO внутри Docker-сети) ────────────
     private static function client(): S3Client {
@@ -22,17 +23,41 @@ class MinioHelper {
                 'endpoint'                => $endpoint,
                 'use_path_style_endpoint' => true,
                 'credentials'             => [
-                    'key'    => getenv('MINIO_ACCESS_KEY') ?: '',
-                    'secret' => getenv('MINIO_SECRET_KEY') ?: '',
+                    'key'    => getenv('MINIO_ACCESS_KEY') ?: getenv('MINIO_ROOT_USER') ?: '',
+                    'secret' => getenv('MINIO_SECRET_KEY') ?: getenv('MINIO_ROOT_PASSWORD') ?: '',
                 ],
             ]);
         }
         return self::$client;
     }
 
+    // ── Установить политику публичного чтения на бакет (идемпотентно) ─────────
+    public static function ensurePublicRead(string $bucket): void {
+        if (isset(self::$publicPolicySet[$bucket])) return;
+        try {
+            $policy = json_encode([
+                'Version'   => '2012-10-17',
+                'Statement' => [[
+                    'Effect'    => 'Allow',
+                    'Principal' => ['AWS' => ['*']],
+                    'Action'    => ['s3:GetObject'],
+                    'Resource'  => ["arn:aws:s3:::{$bucket}/*"],
+                ]],
+            ]);
+            self::client()->putBucketPolicy([
+                'Bucket' => $bucket,
+                'Policy' => $policy,
+            ]);
+            self::$publicPolicySet[$bucket] = true;
+        } catch (Exception $e) {
+            error_log("MinioHelper::ensurePublicRead({$bucket}): " . $e->getMessage());
+        }
+    }
+
     // ── Загрузить файл из временного пути ─────────────────────────────────────
     // Возвращает публичный URL файла (доступен из браузера).
     public static function upload(string $bucket, string $key, string $tmpPath, string $mimeType): string {
+        self::ensurePublicRead($bucket);
         self::client()->putObject([
             'Bucket'      => $bucket,
             'Key'         => $key,

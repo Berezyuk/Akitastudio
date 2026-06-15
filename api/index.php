@@ -27,6 +27,12 @@ $requestMethod = $_SERVER['REQUEST_METHOD'];
 $path = trim(str_replace('/api/', '', parse_url($requestUri, PHP_URL_PATH)), '/');
 
 // Публичные маршруты (без авторизации)
+if ($path === 'settings' && $requestMethod === 'GET') {
+    require_once __DIR__ . '/models/SiteSettings.php';
+    $s = new SiteSettings();
+    echo json_encode(['success' => true, 'settings' => $s->getAll()]);
+    exit;
+}
 if ($path === 'services' && $requestMethod === 'GET') {
     ServiceController::getServices();
     exit;
@@ -394,6 +400,15 @@ if ($path === 'categories' && $requestMethod === 'GET') {
     exit;
 }
 
+
+if ($path === 'admin/settings' && $requestMethod === 'GET') {
+    AdminController::getSettings();
+    exit;
+}
+if ($path === 'admin/settings/about-video/upload' && $requestMethod === 'POST') {
+    AdminController::uploadAboutVideo();
+    exit;
+}
 
 http_response_code(404);
 echo json_encode(['error' => 'Endpoint not found']);

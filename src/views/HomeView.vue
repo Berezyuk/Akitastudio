@@ -12,6 +12,7 @@ import okrasImage from "../assets/Images/okras.webp";
 import dopImage from "../assets/Images/dop.webp";
 import firmaImage from "../assets/Images/firma.webp";
 import welcomeImage from "../assets/Images/Welcome.webp";
+import aboutVideoDefault from "../assets/Video/About us (2).mp4";
 
 
 const mousePosition = ref({ x: 0, y: 0 });
@@ -37,6 +38,7 @@ const categories = ref([]);
 const loading = ref(true);
 const portfolioItems = ref([]);
 const portfolioLoading = ref(true);
+const aboutVideoUrl = ref('');
 
 // Группировка услуг по имени категории
 const servicesByCategory = computed(() => {
@@ -168,6 +170,10 @@ onMounted(() => {
   fetchServices();
   fetchCategories();
   fetchPortfolio();
+  fetch(`${API_BASE}/settings`)
+    .then(r => r.json())
+    .then(d => { if (d.success && d.settings.about_video_url) aboutVideoUrl.value = d.settings.about_video_url })
+    .catch(() => {});
 });
 
 onUnmounted(() => {
@@ -400,6 +406,7 @@ onUnmounted(() => {
             ></div>
             <div class="relative rounded-2xl overflow-hidden shadow-2xl w-full">
               <video
+                :key="aboutVideoUrl"
                 autoplay
                 muted
                 loop
@@ -407,7 +414,7 @@ onUnmounted(() => {
                 class="w-full h-full object-cover"
               >
                 <source
-                  src="../assets/Video/About us (2).mp4"
+                  :src="aboutVideoUrl || aboutVideoDefault"
                   type="video/mp4"
                 />
               </video>
@@ -701,7 +708,7 @@ onUnmounted(() => {
 
     <!-- CTA -->
     <section
-      class="relative py-12 sm:py-16 md:py-24 overflow-hidden bg-gradient-to-b from-black to-[#4d4d4d]/20"
+      class="relative pb-12 sm:pb-16 md:pb-24 overflow-hidden bg-gradient-to-b from-black to-[#4d4d4d]/20"
     >
       <div class="absolute inset-0 bg-black/30"></div>
       <div class="container mx-auto px-4 text-center relative z-10">

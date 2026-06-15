@@ -13,6 +13,7 @@ require_once __DIR__ . '/../models/CarModel.php';
 require_once __DIR__ . '/../models/ServiceCategory.php';
 require_once __DIR__ . '/../models/Employee.php';
 require_once __DIR__ . '/../models/OrderStatus.php';
+require_once __DIR__ . '/../models/SiteSettings.php';
 
 class AdminController {
     
@@ -965,6 +966,57 @@ public static function getOrderPhotos($orderId) {
         } catch (Exception $e) {
             error_log('MinIO portfolio upload error: ' . $e->getMessage());
             echo json_encode(['error' => 'Не удалось загрузить файл в хранилище']);
+            return;
+        }
+
+        echo json_encode(['success' => true, 'url' => $url]);
+    }
+
+    // ========== ОБЩИЕ НАСТРОЙКИ САЙТА ==========
+
+    public static function getSettings() {
+        self::checkAdmin();
+        MinioHelper::ensurePublicRead('portfolio');
+        MinioHelper::ensurePublicRead('order-photos');
+        $settings = new SiteSettings();
+        echo json_encode(['success' => true, 'settings' => $settings->getAll()]);
+    }
+
+    public static function uploadAboutVideo() {
+        self::checkAdmin();
+
+        if (!isset($_FILES['video']) || $_FILES['video']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'Ошибка загрузки файла']);
+            return;
+        }
+
+        $file = $_FILES['video'];
+        $allowed = ['video/mp4', 'video/webm', 'video/ogg'];
+        if (!in_array($file['type'], $allowed)) {
+            echo json_encode(['success' => false, 'error' => 'Разрешены только видео: MP4, WEBM, OGG']);
+            return;
+        }
+        if ($file['size'] > 200 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'error' => 'Файл слишком большой. Максимум 200 МБ']);
+            return;
+        }
+
+        $key = MinioHelper::generateKey('site', $file['name']);
+
+        try {
+            $url = MinioHelper::upload('portfolio', $key, $file['tmp_name'], $file['type']);
+        } catch (Exception $e) {
+            error_log('MinIO about video upload error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Не удалось загрузить файл в хранилище']);
+            return;
+        }
+
+        try {
+            $settings = new SiteSettings();
+            $settings->set('about_video_url', $url);
+        } catch (Exception $e) {
+            error_log('SiteSettings save error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Видео загружено, но не удалось сохранить настройку']);
             return;
         }
 
