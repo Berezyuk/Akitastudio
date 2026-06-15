@@ -64,11 +64,6 @@ onUnmounted(() => {
           <span class="text-white"> STUDIO</span>
         </h1>
         <p class="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto">Детейлинг, который чувствуется</p>
-        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <svg class="w-6 h-6 text-[#fc9303]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7-7-7m14-6l-7 7-7-7"></path>
-          </svg>
-        </div>
       </div>
     </section>
 
