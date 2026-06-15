@@ -285,6 +285,10 @@ class AdminController {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $cat = new ServiceCategory();
+        if (!empty($data['show_on_home']) && $cat->countHomeItems() >= 5) {
+            echo json_encode(['success' => false, 'home_limit_exceeded' => true]);
+            return;
+        }
         $result = $cat->create(
             $data['name'],
             $data['sort_order'],
@@ -298,6 +302,10 @@ class AdminController {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $cat = new ServiceCategory();
+        if (!empty($data['show_on_home']) && $cat->countHomeItems($id) >= 5) {
+            echo json_encode(['success' => false, 'home_limit_exceeded' => true]);
+            return;
+        }
         $result = $cat->update(
             $id,
             $data['name'],

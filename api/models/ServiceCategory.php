@@ -23,6 +23,19 @@ class ServiceCategory {
         return $rows;
     }
 
+    public function countHomeItems($excludeId = null) {
+        $sql = "SELECT COUNT(*) FROM service_categories WHERE show_on_home = TRUE";
+        if ($excludeId !== null) {
+            $sql .= " AND category_id != :exclude_id";
+        }
+        $stmt = $this->conn->prepare($sql);
+        if ($excludeId !== null) {
+            $stmt->bindValue(':exclude_id', (int)$excludeId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return (int)$stmt->fetchColumn();
+    }
+
     public function create($name, $sortOrder, $icon = '', $showOnHome = false) {
         $query = "INSERT INTO service_categories (name, sort_order, icon, show_on_home)
                   VALUES (:name, :sort_order, :icon, :show_on_home)";

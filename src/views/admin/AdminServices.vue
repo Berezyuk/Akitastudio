@@ -112,6 +112,7 @@ const deleteService = async (id, name) => {
 
 // ── Категории ────────────────────────────────────────────────────────────────
 const showCatModal = ref(false)
+const showCatLimitModal = ref(false)
 const editingCat = ref(null)
 const catForm = ref({ name: '', sort_order: 0, icon: '', show_on_home: false })
 const catMediaUploading = ref(false)
@@ -155,6 +156,8 @@ const saveCat = async () => {
   if (data.success || data.category_id) {
     await fetchCategories()
     showCatModal.value = false
+  } else if (data.home_limit_exceeded) {
+    showCatLimitModal.value = true
   } else {
     catError.value = data.error || 'Не удалось сохранить'
   }
@@ -390,7 +393,7 @@ onMounted(() => {
             <div class="flex items-center justify-between py-2">
               <div>
                 <p class="text-sm font-medium">Показывать на главной странице</p>
-                <p class="text-xs text-gray-500">Карточка категории появится в секции «Наши услуги»</p>
+                <p class="text-xs text-gray-500">Карточка категории появится в секции «Наши услуги» <span class="text-gray-600">(макс. 5)</span></p>
               </div>
               <button @click="catForm.show_on_home = !catForm.show_on_home"
                       class="relative w-12 h-6 rounded-full transition-colors flex-shrink-0"
@@ -532,6 +535,23 @@ onMounted(() => {
               Сохранить
             </button>
           </div>
+        </div>
+      </div>
+    </Transition>
+    <!-- Модалка: превышен лимит категорий на главной -->
+    <Transition name="modal">
+      <div v-if="showCatLimitModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="showCatLimitModal = false">
+        <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-sm p-6 text-center">
+          <div class="w-14 h-14 bg-[#fc9303]/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-[#fc9303]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold mb-2">Лимит превышен</h3>
+          <p class="text-gray-400 text-sm mb-6">На главной странице можно разместить не более <span class="text-white font-semibold">5 категорий услуг</span>. Снимите отметку «На главной» у одной из существующих категорий и попробуйте снова.</p>
+          <button @click="showCatLimitModal = false" class="w-full px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold transition hover:brightness-110">
+            Понятно
+          </button>
         </div>
       </div>
     </Transition>
