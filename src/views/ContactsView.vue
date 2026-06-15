@@ -72,11 +72,6 @@ onUnmounted(() => {
         </h1>
         <p class="text-2xl md:text-3xl text-white mb-8">ул. Кавказская, 35/5</p>
         <p class="text-lg text-gray-400 max-w-2xl mx-auto">Мы ждем вас и ваш автомобиль</p>
-        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <svg class="w-6 h-6 text-[#fc9303]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7-7-7m14-6l-7 7-7-7"></path>
-          </svg>
-        </div>
       </div>
       <div class="absolute top-1/4 right-1/4 w-64 h-64 bg-[#fc9303] rounded-full filter blur-[100px] opacity-10"></div>
       <div class="absolute bottom-1/4 left-1/4 w-96 h-96 bg-[#ff6b00] rounded-full filter blur-[150px] opacity-10"></div>
@@ -95,12 +90,6 @@ onUnmounted(() => {
               <iframe src="https://yandex.ru/map-widget/v1/?um=constructor%3A800b56c6d1df7d01e5c583c9b85fd3bf00d3c6c10408a95691382a2a63f77274&amp;source=constructor"
                       class="absolute top-0 left-0 w-full h-full border-0" allowfullscreen loading="lazy"
                       title="Akita Studio на карте" style="filter: invert(90%) hue-rotate(180deg);"></iframe>
-            </div>
-            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-              <div class="relative">
-                <div class="w-6 h-6 bg-[#fc9303] rounded-full animate-ping opacity-50"></div>
-                <div class="absolute top-0 left-0 w-6 h-6 bg-[#fc9303] rounded-full"></div>
-              </div>
             </div>
           </div>
         </div>
