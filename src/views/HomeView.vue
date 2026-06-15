@@ -373,7 +373,7 @@ onUnmounted(() => {
 
     <!-- О СТУДИИ (обновлённая версия) -->
     <section
-      class="py-12 sm:py-16 md:py-24 bg-gradient-to-b from-black to-[#4d4d4d]/20"
+      class="pb-12 sm:pb-16 md:pb-24 bg-gradient-to-b from-black to-[#4d4d4d]/20"
     >
       <div class="container mx-auto px-4">
         <div class="text-center mb-8 sm:mb-12 md:mb-16">
@@ -596,7 +596,7 @@ onUnmounted(() => {
     </section>
 
     <!-- ФОРМА ОБРАТНОЙ СВЯЗИ -->
-    <section class="feedback-section py-12 sm:py-16 md:py-24 bg-black">
+    <section class="feedback-section pb-12 sm:pb-16 md:pb-24 bg-black">
       <div class="container mx-auto px-4">
         <div class="max-w-3xl mx-auto">
           <div class="text-center mb-8 sm:mb-12">
@@ -701,7 +701,7 @@ onUnmounted(() => {
 
     <!-- CTA -->
     <section
-      class="relative py-12 sm:py-16 md:py-24 overflow-hidden bg-gradient-to-r from-black to-[#4d4d4d]/30"
+      class="relative py-12 sm:py-16 md:py-24 overflow-hidden bg-gradient-to-b from-black to-[#4d4d4d]/20"
     >
       <div class="absolute inset-0 bg-black/30"></div>
       <div class="container mx-auto px-4 text-center relative z-10">
