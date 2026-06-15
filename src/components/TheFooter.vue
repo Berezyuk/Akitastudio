@@ -1,15 +1,11 @@
 <script setup>
-// Данные для ссылок на услуги (пока ведут на страницу услуг, в будущем можно добавить якоря)
-const serviceLinks = {
-  'Детейлинг-уход': '/services',
-  'Оклейка пленкой': '/services',
-  'Полировка автомобиля': '/services',
-  'Керамические покрытия': '/services',
-  'Ремонт салона': '/services',
-  'Малярные работы': '/services',
-  'Дооснащение': '/services',
-  'Комплексы Akita': '/services'
-}
+const navLinks = [
+  { label: 'Главная', to: '/' },
+  { label: 'Услуги', to: '/services' },
+  { label: 'Портфолио', to: '/portfolio' },
+  { label: 'О компании', to: '/about' },
+  { label: 'Контакты', to: '/contacts' },
+]
 </script>
 
 <template>
@@ -28,35 +24,14 @@ const serviceLinks = {
         
         <nav class="footer-nav">
           <div class="footer-nav-column">
-            <h3 class="footer-column-title">Услуги</h3>
+            <h3 class="footer-column-title">Навигация</h3>
             <ul class="footer-menu">
-              <li v-for="(url, service) in serviceLinks" :key="service" class="footer-menu-item">
-                <a :href="url">{{ service }}</a>
+              <li v-for="link in navLinks" :key="link.to" class="footer-menu-item">
+                <router-link :to="link.to">{{ link.label }}</router-link>
               </li>
             </ul>
           </div>
-          
-          <div class="footer-nav-column">
-            <h3 class="footer-column-title">Компания</h3>
-            <ul class="footer-menu">
-              <li class="footer-menu-item"><router-link to="/about">О нас</router-link></li>
-              <li class="footer-menu-item"><a href="#">Преимущества</a></li>
-              <li class="footer-menu-item"><a href="#">Отзывы</a></li>
-              <li class="footer-menu-item"><a href="#">Сертификаты</a></li>
-            </ul>
-          </div>
-          
-          <div class="footer-nav-column">
-            <h3 class="footer-column-title">Контакты</h3>
-            <ul class="footer-menu">
-              <li class="footer-menu-item"><a href="tel:+79098029868">+7 (909) 802-98-68</a></li>
-              <li class="footer-menu-item">
-                <address>г. Хабаровск, ул. Кавказская 35/5</address>
-              </li>
-              <li class="footer-menu-item">ПН-СБ 10:00 - 20:00</li>
-            </ul>
-          </div>
-          
+
           <div class="footer-nav-column">
             <h3 class="footer-column-title">Соцсети</h3>
             <ul class="footer-menu">
@@ -133,9 +108,9 @@ footer {
 
 .footer-nav {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, auto);
   gap: 40px;
-  flex: 1;
+  margin-left: auto;
 }
 
 .footer-nav-column {
@@ -232,7 +207,6 @@ footer {
   }
   
   .footer-nav {
-    grid-template-columns: repeat(2, 1fr);
     width: 100%;
   }
 }
