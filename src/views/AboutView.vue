@@ -120,7 +120,7 @@ onUnmounted(() => {
             <div class="absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500" :class="item.color"></div>
             <div class="relative z-10 flex flex-col h-full">
               <div class="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300 text-center">{{ item.icon }}</div>
-              <h3 class="text-2xl font-bold text-white mb-4 text-center">{{ item.title }}</h3>
+              <h3 class="text-2xl font-bold text-white mb-4 text-center min-h-[4rem] flex items-center justify-center">{{ item.title }}</h3>
               <p class="text-gray-400 leading-relaxed text-justify flex-grow">{{ item.description }}</p>
             </div>
           </div>
