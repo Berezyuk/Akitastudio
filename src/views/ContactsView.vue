@@ -140,7 +140,7 @@ onUnmounted(() => {
     </section>
 
     <!-- ЭКРАН 4: Режим работы + контакты + связаться с нами -->
-    <section class="py-32">
+    <section class="py-12">
       <div class="site-container mx-auto px-4">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-5xl mx-auto">
           <!-- Левая колонка: Режим работы -->
