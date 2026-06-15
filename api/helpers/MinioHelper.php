@@ -31,10 +31,23 @@ class MinioHelper {
         return self::$client;
     }
 
+    // ── Создать бакет если не существует ─────────────────────────────────────
+    private static function ensureBucketExists(string $bucket): void {
+        try {
+            self::client()->headBucket(['Bucket' => $bucket]);
+        } catch (AwsException $e) {
+            if ($e->getStatusCode() === 404 || str_contains($e->getAwsErrorCode() ?? '', 'NoSuchBucket')) {
+                self::client()->createBucket(['Bucket' => $bucket]);
+            }
+        }
+    }
+
     // ── Установить политику публичного чтения на бакет (идемпотентно) ─────────
+    // Создаёт бакет автоматически если он не существует.
     public static function ensurePublicRead(string $bucket): void {
         if (isset(self::$publicPolicySet[$bucket])) return;
         try {
+            self::ensureBucketExists($bucket);
             $policy = json_encode([
                 'Version'   => '2012-10-17',
                 'Statement' => [[

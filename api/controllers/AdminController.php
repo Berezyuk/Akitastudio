@@ -978,6 +978,7 @@ public static function getOrderPhotos($orderId) {
         self::checkAdmin();
         MinioHelper::ensurePublicRead('portfolio');
         MinioHelper::ensurePublicRead('order-photos');
+        MinioHelper::ensurePublicRead('documents');
         $settings = new SiteSettings();
         echo json_encode(['success' => true, 'settings' => $settings->getAll()]);
     }
@@ -1043,10 +1044,10 @@ public static function getOrderPhotos($orderId) {
             return;
         }
 
-        $key = 'documents/privacy-policy_' . time() . '.pdf';
+        $key = 'privacy-policy_' . time() . '.pdf';
 
         try {
-            $url = MinioHelper::upload('portfolio', $key, $file['tmp_name'], 'application/pdf');
+            $url = MinioHelper::upload('documents', $key, $file['tmp_name'], 'application/pdf');
         } catch (Exception $e) {
             error_log('MinIO privacy PDF upload error: ' . $e->getMessage());
             echo json_encode(['success' => false, 'error' => 'Не удалось загрузить файл в хранилище']);
