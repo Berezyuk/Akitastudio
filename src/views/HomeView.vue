@@ -38,7 +38,8 @@ const categories = ref([]);
 const loading = ref(true);
 const portfolioItems = ref([]);
 const portfolioLoading = ref(true);
-const aboutVideoUrl = ref('');
+const aboutVideoUrl = ref('')
+const privacyPdfUrl = ref('');
 
 // Группировка услуг по имени категории
 const servicesByCategory = computed(() => {
@@ -203,7 +204,12 @@ onMounted(() => {
   fetchPortfolio();
   fetch(`${API_BASE}/settings`)
     .then(r => r.json())
-    .then(d => { if (d.success && d.settings.about_video_url) aboutVideoUrl.value = d.settings.about_video_url })
+    .then(d => {
+      if (d.success) {
+        if (d.settings.about_video_url) aboutVideoUrl.value = d.settings.about_video_url
+        if (d.settings.privacy_pdf_url) privacyPdfUrl.value = d.settings.privacy_pdf_url
+      }
+    })
     .catch(() => {});
 });
 
@@ -721,7 +727,11 @@ onUnmounted(() => {
                 />
                 <label class="text-sm text-gray-400">
                   Я даю согласие на
-                  <a href="#" class="text-[#fc9303] hover:underline"
+                  <a
+                    :href="privacyPdfUrl || '#'"
+                    :target="privacyPdfUrl ? '_blank' : undefined"
+                    rel="noopener"
+                    class="text-[#fc9303] hover:underline"
                     >обработку персональных данных</a
                   >
                   *

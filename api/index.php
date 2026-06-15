@@ -409,6 +409,14 @@ if ($path === 'admin/settings/about-video/upload' && $requestMethod === 'POST') 
     AdminController::uploadAboutVideo();
     exit;
 }
+if ($path === 'admin/settings/privacy-pdf/upload' && $requestMethod === 'POST') {
+    AdminController::uploadPrivacyPdf();
+    exit;
+}
+if ($path === 'admin/settings/privacy-pdf' && $requestMethod === 'DELETE') {
+    AdminController::deletePrivacyPdf();
+    exit;
+}
 
 http_response_code(404);
 echo json_encode(['error' => 'Endpoint not found']);

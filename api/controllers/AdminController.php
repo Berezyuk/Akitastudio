@@ -1023,4 +1023,67 @@ public static function getOrderPhotos($orderId) {
         echo json_encode(['success' => true, 'url' => $url]);
     }
 
+    public static function uploadPrivacyPdf() {
+        self::checkAdmin();
+
+        if (!isset($_FILES['pdf']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
+            echo json_encode(['success' => false, 'error' => 'Ошибка загрузки файла']);
+            return;
+        }
+
+        $file = $_FILES['pdf'];
+        $allowedMimes = ['application/pdf', 'application/x-pdf'];
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($file['type'], $allowedMimes) && $ext !== 'pdf') {
+            echo json_encode(['success' => false, 'error' => 'Разрешены только PDF-файлы']);
+            return;
+        }
+        if ($file['size'] > 20 * 1024 * 1024) {
+            echo json_encode(['success' => false, 'error' => 'Файл слишком большой. Максимум 20 МБ']);
+            return;
+        }
+
+        $key = 'documents/privacy-policy_' . time() . '.pdf';
+
+        try {
+            $url = MinioHelper::upload('portfolio', $key, $file['tmp_name'], 'application/pdf');
+        } catch (Exception $e) {
+            error_log('MinIO privacy PDF upload error: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'error' => 'Не удалось загрузить файл в хранилище']);
+            return;
+        }
+
+        $settings = new SiteSettings();
+        $all = $settings->getAll();
+        if (!empty($all['privacy_pdf_url'])) {
+            $parsed = MinioHelper::parseUrl($all['privacy_pdf_url']);
+            if ($parsed) {
+                try { MinioHelper::delete($parsed['bucket'], $parsed['key']); } catch (Exception $e) {}
+            }
+        }
+
+        $settings->set('privacy_pdf_url', $url);
+        echo json_encode(['success' => true, 'url' => $url]);
+    }
+
+    public static function deletePrivacyPdf() {
+        self::checkAdmin();
+
+        $settings = new SiteSettings();
+        $all = $settings->getAll();
+
+        if (empty($all['privacy_pdf_url'])) {
+            echo json_encode(['success' => false, 'error' => 'PDF не загружен']);
+            return;
+        }
+
+        $parsed = MinioHelper::parseUrl($all['privacy_pdf_url']);
+        if ($parsed) {
+            try { MinioHelper::delete($parsed['bucket'], $parsed['key']); } catch (Exception $e) {}
+        }
+
+        $settings->set('privacy_pdf_url', '');
+        echo json_encode(['success' => true]);
+    }
+
 }
