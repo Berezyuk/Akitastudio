@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
@@ -20,11 +20,17 @@ const askConfirm = (title, message = '') => new Promise(resolve => {
 const onConfirmOk = () => { confirmModal.value.show = false; confirmResolve?.(true) }
 const onConfirmCancel = () => { confirmModal.value.show = false; confirmResolve?.(false) }
 
+const isFormValid = computed(() =>
+  !!form.value.video_url?.trim() && !!form.value.category_id
+)
+
 // Загрузка медиа
 const mediaFile = ref(null)
 const mediaFileInput = ref(null)
 const uploading = ref(false)
 const uploadError = ref('')
+const saving = ref(false)
+const saveError = ref('')
 
 const form = ref({
   video_url: '',
@@ -72,6 +78,7 @@ const openAddModal = () => {
   editingItem.value = null
   mediaFile.value = null
   uploadError.value = ''
+  saveError.value = ''
   form.value = {
     video_url: '',
     title: '',
@@ -89,7 +96,8 @@ const openEditModal = (item) => {
   editingItem.value = item
   mediaFile.value = null
   uploadError.value = ''
-  form.value = { ...item }
+  saveError.value = ''
+  form.value = { ...item, video_url: item.video_url || '' }
   if (form.value.category_id) fetchServicesByCategory(form.value.category_id)
   showModal.value = true
 }
@@ -127,30 +135,33 @@ const onMediaFileSelect = async (e) => {
 }
 
 const saveItem = async () => {
-  if (!form.value.video_url.trim()) {
-    uploadError.value = 'Загрузите файл'
-    return
-  }
+  saveError.value = ''
+  saving.value = true
+  try {
+    const url = editingItem.value
+      ? `${API_BASE}/admin/portfolio/${editingItem.value.id}`
+      : `${API_BASE}/admin/portfolio`
+    const method = editingItem.value ? 'PUT' : 'POST'
 
-  const url = editingItem.value
-    ? `${API_BASE}/admin/portfolio/${editingItem.value.id}`
-    : `${API_BASE}/admin/portfolio`
-  const method = editingItem.value ? 'PUT' : 'POST'
-
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(form.value)
-  })
-  const data = await res.json()
-  if (data.success) {
-    await fetchPortfolio()
-    showModal.value = false
-  } else if (data.home_limit_exceeded) {
-    showLimitModal.value = true
-  } else {
-    alert('Ошибка: ' + (data.error || 'Не удалось сохранить'))
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(form.value)
+    })
+    const data = await res.json()
+    if (data.success) {
+      await fetchPortfolio()
+      showModal.value = false
+    } else if (data.home_limit_exceeded) {
+      showLimitModal.value = true
+    } else {
+      saveError.value = data.error || 'Не удалось сохранить'
+    }
+  } catch {
+    saveError.value = 'Ошибка соединения'
+  } finally {
+    saving.value = false
   }
 }
 
@@ -312,15 +323,19 @@ onMounted(() => {
           </div>
 
           <!-- Футер -->
-          <div class="sticky bottom-0 bg-gray-900 px-6 py-4 border-t border-gray-800 flex gap-3">
-            <button @click="showModal = false" class="flex-1 px-4 py-3 border border-gray-700 rounded-xl text-gray-400 hover:text-white transition">Отмена</button>
-            <button
-              @click="saveItem"
-              :disabled="uploading"
-              class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold disabled:opacity-50 transition"
-            >
-              {{ uploading ? 'Загрузка...' : 'Сохранить' }}
-            </button>
+          <div class="sticky bottom-0 bg-gray-900 px-6 py-4 border-t border-gray-800">
+            <p v-if="saveError" class="text-red-400 text-sm mb-3 text-center">{{ saveError }}</p>
+            <div class="flex gap-3">
+              <button @click="showModal = false" class="flex-1 px-4 py-3 border border-gray-700 rounded-xl text-gray-400 hover:text-white transition">Отмена</button>
+              <button
+                @click="saveItem"
+                :disabled="uploading || saving || !isFormValid"
+                class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold disabled:opacity-50 transition flex items-center justify-center gap-2"
+              >
+                <div v-if="saving" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                {{ saving ? 'Сохранение...' : uploading ? 'Загрузка...' : 'Сохранить' }}
+              </button>
+            </div>
           </div>
 
         </div>
