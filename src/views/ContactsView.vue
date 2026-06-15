@@ -78,7 +78,7 @@ onUnmounted(() => {
     </section>
 
     <!-- ЭКРАН 2: Карта (без карточек-подсказок) -->
-    <section class="py-32 relative overflow-hidden">
+    <section class="pt-16 pb-8 relative overflow-hidden">
       <div class="site-container mx-auto px-4">
         <h2 class="text-4xl md:text-5xl font-bold text-center mb-16">
           <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Как добраться</span>
@@ -97,7 +97,7 @@ onUnmounted(() => {
     </section>
 
     <!-- ЭКРАН 3: Соцсети (только ссылки, без левых новостей) -->
-    <section class="py-32 bg-gradient-to-b from-black to-[#4d4d4d]/20">
+    <section class="pt-8 pb-16 bg-gradient-to-b from-black to-[#4d4d4d]/20">
       <div class="site-container mx-auto px-4">
         <h2 class="text-4xl md:text-5xl font-bold text-center mb-16">
           <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Мы в сети</span>
