@@ -14,6 +14,7 @@ const navLinks = [
       <div class="footer-content">
         <div class="footer-brand">
           <img src="../assets/Images/Logo.svg" alt="logo" class="footer-logo" />
+          <p class="footer-inn">ИНН 270395035874<br>ОГРНИП 313272226600018</p>
           <p class="footer-copyright">
             © 2025 Все права защищены. Использование материалов разрешено только с
             согласия правообладателей.
@@ -85,6 +86,13 @@ footer {
   height: auto;
   margin-bottom: 20px;
   filter: brightness(0) invert(1);
+}
+
+.footer-inn {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #999;
+  margin: 0 0 10px;
 }
 
 .footer-copyright {
