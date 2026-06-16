@@ -6,11 +6,15 @@ import { API_BASE } from '@/config/api.js'
 
 useHead({
   title: 'Akita Studio — Профессиональная тюнинг-студия в Хабаровске | Уход за авто премиум-класса',
+  link: [{ rel: 'canonical', href: 'https://akita-studio.ru/' }],
   meta: [
     { name: 'description', content: 'Студия детейлинга Akita Studio в Хабаровске. Профессиональный уход: полировка кузова, химчистка салона, защитные керамические покрытия и оклейка плёнкой. Работаем с 2015 года. Гарантия качества! Запишитесь онлайн.' },
     { property: 'og:title', content: 'Akita Studio — Профессиональная тюнинг-студия в Хабаровске' },
     { property: 'og:description', content: 'Студия детейлинга Akita Studio в Хабаровске. Профессиональный уход: полировка кузова, химчистка салона, защитные керамические покрытия и оклейка плёнкой.' },
     { property: 'og:url', content: 'https://akita-studio.ru/' },
+    { property: 'og:image', content: 'https://akita-studio.ru/og-image.webp' },
+    { property: 'og:image:width', content: '1080' },
+    { property: 'og:image:height', content: '600' },
   ],
 })
 

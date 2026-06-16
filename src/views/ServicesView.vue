@@ -151,11 +151,15 @@ import { API_BASE } from '@/config/api.js'
 
 useHead({
   title: 'Услуги детейлинга в Хабаровске — Цены и виды работ | Akita Studio',
+  link: [{ rel: 'canonical', href: 'https://akita-studio.ru/services' }],
   meta: [
     { name: 'description', content: 'Полный комплекс услуг детейлинга в Akita Studio: оклейка авто плёнкой, восстановительная полировка кузова и фар, химчистка салона, нанесение керамики, покраска и реставрация. Узнайте стоимость и запишитесь!' },
     { property: 'og:title', content: 'Услуги детейлинга в Хабаровске — Akita Studio' },
     { property: 'og:description', content: 'Полный комплекс услуг детейлинга: полировка, оклейка плёнкой, химчистка, керамика, покраска. Запишитесь онлайн!' },
     { property: 'og:url', content: 'https://akita-studio.ru/services' },
+    { property: 'og:image', content: 'https://akita-studio.ru/og-image.webp' },
+    { property: 'og:image:width', content: '1080' },
+    { property: 'og:image:height', content: '600' },
   ],
 })
 

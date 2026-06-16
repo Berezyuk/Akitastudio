@@ -205,11 +205,15 @@ import { API_BASE } from '@/config/api.js'
 
 useHead({
   title: 'Примеры работ — Портфолио Akita Studio',
+  link: [{ rel: 'canonical', href: 'https://akita-studio.ru/portfolio' }],
   meta: [
     { name: 'description', content: 'Портфолио Akita Studio. Смотрите фото и видео результатов до и после: полировка, оклейка пленкой, химчистка, керамика. Реальные работы наших мастеров.' },
     { property: 'og:title', content: 'Портфолио Akita Studio — Примеры работ' },
     { property: 'og:description', content: 'Фото и видео результатов: полировка, оклейка плёнкой, химчистка, керамика. Реальные работы мастеров Akita Studio.' },
     { property: 'og:url', content: 'https://akita-studio.ru/portfolio' },
+    { property: 'og:image', content: 'https://akita-studio.ru/og-image.webp' },
+    { property: 'og:image:width', content: '1080' },
+    { property: 'og:image:height', content: '600' },
   ],
 })
 

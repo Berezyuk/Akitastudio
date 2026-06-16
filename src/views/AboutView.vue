@@ -4,11 +4,15 @@ import { useHead } from '@unhead/vue'
 
 useHead({
   title: 'О студии Akita Studio — Тюнинг-студия в Хабаровске',
+  link: [{ rel: 'canonical', href: 'https://akita-studio.ru/about' }],
   meta: [
     { name: 'description', content: 'Akita Studio — команда профессионалов с 2015 года. Используем премиальные материалы и современное оборудование. Качество, проверенное временем.' },
     { property: 'og:title', content: 'О студии Akita Studio — Тюнинг-студия в Хабаровске' },
     { property: 'og:description', content: 'Akita Studio — команда профессионалов с 2015 года. Используем премиальные материалы и современное оборудование.' },
     { property: 'og:url', content: 'https://akita-studio.ru/about' },
+    { property: 'og:image', content: 'https://akita-studio.ru/og-image.webp' },
+    { property: 'og:image:width', content: '1080' },
+    { property: 'og:image:height', content: '600' },
   ],
 })
 
