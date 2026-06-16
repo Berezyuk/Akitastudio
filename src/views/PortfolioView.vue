@@ -113,38 +113,28 @@
             ></div>
 
             <div class="absolute inset-0 p-6 flex flex-col justify-end">
-              <span 
+              <span
+                v-if="item.service_name"
                 class="text-xs font-medium text-[#fc9303] mb-2 transition-all duration-500"
                 :class="[
-                  hoveredItem === item.id 
-                    ? 'opacity-100 translate-y-0' 
+                  hoveredItem === item.id
+                    ? 'opacity-100 translate-y-0'
                     : 'opacity-0 translate-y-4'
                 ]"
               >
-                {{ item.category_name }}
+                {{ item.service_name }}
               </span>
 
-              <h3 
+              <h3
                 class="text-2xl font-bold text-white mb-2 transition-all duration-500"
                 :class="[
-                  hoveredItem === item.id 
-                    ? 'translate-y-0' 
+                  hoveredItem === item.id
+                    ? 'translate-y-0'
                     : 'translate-y-4'
                 ]"
               >
-                {{ item.title || 'Видео' }}
+                {{ item.category_name }}
               </h3>
-
-              <div 
-                class="space-y-2 transition-all duration-500 delay-100"
-                :class="[
-                  hoveredItem === item.id 
-                    ? 'opacity-100 translate-y-0' 
-                    : 'opacity-0 translate-y-4'
-                ]"
-              >
-                <p class="text-sm text-gray-300" v-if="item.service_name">{{ item.service_name }}</p>
-              </div>
 
               <!-- Кнопка звука -->
               <button
@@ -210,7 +200,18 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useHead } from '@unhead/vue'
 import { API_BASE } from '@/config/api.js'
+
+useHead({
+  title: 'Примеры работ — Портфолио Akita Studio',
+  meta: [
+    { name: 'description', content: 'Портфолио Akita Studio. Смотрите фото и видео результатов до и после: полировка, оклейка пленкой, химчистка, керамика. Реальные работы наших мастеров.' },
+    { property: 'og:title', content: 'Портфолио Akita Studio — Примеры работ' },
+    { property: 'og:description', content: 'Фото и видео результатов: полировка, оклейка плёнкой, химчистка, керамика. Реальные работы мастеров Akita Studio.' },
+    { property: 'og:url', content: 'https://akita-studio.ru/portfolio' },
+  ],
+})
 
 const portfolioItems = ref([])
 const loading = ref(true)

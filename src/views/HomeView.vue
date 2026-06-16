@@ -1,7 +1,18 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from "vue";
+import { useHead } from '@unhead/vue'
 import ServiceCard from "../components/ServiceCard.vue";
 import { API_BASE } from '@/config/api.js'
+
+useHead({
+  title: 'Akita Studio — Профессиональная тюнинг-студия в Хабаровске | Уход за авто премиум-класса',
+  meta: [
+    { name: 'description', content: 'Студия детейлинга Akita Studio в Хабаровске. Профессиональный уход: полировка кузова, химчистка салона, защитные керамические покрытия и оклейка плёнкой. Работаем с 2015 года. Гарантия качества! Запишитесь онлайн.' },
+    { property: 'og:title', content: 'Akita Studio — Профессиональная тюнинг-студия в Хабаровске' },
+    { property: 'og:description', content: 'Студия детейлинга Akita Studio в Хабаровске. Профессиональный уход: полировка кузова, химчистка салона, защитные керамические покрытия и оклейка плёнкой.' },
+    { property: 'og:url', content: 'https://akita-studio.ru/' },
+  ],
+})
 
 import uhodImage from "../assets/Images/uhod.webp";
 import plenkaImage from "../assets/Images/plenka.webp";
@@ -599,20 +610,23 @@ onUnmounted(() => {
           <div
             v-for="item in portfolioItems"
             :key="item.id"
-            class="group relative w-full max-w-[260px] rounded-xl overflow-hidden bg-gray-800 hover:border hover:border-[#fc9303] transition-all duration-300"
+            class="portfolio_card"
           >
             <video
               autoplay
               muted
               loop
               playsinline
-              class="w-full aspect-[3/4] object-cover"
+              class="portfolio_img"
             >
               <source :src="item.video_url" type="video/mp4" />
             </video>
-            <div
-              class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-            ></div>
+            <h4 class="portfolio_title">{{ item.category_name }}</h4>
+            <div class="portfolio_hover-content">
+              <ul class="portfolio_list">
+                <li v-if="item.service_name">{{ item.service_name }}</li>
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -825,6 +839,114 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.portfolio_card {
+  width: 100%;
+  max-width: 260px;
+  aspect-ratio: 2 / 3;
+  margin: 0 auto;
+  text-align: center;
+  background-color: #4d4d4d;
+  overflow: hidden;
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.4s ease;
+}
+
+.portfolio_card:hover {
+  border: 1px solid #fc9303;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
+.portfolio_img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: all 0.5s ease;
+}
+
+.portfolio_card:hover .portfolio_img {
+  filter: brightness(0.6);
+  transform: scale(1.05);
+}
+
+.portfolio_title {
+  color: white;
+  font-size: 18px;
+  padding: 15px 0;
+  margin: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  transition: all 0.4s ease;
+  z-index: 2;
+  white-space: normal;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.portfolio_card:hover .portfolio_title {
+  top: 20px;
+  bottom: auto;
+  background: none;
+  text-decoration: underline;
+  text-decoration-color: #fc9303;
+  text-underline-offset: 5px;
+}
+
+.portfolio_hover-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s ease;
+  padding: 90px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  z-index: 1;
+}
+
+.portfolio_card:hover .portfolio_hover-content {
+  opacity: 1;
+  visibility: visible;
+}
+
+.portfolio_list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: white;
+  text-align: left;
+}
+
+.portfolio_list li {
+  padding: 8px 0 8px 20px;
+  font-size: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+.portfolio_list li::before {
+  content: "•";
+  color: #fc9303;
+  font-size: 20px;
+  position: absolute;
+  left: 0;
+  top: 6px;
+}
+
+.portfolio_list li:last-child {
+  border-bottom: none;
+}
+
 @keyframes float {
   0%,
   100% {

@@ -1,11 +1,14 @@
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'  // <-- ДОБАВЬ ЭТО
+import { createPinia } from 'pinia'
+import { createUnhead, headSymbol } from '@unhead/vue'
 import App from './App.vue'
 import router from './router'
 
 const app = createApp(App)
-const pinia = createPinia()  // <-- ДОБАВЬ ЭТО
+const pinia = createPinia()
+const head = createUnhead()
 
-app.use(pinia)  // <-- ДОБАВЬ ЭТО
+app.use(pinia)
 app.use(router)
+app.use({ install: (a) => { a.provide(headSymbol, head) } })
 app.mount('#app')

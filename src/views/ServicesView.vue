@@ -145,8 +145,19 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useHead } from '@unhead/vue'
 import { useRouter } from 'vue-router'
 import { API_BASE } from '@/config/api.js'
+
+useHead({
+  title: 'Услуги детейлинга в Хабаровске — Цены и виды работ | Akita Studio',
+  meta: [
+    { name: 'description', content: 'Полный комплекс услуг детейлинга в Akita Studio: оклейка авто плёнкой, восстановительная полировка кузова и фар, химчистка салона, нанесение керамики, покраска и реставрация. Узнайте стоимость и запишитесь!' },
+    { property: 'og:title', content: 'Услуги детейлинга в Хабаровске — Akita Studio' },
+    { property: 'og:description', content: 'Полный комплекс услуг детейлинга: полировка, оклейка плёнкой, химчистка, керамика, покраска. Запишитесь онлайн!' },
+    { property: 'og:url', content: 'https://akita-studio.ru/services' },
+  ],
+})
 
 const router = useRouter()
 const categories = ref([])

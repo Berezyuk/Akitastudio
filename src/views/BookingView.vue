@@ -235,8 +235,19 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useHead } from '@unhead/vue'
 import { API_BASE } from '@/config/api.js'
 import { useAuthStore } from '@/stores/auth'
+
+useHead({
+  title: 'Онлайн запись — Запишитесь в Akita Studio',
+  meta: [
+    { name: 'description', content: 'Запишитесь в Akita Studio онлайн. Выберите желаемую дату и вид работ: полировка, химчистка, оклейка или защитное покрытие. Оставьте заявку, и мы свяжемся с вами для подтверждения!' },
+    { property: 'og:title', content: 'Онлайн запись в Akita Studio' },
+    { property: 'og:description', content: 'Запишитесь онлайн: выберите дату и вид работ. Полировка, химчистка, оклейка, керамика.' },
+    { property: 'og:url', content: 'https://akita-studio.ru/booking' },
+  ],
+})
 
 const authStore = useAuthStore()
 

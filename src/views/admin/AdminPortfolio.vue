@@ -34,8 +34,6 @@ const saveError = ref('')
 
 const form = ref({
   video_url: '',
-  title: '',
-  description: '',
   category_id: null,
   service_id: null,
   sort_order: 0,
@@ -81,8 +79,6 @@ const openAddModal = () => {
   saveError.value = ''
   form.value = {
     video_url: '',
-    title: '',
-    description: '',
     category_id: categories.value[0]?.category_id || null,
     service_id: null,
     sort_order: 0,
@@ -202,7 +198,7 @@ onMounted(() => {
       <div v-for="item in portfolio" :key="item.id" class="relative group bg-gray-800 rounded-lg overflow-hidden">
         <!-- Превью: видео или изображение -->
         <video v-if="isVideo(item.video_url)" :src="item.video_url" class="w-full h-40 object-cover" muted></video>
-        <img v-else :src="item.video_url" class="w-full h-40 object-cover" :alt="item.title" @error="$event.target.style.display='none'" />
+        <img v-else :src="item.video_url" class="w-full h-40 object-cover" :alt="item.category_name" @error="$event.target.style.display='none'" />
 
         <!-- Бейдж «На главной» -->
         <div v-if="item.show_on_home" class="absolute top-2 left-2 flex items-center gap-1 bg-[#fc9303] text-black text-xs font-bold px-2 py-0.5 rounded-full shadow">
@@ -214,13 +210,12 @@ onMounted(() => {
 
         <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
           <button @click="openEditModal(item)" class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-semibold px-3 py-1 rounded-lg text-sm hover:brightness-110 transition">Изменить</button>
-          <button @click="deleteItem(item.id, item.title)" class="bg-black/70 border border-[#fc9303]/60 text-[#fc9303] font-semibold px-3 py-1 rounded-lg text-sm hover:bg-[#fc9303]/20 transition">Удалить</button>
+          <button @click="deleteItem(item.id, item.category_name)" class="bg-black/70 border border-[#fc9303]/60 text-[#fc9303] font-semibold px-3 py-1 rounded-lg text-sm hover:bg-[#fc9303]/20 transition">Удалить</button>
         </div>
 
         <div class="p-2">
-          <p class="text-sm font-semibold truncate">{{ item.title || 'Без названия' }}</p>
-          <p class="text-xs text-gray-400">{{ item.category_name }}</p>
-          <p v-if="item.service_name" class="text-xs text-gray-500">{{ item.service_name }}</p>
+          <p class="text-sm font-semibold truncate">{{ item.category_name }}</p>
+          <p v-if="item.service_name" class="text-xs text-gray-400">{{ item.service_name }}</p>
         </div>
       </div>
     </div>
@@ -288,10 +283,6 @@ onMounted(() => {
             <!-- Остальные поля ──────────────────────────────────────────── -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm text-gray-400 mb-1">Название</label>
-                <input v-model="form.title" type="text" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-[#fc9303] focus:outline-none" />
-              </div>
-              <div>
                 <label class="block text-sm text-gray-400 mb-1">Порядок сортировки</label>
                 <input v-model.number="form.sort_order" type="number" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:border-[#fc9303] focus:outline-none" />
               </div>
@@ -300,10 +291,6 @@ onMounted(() => {
                 <label for="show_on_home" class="text-sm text-gray-300 cursor-pointer select-none">
                   Показывать на главной странице <span class="text-gray-500">(макс. 5)</span>
                 </label>
-              </div>
-              <div class="md:col-span-2">
-                <label class="block text-sm text-gray-400 mb-1">Описание</label>
-                <textarea v-model="form.description" rows="3" class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white resize-none focus:border-[#fc9303] focus:outline-none"></textarea>
               </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">Категория *</label>

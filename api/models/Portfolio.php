@@ -72,12 +72,10 @@ class Portfolio {
 
     public function create($data) {
         $showOnHome = !empty($data['show_on_home']) ? 'TRUE' : 'FALSE';
-        $query = "INSERT INTO portfolio (video_url, title, description, category_id, service_id, sort_order, show_on_home)
-                  VALUES (:video_url, :title, :description, :category_id, :service_id, :sort_order, {$showOnHome})";
+        $query = "INSERT INTO portfolio (video_url, category_id, service_id, sort_order, show_on_home)
+                  VALUES (:video_url, :category_id, :service_id, :sort_order, {$showOnHome})";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':video_url', $data['video_url']);
-        $stmt->bindParam(':title', $data['title']);
-        $stmt->bindParam(':description', $data['description']);
         $stmt->bindParam(':category_id', $data['category_id']);
         $stmt->bindParam(':service_id', $data['service_id']);
         $stmt->bindParam(':sort_order', $data['sort_order']);
@@ -92,8 +90,6 @@ class Portfolio {
         $showOnHome = !empty($data['show_on_home']) ? 'TRUE' : 'FALSE';
         $query = "UPDATE portfolio SET
                   video_url = :video_url,
-                  title = :title,
-                  description = :description,
                   category_id = :category_id,
                   service_id = :service_id,
                   sort_order = :sort_order,
@@ -102,8 +98,6 @@ class Portfolio {
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
         $stmt->bindParam(':video_url', $data['video_url']);
-        $stmt->bindParam(':title', $data['title']);
-        $stmt->bindParam(':description', $data['description']);
         $stmt->bindParam(':category_id', $data['category_id']);
         $stmt->bindParam(':service_id', $data['service_id']);
         $stmt->bindParam(':sort_order', $data['sort_order']);
