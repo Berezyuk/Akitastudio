@@ -69,7 +69,7 @@ onUnmounted(() => {
     
     <!-- ПЕРВЫЙ ЭКРАН: Герой -->
     <section class="relative h-screen flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover opacity-40">
+      <video autoplay muted loop playsinline preload="none" class="absolute inset-0 w-full h-full object-cover opacity-40">
         <source :src="portfolio5Video" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black"></div>
@@ -154,7 +154,7 @@ onUnmounted(() => {
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="washMotorVideo" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay></video>
+                <video :src="washMotorVideo" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Мы не моем.</h3>
@@ -164,7 +164,7 @@ onUnmounted(() => {
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow animation-delay-300"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="portfolio3Video" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay></video>
+                <video :src="portfolio3Video" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Каждая деталь</h3>
@@ -174,7 +174,7 @@ onUnmounted(() => {
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow animation-delay-600"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="portfolio5Video" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay></video>
+                <video :src="portfolio5Video" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Ваша машина</h3>
@@ -186,7 +186,7 @@ onUnmounted(() => {
 
     <!-- ФИНАЛЬНЫЙ ЭКРАН: CTA -->
     <section class="relative h-screen flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover opacity-30">
+      <video autoplay muted loop playsinline preload="none" class="absolute inset-0 w-full h-full object-cover opacity-30">
         <source :src="portfolio2Video" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-radial from-transparent via-black to-black"></div>

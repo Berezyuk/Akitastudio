@@ -238,12 +238,19 @@ onUnmounted(() => {
     <!-- HERO СЕКЦИЯ (без изменений) -->
     <section
       ref="heroRef"
-      class="hero-3d relative min-h-[85vh] md:min-h-screen overflow-hidden bg-cover bg-center bg-no-repeat pb-4 md:pb-0"
+      class="hero-3d relative min-h-[85vh] md:min-h-screen overflow-hidden pb-4 md:pb-0"
       :style="{
-        backgroundImage: `url(${welcomeImage})`,
         transform: `scale(${1 + Math.abs(mousePosition.x) * 0.02}) translate(${mousePosition.x * 20}px, ${mousePosition.y * 20}px)`,
       }"
     >
+      <img
+        :src="welcomeImage"
+        fetchpriority="high"
+        loading="eager"
+        alt=""
+        aria-hidden="true"
+        class="absolute inset-0 w-full h-full object-cover object-center"
+      />
       <div
         class="absolute inset-0"
         :style="{
@@ -468,6 +475,7 @@ onUnmounted(() => {
                 muted
                 loop
                 playsinline
+                preload="none"
                 class="w-full h-full object-cover"
               >
                 <source
@@ -621,6 +629,7 @@ onUnmounted(() => {
               muted
               loop
               playsinline
+              preload="none"
               class="portfolio_img"
             >
               <source :src="item.video_url" type="video/mp4" />

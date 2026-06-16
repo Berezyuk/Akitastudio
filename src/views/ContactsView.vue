@@ -96,7 +96,7 @@ onUnmounted(() => {
     
     <!-- ЭКРАН 1: Герой с адресом (без изменений) -->
     <section class="relative h-screen flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover opacity-40">
+      <video autoplay muted loop playsinline preload="none" class="absolute inset-0 w-full h-full object-cover opacity-40">
         <source src="@/assets/Video/portfolio2.mp4" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black"></div>

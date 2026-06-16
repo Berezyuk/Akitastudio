@@ -90,7 +90,7 @@
             <img
               v-else
               :src="getMediaSrc(item.video_url)"
-              :alt="item.title"
+              :alt="item.category_name"
               class="absolute inset-0 w-full h-full object-cover transition-all duration-700"
               :class="{
                 'scale-110 brightness-110': hoveredItem === item.id,

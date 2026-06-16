@@ -25,7 +25,7 @@ const closeMenu = () => {
     <div class="container mx-auto flex justify-between items-center px-4 py-4 md:py-4">
       <!-- Логотип -->
       <router-link to="/" class="flex-shrink-0 md:pt-[36px] md:pb-[32px] md:px-[46px]">
-        <img src="../assets/Images/Logo.svg" alt="logo" class="h-8 md:h-auto" />
+        <img src="../assets/Images/Logo.svg" alt="Akita Studio" class="h-8 md:h-auto" />
       </router-link>
       
       <!-- Десктопная навигация (убраны лишние пункты, "Компания" заменён на прямой "О компании") -->

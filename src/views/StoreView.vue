@@ -577,7 +577,7 @@ const filteredProducts = computed(() => {
           <!-- Товары -->
           <div class="flex-1 overflow-y-auto p-6 space-y-4">
             <div v-for="item in cart" :key="item.id" class="flex gap-4 border-b border-gray-800 pb-4">
-              <img :src="item.image" class="w-16 h-16 rounded-lg object-cover bg-gray-800">
+              <img :src="item.image" :alt="item.name" class="w-16 h-16 rounded-lg object-cover bg-gray-800">
               <div class="flex-1">
                 <h3 class="font-semibold">{{ item.name }}</h3>
                 <p class="text-sm text-gray-400">{{ item.price.toLocaleString() }} ₽ / {{ item.unit }}</p>
