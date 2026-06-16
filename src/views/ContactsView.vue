@@ -5,7 +5,7 @@ import { useHead } from '@unhead/vue'
 useHead({
   title: 'Контакты тюнинг-студии Akita Studio в Хабаровске | Адрес и телефон',
   meta: [
-    { name: 'description', content: 'Адрес студии Akita Studio: Хабаровск, ул. Кавказская 35/5. Телефон, email и форма обратной связи. Работаем Пн-Пт с 9:00 до 18:00. Запишитесь на профессиональный детейлинг прямо сейчас!' },
+    { name: 'description', content: 'Адрес студии Akita Studio: Хабаровск, ул. Кавказская 35/5. Телефон, email и форма обратной связи. Работаем ежедневно с 10:00 до 20:00. Запишитесь на профессиональный детейлинг прямо сейчас!' },
     { property: 'og:title', content: 'Контакты Akita Studio — Хабаровск, ул. Кавказская 35/5' },
     { property: 'og:description', content: 'Адрес: Хабаровск, ул. Кавказская 35/5. Телефон и email студии детейлинга Akita Studio.' },
     { property: 'og:url', content: 'https://akita-studio.ru/contacts' },
