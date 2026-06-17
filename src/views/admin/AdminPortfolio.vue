@@ -343,7 +343,7 @@ onMounted(() => {
             </svg>
           </div>
           <h3 class="text-lg font-bold mb-2">Лимит превышен</h3>
-          <p class="text-gray-400 text-sm mb-6">На главной странице можно разместить не более <span class="text-white font-semibold">5 работ портфолио</span>. Снимите отметку «На главной» у одной из существующих работ и попробуйте снова.</p>
+          <p class="text-gray-400 text-sm mb-6">На главной странице можно разместить не более <span class="text-white font-semibold">4 работ портфолио</span>. Снимите отметку «На главной» у одной из существующих работ и попробуйте снова.</p>
           <button @click="showLimitModal = false" class="w-full px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold transition hover:brightness-110">
             Понятно
           </button>
