@@ -21,7 +21,7 @@
     <section class="py-8 pb-16">
       <div class="container mx-auto px-4">
         <!-- Фильтры -->
-        <div class="flex flex-wrap justify-center gap-3 mb-6">
+        <div v-if="!loading && !fetchError" class="flex flex-wrap justify-center gap-3 mb-6">
           <!-- Кнопка "Все" -->
           <button
             @click="activeFilter = 'all'"
@@ -46,7 +46,7 @@
         </div>
 
         <!-- Счетчик результатов -->
-        <div class="text-center mb-8">
+        <div v-if="!loading && !fetchError" class="text-center mb-8">
           <p class="text-gray-400 text-sm">
             Найдено <span class="text-[#fc9303] font-semibold">{{ filteredItems.length }}</span> работ
           </p>
@@ -63,7 +63,7 @@
         </div>
 
         <!-- Анимированная сетка -->
-        <TransitionGroup v-if="!fetchError"
+        <TransitionGroup v-if="!loading && !fetchError"
           name="portfolio-grid"
           tag="div"
           class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 justify-items-center"
