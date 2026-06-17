@@ -1,12 +1,12 @@
 <template>
-  <div class="portfolio-page">
+  <div class="portfolio-page bg-black relative overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-b from-black via-black to-[#4d4d4d]/20 pointer-events-none"></div>
+    <div class="absolute inset-0 opacity-30 pointer-events-none">
+      <div class="absolute top-20 left-10 w-64 h-64 bg-[#fc9303] rounded-full filter blur-[100px]"></div>
+      <div class="absolute bottom-20 right-10 w-96 h-96 bg-[#ff6b00] rounded-full filter blur-[150px]"></div>
+    </div>
     <!-- Hero секция -->
-    <section class="relative pt-24 pb-16 overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-b from-black via-black to-[#4d4d4d]/20"></div>
-      <div class="absolute inset-0 opacity-30">
-        <div class="absolute top-20 left-10 w-64 h-64 bg-[#fc9303] rounded-full filter blur-[100px]"></div>
-        <div class="absolute bottom-20 right-10 w-96 h-96 bg-[#ff6b00] rounded-full filter blur-[150px]"></div>
-      </div>
+    <section class="relative pt-24 pb-16">
       <div class="container mx-auto px-4 relative z-10 text-center">
         <h1 class="text-5xl md:text-6xl lg:text-7xl font-bold mb-6">
           <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Портфолио</span>
