@@ -285,10 +285,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="home-page bg-black">
+  <div class="home-page bg-black overflow-x-hidden">
     <section
       ref="heroRef"
-      class="hero-3d relative min-h-[85vh] md:min-h-screen overflow-hidden pb-4 md:pb-0"
+      class="hero-3d relative min-h-[55vh] md:min-h-screen overflow-hidden pb-4 md:pb-0"
       :style="{
         transform: `scale(${1 + Math.abs(mousePosition.x) * 0.02}) translate(${mousePosition.x * 20}px, ${mousePosition.y * 20}px)`,
       }"
@@ -324,7 +324,7 @@ onUnmounted(() => {
       </div>
 
       <div
-        class="relative z-10 container mx-auto px-4 min-h-screen flex items-center justify-center"
+        class="relative z-10 container mx-auto px-4 min-h-[55vh] md:min-h-screen flex items-center justify-center"
       >
         <div class="text-center max-w-4xl mx-auto">
           <div class="inline-block mb-4 sm:mb-6">
@@ -399,7 +399,7 @@ onUnmounted(() => {
             </router-link>
           </div>
           <div
-            class="absolute bottom-6 sm:bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce"
+            class="hidden md:block absolute bottom-10 left-1/2 transform -translate-x-1/2 animate-bounce"
           >
             <div
               class="w-5 h-8 sm:w-6 sm:h-10 border-2 border-white/30 rounded-full flex justify-center"

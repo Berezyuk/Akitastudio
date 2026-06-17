@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { useHead } from '@unhead/vue'
@@ -18,6 +18,7 @@ const login = ref('')
 const password = ref('')
 const error = ref('')
 const loading = ref(false)
+const isFormValid = computed(() => login.value.trim() && password.value.trim())
 
 const handleLogin = async () => {
   if (!login.value || !password.value) {
@@ -41,8 +42,8 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="login-page min-h-screen bg-black flex items-center justify-center">
-    <div class="bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gray-800 p-8 w-full max-w-xl">
+  <div class="login-page min-h-screen bg-black flex items-center justify-center px-4">
+    <div class="bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gray-800 p-5 md:p-8 w-full max-w-xl">
       <h1 class="text-3xl font-bold text-center mb-8">
         <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Вход в систему</span>
       </h1>
@@ -73,8 +74,8 @@ const handleLogin = async () => {
         
         <button 
           type="submit" 
-          :disabled="loading" 
-          class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-4 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50"
+          :disabled="loading || !isFormValid"
+          class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-4 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {{ loading ? 'Вход...' : 'Войти' }}
         </button>

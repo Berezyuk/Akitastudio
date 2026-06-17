@@ -53,17 +53,17 @@ const principles = [
   <div class="about-page bg-black text-white">
     
     <!-- ПЕРВЫЙ ЭКРАН: Герой -->
-    <section class="relative h-screen flex items-center justify-center overflow-hidden">
+    <section class="relative h-[55vh] md:h-screen flex items-center justify-center overflow-hidden">
       <video autoplay muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-40">
         <source :src="portfolio5Video" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black"></div>
       <div class="relative z-10 text-center px-4 container">
-        <h1 class="text-7xl md:text-9xl font-bold mb-6">
+        <h1 class="text-4xl sm:text-6xl md:text-9xl font-bold mb-4 md:mb-6">
           <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">AKITA</span>
           <span class="text-white"> STUDIO</span>
         </h1>
-        <p class="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto">Детейлинг, который чувствуется</p>
+        <p class="text-base md:text-2xl text-gray-400 max-w-2xl mx-auto">Детейлинг, который чувствуется</p>
       </div>
     </section>
 

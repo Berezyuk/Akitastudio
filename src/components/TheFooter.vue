@@ -32,24 +32,30 @@ const navLinks = [
           </div>
 
           <div class="footer-nav-column">
+            <h3 class="footer-column-title">Контакты</h3>
+            <ul class="footer-menu">
+              <li class="footer-menu-item">
+                <a href="tel:+79098029868">+7 909 802-98-68</a>
+              </li>
+              <li class="footer-menu-item">
+                <a href="mailto:auto.akita.studio@gmail.com">auto.akita.studio@gmail.com</a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="footer-nav-column">
             <h3 class="footer-column-title">Соцсети</h3>
             <ul class="footer-menu">
               <li class="footer-menu-item">
-                <a href="https://t.me/akita_auto" target="_blank" rel="noopener noreferrer">
-                  Telegram
-                </a>
+                <a href="https://t.me/akita_auto" target="_blank" rel="noopener noreferrer">Telegram</a>
                 <span class="restricted-badge">*</span>
               </li>
               <li class="footer-menu-item">
-                <a href="https://www.instagram.com/auto.akita/" target="_blank" rel="noopener noreferrer">
-                  Instagram
-                </a>
+                <a href="https://www.instagram.com/auto.akita/" target="_blank" rel="noopener noreferrer">Instagram</a>
                 <span class="restricted-badge">*</span>
               </li>
               <li class="footer-menu-item">
-                <a href="https://2gis.ru/khabarovsk/firm/70000001028746438" target="_blank" rel="noopener noreferrer">
-                  2GIS
-                </a>
+                <a href="https://2gis.ru/khabarovsk/firm/70000001028746438" target="_blank" rel="noopener noreferrer">2GIS</a>
               </li>
             </ul>
             <p class="restricted-note">* Социальные сети, запрещённые на территории РФ</p>
@@ -104,7 +110,7 @@ footer {
 
 .footer-nav {
   display: grid;
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: repeat(3, auto);
   gap: 40px;
   margin-left: auto;
 }

@@ -72,15 +72,17 @@
               <h3 class="text-xl font-semibold border-l-2 border-[#fc9303] pl-3">Контактные данные</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label for="booking-name" class="block text-sm text-gray-400 mb-2">Имя *</label>
+                  <label for="booking-name" class="block text-sm text-gray-400 mb-2">Ваше имя *</label>
                   <input id="booking-name" v-model="form.name" type="text" class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" />
                 </div>
                 <div>
-                  <label for="booking-phone" class="block text-sm text-gray-400 mb-2">Телефон *</label>
+                  <label for="booking-phone" class="block text-sm text-gray-400 mb-2">Номер телефона *</label>
                   <input
                     id="booking-phone"
-                    v-model="form.phone"
+                    :value="form.phone"
+                    @input="formatPhone"
                     type="tel"
+                    inputmode="numeric"
                     class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
                     placeholder="+7 (___) ___-__-__"
                   />
@@ -289,6 +291,30 @@ const form = ref({
 
 const agreed = ref(false)
 const privacyPdfUrl = ref('')
+
+const applyPhoneMask = (digits) => {
+  if (!digits) return ''
+  let r = '+7 (' + digits.slice(0, 3)
+  if (digits.length >= 3) r += ')'
+  if (digits.length > 3) r += ' ' + digits.slice(3, 6)
+  if (digits.length > 6) r += '-' + digits.slice(6, 8)
+  if (digits.length > 8) r += '-' + digits.slice(8, 10)
+  return r
+}
+
+const formatPhone = (e) => {
+  const prevFormatted = form.value.phone
+  let raw = e.target.value.replace(/\D/g, '')
+  if (raw.startsWith('7') || raw.startsWith('8')) raw = raw.slice(1)
+  raw = raw.slice(0, 10)
+  let result = applyPhoneMask(raw)
+  if (result === prevFormatted && e.target.value.length < prevFormatted.length && raw.length > 0) {
+    raw = raw.slice(0, -1)
+    result = applyPhoneMask(raw)
+  }
+  form.value.phone = result
+  e.target.value = result
+}
 
 // DaData для марок (запросы идут через наш backend-прокси, токен в JS не хранится)
 const carBrandQuery = ref('')

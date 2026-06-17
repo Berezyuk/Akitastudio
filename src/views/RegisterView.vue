@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { API_BASE } from '@/config/api.js'
 import { useHead } from '@unhead/vue'
@@ -27,6 +27,39 @@ const form = ref({
 const error = ref('')
 const isLoading = ref(false)
 const success = ref(false)
+
+const applyPhoneMask = (digits) => {
+  if (!digits) return ''
+  let r = '+7 (' + digits.slice(0, 3)
+  if (digits.length >= 3) r += ')'
+  if (digits.length > 3) r += ' ' + digits.slice(3, 6)
+  if (digits.length > 6) r += '-' + digits.slice(6, 8)
+  if (digits.length > 8) r += '-' + digits.slice(8, 10)
+  return r
+}
+
+const formatPhone = (e) => {
+  const prevFormatted = form.value.phone
+  let raw = e.target.value.replace(/\D/g, '')
+  if (raw.startsWith('7') || raw.startsWith('8')) raw = raw.slice(1)
+  raw = raw.slice(0, 10)
+  let result = applyPhoneMask(raw)
+  if (result === prevFormatted && e.target.value.length < prevFormatted.length && raw.length > 0) {
+    raw = raw.slice(0, -1)
+    result = applyPhoneMask(raw)
+  }
+  form.value.phone = result
+  e.target.value = result
+}
+
+const isFormValid = computed(() =>
+  form.value.first_name.trim() &&
+  form.value.last_name.trim() &&
+  form.value.phone.trim() &&
+  form.value.login.trim() &&
+  form.value.password &&
+  form.value.confirmPassword
+)
 
 const handleRegister = async () => {
     // Валидация
@@ -99,8 +132,8 @@ const handleRegister = async () => {
 </script>
 
 <template>
-    <div class="register-page min-h-screen bg-black flex items-center justify-center py-12">
-        <div class="bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gray-800 p-8 w-full max-w-xl">
+    <div class="register-page min-h-screen bg-black flex items-center justify-center py-12 px-4">
+        <div class="bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gray-800 p-5 md:p-8 w-full max-w-xl">
             <h1 class="text-3xl font-bold text-center mb-8">
                 <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">
                     Регистрация
@@ -136,19 +169,21 @@ const handleRegister = async () => {
                 </div>
 
                 <div>
-                    <label for="reg-phone" class="block text-sm text-gray-400 mb-1">Телефон *</label>
+                    <label for="reg-phone" class="block text-sm text-gray-400 mb-1">Номер телефона *</label>
                     <input
                         id="reg-phone"
-                        v-model="form.phone"
+                        :value="form.phone"
+                        @input="formatPhone"
                         type="tel"
+                        inputmode="numeric"
                         autocomplete="tel"
-                        placeholder="79161234567"
+                        placeholder="+7 (___) ___-__-__"
                         class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
                     >
                 </div>
 
                 <div>
-                    <label for="reg-email" class="block text-sm text-gray-400 mb-1">Email</label>
+                    <label for="reg-email" class="block text-sm text-gray-400 mb-1">Электронная почта</label>
                     <input
                         id="reg-email"
                         v-model="form.email"
@@ -196,8 +231,8 @@ const handleRegister = async () => {
                 
                 <button 
                     type="submit"
-                    :disabled="isLoading"
-                    class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-4 rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:hover:scale-100"
+                    :disabled="isLoading || !isFormValid"
+                    class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-4 rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                     {{ isLoading ? 'Регистрация...' : 'Зарегистрироваться' }}
                 </button>
