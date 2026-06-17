@@ -25,7 +25,7 @@
 
         <div v-else-if="fetchError" class="text-center py-16 text-gray-400">
           <p class="text-lg mb-4">Не удалось загрузить услуги</p>
-          <button @click="loadData" class="px-6 py-2 rounded-lg border border-[#fc9303] text-[#fc9303] hover:bg-[#fc9303] hover:text-black transition">
+          <button @click="loadData" class="px-6 py-2 rounded-lg border border-[#fc9303] text-[#fc9303] hover:bg-[#fc9303] hover:text-black transition cursor-pointer">
             Попробовать снова
           </button>
         </div>
@@ -41,7 +41,7 @@
               :aria-expanded="openCategories.includes(cat.category_id)"
               :aria-controls="`cat-panel-${cat.category_id}`"
               @click="toggleCategory(cat.category_id)"
-              class="w-full flex justify-between items-center p-5 bg-gray-900/50 rounded-xl border border-gray-800 hover:border-[#fc9303] transition-all group"
+              class="w-full flex justify-between items-center p-5 bg-gray-900/50 rounded-xl border border-gray-800 hover:border-[#fc9303] transition-all group cursor-pointer"
             >
               <div class="flex items-center gap-4 flex-1 min-w-0">
                 <div class="w-10 h-10 rounded-full bg-[#fc9303]/20 flex items-center justify-center group-hover:scale-110 transition flex-shrink-0">
@@ -84,7 +84,7 @@
                     </div>
                     <button
                       @click="openServiceModal(service)"
-                      class="w-full py-2 rounded-lg border border-[#fc9303] text-sm hover:bg-[#fc9303] hover:text-black transition font-medium"
+                      class="w-full py-2 rounded-lg border border-[#fc9303] text-sm hover:bg-[#fc9303] hover:text-black transition font-medium cursor-pointer"
                     >
                       Подробнее
                     </button>
@@ -113,7 +113,7 @@
           <button
             @click="closeModal"
             aria-label="Закрыть"
-            class="absolute top-4 right-4 w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 transition flex items-center justify-center z-10"
+            class="absolute top-4 right-4 w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 transition flex items-center justify-center z-10 cursor-pointer"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -157,7 +157,7 @@
 
             <button
               @click="selectService(selectedService)"
-              class="w-full py-3 rounded-xl bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-bold text-lg hover:opacity-90 transition shadow-lg"
+              class="w-full py-3 rounded-xl bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-bold text-lg hover:opacity-90 transition shadow-lg cursor-pointer"
             >
               Записаться на услугу
             </button>
