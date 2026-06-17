@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch, nextTick } from "vue";
 import { useHead } from '@unhead/vue'
 import ServiceCard from "../components/ServiceCard.vue";
 import { API_BASE } from '@/config/api.js'
@@ -11,6 +11,7 @@ useHead({
     { name: 'description', content: 'Студия детейлинга Akita Studio в Хабаровске. Профессиональный уход: полировка кузова, химчистка салона, защитные керамические покрытия и оклейка плёнкой. Работаем с 2015 года. Гарантия качества! Запишитесь онлайн.' },
     { property: 'og:title', content: 'Akita Studio — Профессиональная тюнинг-студия в Хабаровске' },
     { property: 'og:description', content: 'Студия детейлинга Akita Studio в Хабаровске. Профессиональный уход: полировка кузова, химчистка салона, защитные керамические покрытия и оклейка плёнкой.' },
+    { property: 'og:type', content: 'website' },
     { property: 'og:url', content: 'https://akita-studio.ru/' },
     { property: 'og:image', content: 'https://akita-studio.ru/og-image.webp' },
     { property: 'og:image:width', content: '1080' },
@@ -19,13 +20,6 @@ useHead({
 })
 
 import uhodImage from "../assets/Images/uhod.webp";
-import plenkaImage from "../assets/Images/plenka.webp";
-import polishImage from "../assets/Images/polish.webp";
-import ceramicImage from "../assets/Images/ceramic.webp";
-import salonImage from "../assets/Images/salon.webp";
-import okrasImage from "../assets/Images/okras.webp";
-import dopImage from "../assets/Images/dop.webp";
-import firmaImage from "../assets/Images/firma.webp";
 import welcomeImage from "../assets/Images/Welcome.webp";
 import aboutVideoDefault from "../assets/Video/About us (2).mp4";
 
@@ -33,14 +27,28 @@ import aboutVideoDefault from "../assets/Video/About us (2).mp4";
 const mousePosition = ref({ x: 0, y: 0 });
 const heroRef = ref(null);
 
+const particles = Array.from({ length: 25 }, () => ({
+  width: `${Math.random() * 3 + 1}px`,
+  height: `${Math.random() * 3 + 1}px`,
+  left: `${Math.random() * 100}%`,
+  top: `${Math.random() * 100}%`,
+  animation: `float ${Math.random() * 8 + 4}s linear infinite`,
+  animationDelay: `${Math.random() * 5}s`,
+}));
+
+let rafId = null;
 const handleMouseMove = (e) => {
-  const rect = heroRef.value?.getBoundingClientRect();
-  if (rect) {
-    mousePosition.value = {
-      x: (e.clientX - rect.left) / rect.width - 0.5,
-      y: (e.clientY - rect.top) / rect.height - 0.5,
-    };
-  }
+  if (rafId) return;
+  rafId = requestAnimationFrame(() => {
+    rafId = null;
+    const rect = heroRef.value?.getBoundingClientRect();
+    if (rect) {
+      mousePosition.value = {
+        x: (e.clientX - rect.left) / rect.width - 0.5,
+        y: (e.clientY - rect.top) / rect.height - 0.5,
+      };
+    }
+  });
 };
 
 const scrollToTop = () => {
@@ -212,6 +220,62 @@ const submitFeedback = async () => {
   }
 }
 
+// Refs и логика для ленивого воспроизведения видео портфолио
+const portfolioVideoRefs = ref({})
+const portfolioVideoErrors = ref({})
+let portfolioObserver = null
+
+const setPortfolioVideoRef = (el, id) => {
+  if (el) portfolioVideoRefs.value[id] = el
+}
+
+const setupPortfolioObserver = () => {
+  if (portfolioObserver) portfolioObserver.disconnect()
+
+  // Обратное отображение element → id для обработки ошибок внутри observer
+  const videoIdMap = new WeakMap()
+  portfolioItems.value.forEach((item) => {
+    const video = portfolioVideoRefs.value[item.id]
+    if (video) videoIdMap.set(video, item.id)
+  })
+
+  const tryPlay = (video, id, attemptsLeft) => {
+    video.play().catch(() => {
+      if (attemptsLeft > 0) {
+        setTimeout(() => tryPlay(video, id, attemptsLeft - 1), 400)
+      } else if (id != null) {
+        portfolioVideoErrors.value = { ...portfolioVideoErrors.value, [id]: true }
+        portfolioObserver?.unobserve(video)
+      }
+    })
+  }
+
+  portfolioObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target
+        const id = videoIdMap.get(video)
+        if (entry.isIntersecting) {
+          tryPlay(video, id, 2)
+        } else {
+          video.pause()
+        }
+      })
+    },
+    { threshold: 0.3 }
+  )
+
+  portfolioItems.value.forEach((item) => {
+    const video = portfolioVideoRefs.value[item.id]
+    if (video) portfolioObserver.observe(video)
+  })
+}
+
+watch(portfolioItems, async () => {
+  await nextTick()
+  setupPortfolioObserver()
+}, { once: true })
+
 onMounted(() => {
   window.addEventListener("mousemove", handleMouseMove);
   fetchServices();
@@ -230,6 +294,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("mousemove", handleMouseMove);
+  if (rafId) cancelAnimationFrame(rafId);
+  portfolioObserver?.disconnect()
 });
 </script>
 
@@ -259,16 +325,16 @@ onUnmounted(() => {
       ></div>
       <div class="absolute inset-0 overflow-hidden pointer-events-none">
         <div
-          v-for="i in 25"
+          v-for="(p, i) in particles"
           :key="i"
           class="absolute rounded-full bg-[#fc9303] opacity-20"
           :style="{
-            width: `${Math.random() * 3 + 1}px`,
-            height: `${Math.random() * 3 + 1}px`,
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-            animation: `float ${Math.random() * 8 + 4}s linear infinite`,
-            animationDelay: `${Math.random() * 5}s`,
+            width: p.width,
+            height: p.height,
+            left: p.left,
+            top: p.top,
+            animation: p.animation,
+            animationDelay: p.animationDelay,
           }"
         ></div>
       </div>
@@ -309,49 +375,43 @@ onUnmounted(() => {
           <div
             class="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6 justify-center mt-6 sm:mt-8 md:mt-12"
           >
-            <router-link to="/services">
-              <button
-                class="group w-full sm:w-auto px-4 sm:px-6 md:px-10 py-2 sm:py-3 md:py-4 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold text-sm sm:text-base md:text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/30"
+            <router-link
+              to="/services"
+              class="group w-full sm:w-auto px-4 sm:px-6 md:px-10 py-2 sm:py-3 md:py-4 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold text-sm sm:text-base md:text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/30 flex items-center justify-center gap-2"
+            >
+              Выбрать услугу
+              <svg
+                class="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <span class="flex items-center justify-center gap-2">
-                  Выбрать услугу
-                  <svg
-                    class="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M17 8l4 4m0 0l-4 4m4-4H3"
-                    ></path>
-                  </svg>
-                </span>
-              </button>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 8l4 4m0 0l-4 4m4-4H3"
+                ></path>
+              </svg>
             </router-link>
-            <router-link to="/portfolio">
-              <button
-                class="group w-full sm:w-auto px-4 sm:px-6 md:px-10 py-2 sm:py-3 md:py-4 border border-[#fc9303] text-white font-semibold text-sm sm:text-base md:text-lg rounded-full hover:bg-[#fc9303] transition-all duration-300"
+            <router-link
+              to="/portfolio"
+              class="group w-full sm:w-auto px-4 sm:px-6 md:px-10 py-2 sm:py-3 md:py-4 border border-[#fc9303] text-white font-semibold text-sm sm:text-base md:text-lg rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              Портфолио
+              <svg
+                class="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <span class="flex items-center justify-center gap-2">
-                  Портфолио
-                  <svg
-                    class="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M17 8l4 4m0 0l-4 4m4-4H3"
-                    ></path>
-                  </svg>
-                </span>
-              </button>
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17 8l4 4m0 0l-4 4m4-4H3"
+                ></path>
+              </svg>
             </router-link>
           </div>
           <div
@@ -407,27 +467,25 @@ onUnmounted(() => {
         </div>
 
         <div class="flex justify-center mt-8 sm:mt-12 md:mt-16">
-          <router-link to="/services" @click="scrollToTop">
-            <button
-              class="group px-5 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 border border-[#fc9303] text-white text-sm sm:text-base rounded-full hover:bg-[#fc9303] transition-all duration-300"
+          <router-link
+            to="/services"
+            @click="scrollToTop"
+            class="group px-5 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 border border-[#fc9303] text-white text-sm sm:text-base rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center gap-2"
+          >
+            Узнать больше
+            <svg
+              class="w-4 h-4 group-hover:translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <span class="flex items-center gap-2">
-                Узнать больше
-                <svg
-                  class="w-4 h-4 group-hover:translate-x-1 transition-transform"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 5l7 7-7 7"
-                  ></path>
-                </svg>
-              </span>
-            </button>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"
+              ></path>
+            </svg>
           </router-link>
         </div>
       </div>
@@ -625,12 +683,14 @@ onUnmounted(() => {
             class="portfolio_card"
           >
             <video
-              autoplay
+              :ref="el => setPortfolioVideoRef(el, item.id)"
               muted
               loop
               playsinline
               preload="none"
               class="portfolio_img"
+              v-show="!portfolioVideoErrors[item.id]"
+              @error="portfolioVideoErrors[item.id] = true"
             >
               <source :src="item.video_url" type="video/mp4" />
             </video>
@@ -644,27 +704,25 @@ onUnmounted(() => {
         </div>
 
         <div class="flex justify-center mt-8 sm:mt-12 md:mt-16">
-          <router-link to="/portfolio" @click="scrollToTop">
-            <button
-              class="group px-5 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 border border-[#fc9303] text-white text-sm sm:text-base rounded-full hover:bg-[#fc9303] transition-all duration-300"
+          <router-link
+            to="/portfolio"
+            @click="scrollToTop"
+            class="group px-5 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 border border-[#fc9303] text-white text-sm sm:text-base rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center gap-2"
+          >
+            Все работы
+            <svg
+              class="w-4 h-4 group-hover:translate-x-1 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              <span class="flex items-center gap-2">
-                Все работы
-                <svg
-                  class="w-4 h-4 group-hover:translate-x-1 transition-transform"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 5l7 7-7 7"
-                  ></path>
-                </svg>
-              </span>
-            </button>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5l7 7-7 7"
+              ></path>
+            </svg>
           </router-link>
         </div>
       </div>
@@ -701,10 +759,9 @@ onUnmounted(() => {
             <form @submit.prevent="submitFeedback" class="space-y-5">
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div>
-                  <label class="block text-sm text-gray-400 mb-2"
-                    >Ваше имя *</label
-                  >
+                  <label for="feedback-name" class="block text-sm text-gray-400 mb-2">Ваше имя *</label>
                   <input
+                    id="feedback-name"
                     v-model="feedbackForm.name"
                     type="text"
                     required
@@ -713,10 +770,9 @@ onUnmounted(() => {
                   />
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-400 mb-2"
-                    >Номер телефона *</label
-                  >
+                  <label for="feedback-phone" class="block text-sm text-gray-400 mb-2">Номер телефона *</label>
                   <input
+                    id="feedback-phone"
                     :value="feedbackForm.phone"
                     @input="formatPhone"
                     type="tel"
@@ -727,8 +783,9 @@ onUnmounted(() => {
                 </div>
               </div>
               <div>
-                <label class="block text-sm text-gray-400 mb-2">Электронная почта</label>
+                <label for="feedback-email" class="block text-sm text-gray-400 mb-2">Электронная почта</label>
                 <input
+                  id="feedback-email"
                   v-model="feedbackForm.email"
                   type="email"
                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] transition-colors"
@@ -736,8 +793,9 @@ onUnmounted(() => {
                 />
               </div>
               <div>
-                <label class="block text-sm text-gray-400 mb-2">Сообщение</label>
+                <label for="feedback-message" class="block text-sm text-gray-400 mb-2">Сообщение</label>
                 <textarea
+                  id="feedback-message"
                   v-model="feedbackForm.message"
                   rows="4"
                   class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] transition-colors resize-none"
@@ -754,12 +812,13 @@ onUnmounted(() => {
                 <label class="text-sm text-gray-400">
                   Я даю согласие на
                   <a
-                    :href="privacyPdfUrl || '#'"
-                    :target="privacyPdfUrl ? '_blank' : undefined"
+                    v-if="privacyPdfUrl"
+                    :href="privacyPdfUrl"
+                    target="_blank"
                     rel="noopener"
                     class="text-[#fc9303] hover:underline"
-                    >обработку персональных данных</a
-                  >
+                  >обработку персональных данных</a>
+                  <span v-else class="text-[#fc9303]">обработку персональных данных</span>
                   *
                 </label>
               </div>
@@ -831,19 +890,17 @@ onUnmounted(() => {
         <div
           class="flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6 justify-center"
         >
-          <router-link to="/booking">
-            <button
-              class="px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 lg:py-5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-bold text-sm sm:text-base md:text-lg rounded-full hover:scale-105 transition-all duration-300 shadow-lg shadow-orange-500/30"
-            >
-              Записаться
-            </button>
+          <router-link
+            to="/booking"
+            class="px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 lg:py-5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-bold text-sm sm:text-base md:text-lg rounded-full hover:scale-105 transition-all duration-300 shadow-lg shadow-orange-500/30"
+          >
+            Записаться
           </router-link>
-          <router-link to="/contacts">
-            <button
-              class="px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 lg:py-5 border-2 border-white/30 text-white font-bold text-sm sm:text-base md:text-lg rounded-full hover:border-[#fc9303] hover:bg-[#fc9303]/10 transition-all duration-300"
-            >
-              Связаться
-            </button>
+          <router-link
+            to="/contacts"
+            class="px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 lg:py-5 border-2 border-white/30 text-white font-bold text-sm sm:text-base md:text-lg rounded-full hover:border-[#fc9303] hover:bg-[#fc9303]/10 transition-all duration-300"
+          >
+            Связаться
           </router-link>
         </div>
       </div>
