@@ -347,7 +347,8 @@ class AdminController {
             'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
             'video/mp4', 'video/webm', 'video/ogg',
         ];
-        if (!in_array($file['type'], $allowedTypes)) {
+        $realMime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!in_array($realMime, $allowedTypes)) {
             echo json_encode(['error' => 'Разрешены: JPG, PNG, WEBP, GIF, MP4, WEBM, OGG']);
             return;
         }
@@ -368,11 +369,11 @@ class AdminController {
         }
 
         $uploadPath = $file['tmp_name'];
-        $uploadMime = $file['type'];
+        $uploadMime = $realMime;
         $transcodedPath = null;
 
-        if (str_starts_with($file['type'], 'video/')) {
-            $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $file['type']);
+        if (str_starts_with($realMime, 'video/')) {
+            $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $realMime);
             if ($transcodedPath) {
                 $uploadPath = $transcodedPath;
                 $uploadMime = 'video/mp4';
@@ -537,10 +538,6 @@ class AdminController {
             $params[':s'] = "%{$search}%";
         }
 
-        $total = (int)$conn->prepare("SELECT COUNT(*) FROM clients WHERE {$where}")
-                           ->execute($params) ? $conn->query("SELECT COUNT(*) FROM clients WHERE {$where}")->fetchColumn() : 0;
-
-        // Более надёжный способ получить total
         $stmtCount = $conn->prepare("SELECT COUNT(*) FROM clients WHERE {$where}");
         $stmtCount->execute($params);
         $total = (int)$stmtCount->fetchColumn();
@@ -861,7 +858,8 @@ public static function updateServiceProgress($orderId, $serviceId) {
         $caption = trim($_POST['caption'] ?? '');
 
         $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        if (!in_array($file['type'], $allowedTypes)) {
+        $realMime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!in_array($realMime, $allowedTypes)) {
             echo json_encode(['error' => 'Разрешены только JPG, PNG и WEBP']);
             return;
         }
@@ -874,7 +872,7 @@ public static function updateServiceProgress($orderId, $serviceId) {
         $key = MinioHelper::generateKey("orders/{$orderId}", $file['name']);
 
         try {
-            $photoUrl = MinioHelper::upload('order-photos', $key, $file['tmp_name'], $file['type']);
+            $photoUrl = MinioHelper::upload('order-photos', $key, $file['tmp_name'], $realMime);
         } catch (Exception $e) {
             error_log('MinIO upload error: ' . $e->getMessage());
             echo json_encode(['error' => 'Не удалось загрузить файл в хранилище']);
@@ -965,7 +963,8 @@ public static function getOrderPhotos($orderId) {
             'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif',
             'video/mp4', 'video/webm', 'video/ogg',
         ];
-        if (!in_array($file['type'], $allowedTypes)) {
+        $realMime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!in_array($realMime, $allowedTypes)) {
             echo json_encode(['error' => 'Разрешены: JPG, PNG, WEBP, GIF, MP4, WEBM, OGG']);
             return;
         }
@@ -976,11 +975,11 @@ public static function getOrderPhotos($orderId) {
         }
 
         $uploadPath = $file['tmp_name'];
-        $uploadMime = $file['type'];
+        $uploadMime = $realMime;
         $transcodedPath = null;
 
-        if (str_starts_with($file['type'], 'video/')) {
-            $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $file['type']);
+        if (str_starts_with($realMime, 'video/')) {
+            $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $realMime);
             if ($transcodedPath) {
                 $uploadPath = $transcodedPath;
                 $uploadMime = 'video/mp4';
@@ -1024,7 +1023,8 @@ public static function getOrderPhotos($orderId) {
 
         $file = $_FILES['video'];
         $allowed = ['video/mp4', 'video/webm', 'video/ogg'];
-        if (!in_array($file['type'], $allowed)) {
+        $realMime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if (!in_array($realMime, $allowed)) {
             echo json_encode(['success' => false, 'error' => 'Разрешены только видео: MP4, WEBM, OGG']);
             return;
         }
@@ -1034,8 +1034,8 @@ public static function getOrderPhotos($orderId) {
         }
 
         $uploadPath = $file['tmp_name'];
-        $uploadMime = $file['type'];
-        $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $file['type']);
+        $uploadMime = $realMime;
+        $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $realMime);
         if ($transcodedPath) {
             $uploadPath = $transcodedPath;
             $uploadMime = 'video/mp4';
