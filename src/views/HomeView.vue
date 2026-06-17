@@ -55,7 +55,6 @@ const scrollToTop = () => {
   window.scrollTo({ top: 0, behavior: "smooth" });
 };
 
-// Данные из API
 const services = ref([]);
 const categories = ref([]);
 const loading = ref(true);
@@ -64,7 +63,6 @@ const portfolioLoading = ref(true);
 const aboutVideoUrl = ref('')
 const privacyPdfUrl = ref('');
 
-// Группировка услуг по имени категории
 const servicesByCategory = computed(() => {
   const map = {};
   services.value.forEach((service) => {
@@ -75,7 +73,6 @@ const servicesByCategory = computed(() => {
   return map;
 });
 
-// Карточки для главной — только категории с show_on_home === true
 const categoryCards = computed(() => {
   return categories.value
     .filter((cat) => cat.show_on_home)
@@ -128,7 +125,6 @@ const fetchPortfolio = async () => {
   }
 };
 
-// Форма обратной связи
 const feedbackForm = ref({
   name: '',
   phone: '',
@@ -220,7 +216,6 @@ const submitFeedback = async () => {
   }
 }
 
-// Refs и логика для ленивого воспроизведения видео портфолио
 const portfolioVideoRefs = ref({})
 const portfolioVideoErrors = ref({})
 let portfolioObserver = null
@@ -301,7 +296,6 @@ onUnmounted(() => {
 
 <template>
   <div class="home-page bg-black">
-    <!-- HERO СЕКЦИЯ (без изменений) -->
     <section
       ref="heroRef"
       class="hero-3d relative min-h-[85vh] md:min-h-screen overflow-hidden pb-4 md:pb-0"
@@ -429,7 +423,6 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- УСЛУГИ (динамические из БД) -->
     <section class="py-12 sm:py-16 md:py-24 bg-black">
       <div class="container mx-auto px-4">
         <div class="text-center mb-8 sm:mb-12 md:mb-16">
@@ -491,7 +484,6 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- РАЗДЕЛИТЕЛЬ МЕЖДУ СЕКЦИЯМИ (добавлен) -->
     <div class="relative w-full">
       <div
         class="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#fc9303] to-transparent max-w-4xl mx-auto"
@@ -499,7 +491,6 @@ onUnmounted(() => {
       <div class="py-8 md:py-12"></div>
     </div>
 
-    <!-- О СТУДИИ (обновлённая версия) -->
     <section
       class="pb-12 sm:pb-16 md:pb-24 bg-gradient-to-b from-black to-[#4d4d4d]/20"
     >
@@ -521,7 +512,6 @@ onUnmounted(() => {
         <div
           class="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10 items-stretch"
         >
-          <!-- Видео блок -->
           <div class="relative group flex">
             <div
               class="absolute -inset-0.5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-2xl blur opacity-30 group-hover:opacity-70 transition duration-500"
@@ -544,7 +534,6 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Текстовый блок с выравниванием по ширине -->
           <div class="flex flex-col justify-between space-y-5 md:space-y-6">
             <div
               class="flex gap-4 md:gap-5 group hover:translate-x-1 transition-transform duration-300"
@@ -652,7 +641,6 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- ПОРТФОЛИО (без изменений) -->
     <section class="portfolio py-12 sm:py-16 md:py-24 bg-black">
       <div class="container mx-auto px-4">
         <div class="text-center mb-8 sm:mb-12 md:mb-16">
@@ -728,7 +716,6 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- ФОРМА ОБРАТНОЙ СВЯЗИ -->
     <section class="feedback-section pb-12 sm:pb-16 md:pb-24 bg-black">
       <div class="container mx-auto px-4">
         <div class="max-w-3xl mx-auto">
@@ -835,7 +822,6 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- Модал уведомлений формы обратной связи -->
     <Transition name="modal">
       <div v-if="feedbackModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="feedbackModal.show = false"></div>
@@ -867,7 +853,6 @@ onUnmounted(() => {
       </div>
     </Transition>
 
-    <!-- CTA -->
     <section
       class="relative pb-12 sm:pb-16 md:pb-24 overflow-hidden bg-gradient-to-b from-black to-[#4d4d4d]/20"
     >
