@@ -82,6 +82,7 @@
               loop
               playsinline
               preload="none"
+              aria-hidden="true"
               class="portfolio_img"
               v-show="!portfolioVideoErrors[item.id]"
               @error="portfolioVideoErrors[item.id] = true"
@@ -106,7 +107,7 @@
 
         <!-- Пустое состояние -->
         <div v-if="!loading && !fetchError && filteredItems.length === 0" class="text-center py-20">
-          <div class="text-6xl mb-4">🎬</div>
+          <div class="text-6xl mb-4" aria-hidden="true">🎬</div>
           <h3 class="text-xl font-semibold text-white mb-2">Нет работ в этой категории</h3>
           <p class="text-gray-400">Попробуйте выбрать другую категорию</p>
         </div>

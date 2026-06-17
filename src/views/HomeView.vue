@@ -514,6 +514,7 @@ onUnmounted(() => {
                 loop
                 playsinline
                 preload="none"
+                aria-hidden="true"
                 class="w-full h-full object-cover"
               >
                 <source
@@ -666,6 +667,7 @@ onUnmounted(() => {
               loop
               playsinline
               preload="none"
+              aria-hidden="true"
               class="portfolio_img"
               v-show="!portfolioVideoErrors[item.id]"
               @error="portfolioVideoErrors[item.id] = true"
