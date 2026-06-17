@@ -17,10 +17,11 @@
       </div>
     </section>
 
-    <!-- Фильтры -->
-    <section class="relative -mt-8 mb-8">
+    <!-- Сетка портфолио -->
+    <section class="py-8 pb-16">
       <div class="container mx-auto px-4">
-        <div class="flex flex-wrap justify-center gap-3">
+        <!-- Фильтры -->
+        <div class="flex flex-wrap justify-center gap-3 mb-6">
           <!-- Кнопка "Все" -->
           <button
             @click="activeFilter = 'all'"
@@ -45,17 +46,11 @@
         </div>
 
         <!-- Счетчик результатов -->
-        <div class="text-center mt-6">
+        <div class="text-center mb-8">
           <p class="text-gray-400 text-sm">
             Найдено <span class="text-[#fc9303] font-semibold">{{ filteredItems.length }}</span> работ
           </p>
         </div>
-      </div>
-    </section>
-
-    <!-- Сетка портфолио -->
-    <section class="py-8 pb-16">
-      <div class="container mx-auto px-4">
         <div v-if="loading" role="status" aria-label="Загрузка портфолио" class="flex justify-center py-20">
           <div class="w-10 h-10 border-4 border-[#fc9303] border-t-transparent rounded-full animate-spin"></div>
         </div>
