@@ -2,6 +2,15 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { useHead } from '@unhead/vue'
+
+useHead({
+  title: 'Вход — Akita Studio',
+  link: [{ rel: 'canonical', href: 'https://akita-studio.ru/login' }],
+  meta: [
+    { name: 'robots', content: 'noindex, nofollow' },
+  ],
+})
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -40,19 +49,23 @@ const handleLogin = async () => {
       
       <form @submit.prevent="handleLogin" class="space-y-6">
         <div>
-          <input 
-            v-model="login" 
-            type="text" 
-            placeholder="Логин" 
-            class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" 
+          <label for="login-username" class="block text-sm text-gray-400 mb-2">Логин</label>
+          <input
+            id="login-username"
+            v-model="login"
+            type="text"
+            autocomplete="username"
+            class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
           />
         </div>
         <div>
-          <input 
-            v-model="password" 
-            type="password" 
-            placeholder="Пароль" 
-            class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" 
+          <label for="login-password" class="block text-sm text-gray-400 mb-2">Пароль</label>
+          <input
+            id="login-password"
+            v-model="password"
+            type="password"
+            autocomplete="current-password"
+            class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
           />
         </div>
         
@@ -75,14 +88,6 @@ const handleLogin = async () => {
         </router-link>
       </p>
       
-      <!-- Подсказка для тестового доступа -->
-      <div class="mt-8 pt-6 border-t border-gray-800">
-        <p class="text-center text-gray-600 text-xs">
-          Тестовый доступ:<br>
-          Админ: admin / admin123<br>
-          Клиент: зарегистрируйтесь
-        </p>
-      </div>
     </div>
   </div>
 </template>

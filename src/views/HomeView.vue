@@ -88,14 +88,8 @@ const fetchServices = async () => {
   try {
     const response = await fetch(`${API_BASE}/services`);
     const data = await response.json();
-    if (data.success) {
-      services.value = data.services;
-    } else {
-      console.error("API error:", data.error);
-    }
-  } catch (error) {
-    console.error("Error fetching services:", error);
-  } finally {
+    if (data.success) services.value = data.services;
+  } catch {} finally {
     loading.value = false;
   }
 };
@@ -105,9 +99,7 @@ const fetchCategories = async () => {
     const res = await fetch(`${API_BASE}/categories`);
     const data = await res.json();
     if (data.success) categories.value = data.categories;
-  } catch (e) {
-    console.error("Error fetching categories:", e);
-  }
+  } catch {}
 };
 
 const fetchPortfolio = async () => {
@@ -118,9 +110,7 @@ const fetchPortfolio = async () => {
     if (data.success) {
       portfolioItems.value = data.portfolio.filter((item) => item.video_url && item.show_on_home);
     }
-  } catch (e) {
-    console.error("Error fetching portfolio:", e);
-  } finally {
+  } catch {} finally {
     portfolioLoading.value = false;
   }
 };
@@ -791,12 +781,13 @@ onUnmounted(() => {
               </div>
               <div class="flex items-center gap-2">
                 <input
+                  id="feedback-agree"
                   type="checkbox"
                   v-model="feedbackForm.agree"
                   required
                   class="w-5 h-5 accent-[#fc9303] rounded flex-shrink-0"
                 />
-                <label class="text-sm text-gray-400">
+                <label for="feedback-agree" class="text-sm text-gray-400">
                   Я даю согласие на
                   <a
                     v-if="privacyPdfUrl"
@@ -826,6 +817,9 @@ onUnmounted(() => {
       <div v-if="feedbackModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="feedbackModal.show = false"></div>
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="feedback-modal-title"
           class="relative bg-gray-900 border rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl"
           :class="feedbackModal.type === 'success' ? 'border-[#fc9303]' : 'border-red-500'"
         >
@@ -833,14 +827,14 @@ onUnmounted(() => {
             class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
             :class="feedbackModal.type === 'success' ? 'bg-[#fc9303]/20' : 'bg-red-500/20'"
           >
-            <svg v-if="feedbackModal.type === 'success'" class="w-8 h-8 text-[#fc9303]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="feedbackModal.type === 'success'" class="w-8 h-8 text-[#fc9303]" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
-            <svg v-else class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-else class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
-          <h3 class="text-xl font-bold text-white mb-2">{{ feedbackModal.title }}</h3>
+          <h3 id="feedback-modal-title" class="text-xl font-bold text-white mb-2">{{ feedbackModal.title }}</h3>
           <p class="text-gray-400 mb-6">{{ feedbackModal.message }}</p>
           <button
             @click="feedbackModal.show = false"

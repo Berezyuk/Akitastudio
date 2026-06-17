@@ -2,6 +2,15 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { API_BASE } from '@/config/api.js'
+import { useHead } from '@unhead/vue'
+
+useHead({
+  title: 'Регистрация — Akita Studio',
+  link: [{ rel: 'canonical', href: 'https://akita-studio.ru/register' }],
+  meta: [
+    { name: 'robots', content: 'noindex, nofollow' },
+  ],
+})
 
 const router = useRouter()
 
@@ -81,8 +90,7 @@ const handleRegister = async () => {
         } else {
             error.value = data.error || 'Ошибка регистрации'
         }
-    } catch (err) {
-        console.error(err)
+    } catch {
         error.value = 'Ошибка соединения с сервером'
     } finally {
         isLoading.value = false
@@ -105,54 +113,84 @@ const handleRegister = async () => {
             
             <form @submit.prevent="handleRegister" class="space-y-4">
                 <div class="grid grid-cols-2 gap-3">
-                    <input 
-                        v-model="form.first_name"
-                        type="text" 
-                        placeholder="Имя *"
-                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
-                    >
-                    <input 
-                        v-model="form.last_name"
-                        type="text" 
-                        placeholder="Фамилия *"
+                    <div>
+                        <label for="reg-first-name" class="block text-sm text-gray-400 mb-1">Имя *</label>
+                        <input
+                            id="reg-first-name"
+                            v-model="form.first_name"
+                            type="text"
+                            autocomplete="given-name"
+                            class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
+                        >
+                    </div>
+                    <div>
+                        <label for="reg-last-name" class="block text-sm text-gray-400 mb-1">Фамилия *</label>
+                        <input
+                            id="reg-last-name"
+                            v-model="form.last_name"
+                            type="text"
+                            autocomplete="family-name"
+                            class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
+                        >
+                    </div>
+                </div>
+
+                <div>
+                    <label for="reg-phone" class="block text-sm text-gray-400 mb-1">Телефон *</label>
+                    <input
+                        id="reg-phone"
+                        v-model="form.phone"
+                        type="tel"
+                        autocomplete="tel"
+                        placeholder="79161234567"
                         class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
                     >
                 </div>
-                
-                <input 
-                    v-model="form.phone"
-                    type="tel" 
-                    placeholder="Телефон * (например: 79161234567)"
-                    class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
-                >
-                
-                <input 
-                    v-model="form.email"
-                    type="email" 
-                    placeholder="Email (необязательно)"
-                    class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
-                >
-                
-                <input 
-                    v-model="form.login"
-                    type="text" 
-                    placeholder="Логин *"
-                    class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
-                >
-                
-                <input 
-                    v-model="form.password"
-                    type="password" 
-                    placeholder="Пароль * (минимум 6 символов)"
-                    class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
-                >
-                
-                <input 
-                    v-model="form.confirmPassword"
-                    type="password" 
-                    placeholder="Подтвердите пароль *"
-                    class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
-                >
+
+                <div>
+                    <label for="reg-email" class="block text-sm text-gray-400 mb-1">Email</label>
+                    <input
+                        id="reg-email"
+                        v-model="form.email"
+                        type="email"
+                        autocomplete="email"
+                        placeholder="необязательно"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
+                    >
+                </div>
+
+                <div>
+                    <label for="reg-login" class="block text-sm text-gray-400 mb-1">Логин *</label>
+                    <input
+                        id="reg-login"
+                        v-model="form.login"
+                        type="text"
+                        autocomplete="username"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
+                    >
+                </div>
+
+                <div>
+                    <label for="reg-password" class="block text-sm text-gray-400 mb-1">Пароль * (минимум 6 символов)</label>
+                    <input
+                        id="reg-password"
+                        v-model="form.password"
+                        type="password"
+                        autocomplete="new-password"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
+                    >
+                </div>
+
+                <div>
+                    <label for="reg-confirm-password" class="block text-sm text-gray-400 mb-1">Подтвердите пароль *</label>
+                    <input
+                        id="reg-confirm-password"
+                        v-model="form.confirmPassword"
+                        type="password"
+                        autocomplete="new-password"
+                        class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303] focus:ring-1 focus:ring-[#fc9303] transition"
+                    >
+                </div>
                 
                 <p v-if="error" class="text-red-500 text-sm text-center bg-red-500/10 py-2 rounded-lg">{{ error }}</p>
                 

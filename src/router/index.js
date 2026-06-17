@@ -12,8 +12,6 @@ const router = createRouter({
     { path: '/about', name: 'about', component: () => import('../views/AboutView.vue') },
     { path: '/contacts', name: 'contacts', component: () => import('../views/ContactsView.vue') },
     { path: '/booking', name: 'booking', component: () => import('../views/BookingView.vue') },
-    { path: '/certificates', name: 'certificates', component: () => import('../views/GiftCertificatesView.vue') },
-    
     // Аутентификация
     { path: '/login', name: 'login', component: () => import('../views/LoginView.vue'), meta: { guest: true } },
     { path: '/register', name: 'register', component: () => import('../views/RegisterView.vue'), meta: { guest: true } },
