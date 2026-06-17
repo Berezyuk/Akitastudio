@@ -4,6 +4,7 @@ RUN apk add --no-cache \
         postgresql-dev \
         libzip-dev \
         curl \
+        ffmpeg \
     && docker-php-ext-install \
         pdo \
         pdo_pgsql \

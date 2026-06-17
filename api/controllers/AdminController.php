@@ -4,6 +4,7 @@
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../helpers/MinioHelper.php';
+require_once __DIR__ . '/../helpers/FfmpegHelper.php';
 require_once __DIR__ . '/../models/Service.php';
 require_once __DIR__ . '/../models/Portfolio.php';
 require_once __DIR__ . '/../models/Client.php';
@@ -366,13 +367,28 @@ class AdminController {
             }
         }
 
-        $key = MinioHelper::generateKey('category-media', $file['name']);
+        $uploadPath = $file['tmp_name'];
+        $uploadMime = $file['type'];
+        $transcodedPath = null;
+
+        if (str_starts_with($file['type'], 'video/')) {
+            $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $file['type']);
+            if ($transcodedPath) {
+                $uploadPath = $transcodedPath;
+                $uploadMime = 'video/mp4';
+            }
+        }
+
+        $key = MinioHelper::generateKey('category-media', $transcodedPath ? 'video.mp4' : $file['name']);
         try {
-            $url = MinioHelper::upload('portfolio', $key, $file['tmp_name'], $file['type']);
+            $url = MinioHelper::upload('portfolio', $key, $uploadPath, $uploadMime);
         } catch (\Exception $e) {
             error_log('MinIO category media upload error: ' . $e->getMessage());
+            if ($transcodedPath && file_exists($transcodedPath)) unlink($transcodedPath);
             echo json_encode(['error' => 'Не удалось загрузить файл']);
             return;
+        } finally {
+            if ($transcodedPath && file_exists($transcodedPath)) unlink($transcodedPath);
         }
 
         $cat->updateMedia($id, $url);
@@ -959,14 +975,29 @@ public static function getOrderPhotos($orderId) {
             return;
         }
 
-        $key = MinioHelper::generateKey('media', $file['name']);
+        $uploadPath = $file['tmp_name'];
+        $uploadMime = $file['type'];
+        $transcodedPath = null;
+
+        if (str_starts_with($file['type'], 'video/')) {
+            $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $file['type']);
+            if ($transcodedPath) {
+                $uploadPath = $transcodedPath;
+                $uploadMime = 'video/mp4';
+            }
+        }
+
+        $key = MinioHelper::generateKey('media', $transcodedPath ? 'video.mp4' : $file['name']);
 
         try {
-            $url = MinioHelper::upload('portfolio', $key, $file['tmp_name'], $file['type']);
+            $url = MinioHelper::upload('portfolio', $key, $uploadPath, $uploadMime);
         } catch (Exception $e) {
             error_log('MinIO portfolio upload error: ' . $e->getMessage());
+            if ($transcodedPath && file_exists($transcodedPath)) unlink($transcodedPath);
             echo json_encode(['error' => 'Не удалось загрузить файл в хранилище']);
             return;
+        } finally {
+            if ($transcodedPath && file_exists($transcodedPath)) unlink($transcodedPath);
         }
 
         echo json_encode(['success' => true, 'url' => $url]);
@@ -1002,14 +1033,25 @@ public static function getOrderPhotos($orderId) {
             return;
         }
 
-        $key = MinioHelper::generateKey('site', $file['name']);
+        $uploadPath = $file['tmp_name'];
+        $uploadMime = $file['type'];
+        $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $file['type']);
+        if ($transcodedPath) {
+            $uploadPath = $transcodedPath;
+            $uploadMime = 'video/mp4';
+        }
+
+        $key = MinioHelper::generateKey('site', $transcodedPath ? 'video.mp4' : $file['name']);
 
         try {
-            $url = MinioHelper::upload('portfolio', $key, $file['tmp_name'], $file['type']);
+            $url = MinioHelper::upload('portfolio', $key, $uploadPath, $uploadMime);
         } catch (Exception $e) {
             error_log('MinIO about video upload error: ' . $e->getMessage());
+            if ($transcodedPath && file_exists($transcodedPath)) unlink($transcodedPath);
             echo json_encode(['success' => false, 'error' => 'Не удалось загрузить файл в хранилище']);
             return;
+        } finally {
+            if ($transcodedPath && file_exists($transcodedPath)) unlink($transcodedPath);
         }
 
         try {
