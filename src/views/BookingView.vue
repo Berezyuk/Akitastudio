@@ -72,15 +72,16 @@
               <h3 class="text-xl font-semibold border-l-2 border-[#fc9303] pl-3">Контактные данные</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm text-gray-400 mb-2">Имя *</label>
-                  <input v-model="form.name" type="text" class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" />
+                  <label for="booking-name" class="block text-sm text-gray-400 mb-2">Имя *</label>
+                  <input id="booking-name" v-model="form.name" type="text" class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" />
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-400 mb-2">Телефон *</label>
-                  <input 
-                    v-model="form.phone" 
-                    type="tel" 
-                    class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" 
+                  <label for="booking-phone" class="block text-sm text-gray-400 mb-2">Телефон *</label>
+                  <input
+                    id="booking-phone"
+                    v-model="form.phone"
+                    type="tel"
+                    class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
                     placeholder="+7 (___) ___-__-__"
                   />
                 </div>
@@ -92,8 +93,9 @@
               <h3 class="text-xl font-semibold border-l-2 border-[#fc9303] pl-3">Автомобиль</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div class="relative">
-                  <label class="block text-sm text-gray-400 mb-2">Марка *</label>
-                  <input 
+                  <label for="booking-brand" class="block text-sm text-gray-400 mb-2">Марка *</label>
+                  <input
+                    id="booking-brand"
                     v-model="carBrandQuery"
                     @input="fetchBrandSuggestions"
                     @focus="fetchBrandSuggestions"
@@ -113,8 +115,9 @@
                   </ul>
                 </div>
                 <div class="relative">
-                  <label class="block text-sm text-gray-400 mb-2">Модель *</label>
+                  <label for="booking-model" class="block text-sm text-gray-400 mb-2">Модель *</label>
                   <input
+                    id="booking-model"
                     v-model="form.carModel"
                     type="text"
                     @input="onModelInput"
@@ -142,28 +145,30 @@
               <h3 class="text-xl font-semibold border-l-2 border-[#fc9303] pl-3">Пожелания по дате и времени</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm text-gray-400 mb-2">Желаемая дата</label>
-                  <input 
-                    v-model="form.desiredDate" 
-                    type="date" 
+                  <label for="booking-date" class="block text-sm text-gray-400 mb-2">Желаемая дата</label>
+                  <input
+                    id="booking-date"
+                    v-model="form.desiredDate"
+                    type="date"
                     :min="minDate"
-                    class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" 
+                    class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm text-gray-400 mb-2">Желаемое время</label>
-                  <input 
-                    v-model="form.desiredTime" 
-                    type="time" 
+                  <label for="booking-time" class="block text-sm text-gray-400 mb-2">Желаемое время</label>
+                  <input
+                    id="booking-time"
+                    v-model="form.desiredTime"
+                    type="time"
                     min="10:00"
                     max="20:00"
-                    class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]" 
+                    class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
                   />
                 </div>
               </div>
               <div>
-                <label class="block text-sm text-gray-400 mb-2">Комментарий</label>
-                <textarea v-model="form.comment" rows="3" class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white resize-none focus:outline-none focus:border-[#fc9303]"></textarea>
+                <label for="booking-comment" class="block text-sm text-gray-400 mb-2">Комментарий</label>
+                <textarea id="booking-comment" v-model="form.comment" rows="3" class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white resize-none focus:outline-none focus:border-[#fc9303]"></textarea>
               </div>
             </div>
 
@@ -171,8 +176,10 @@
             <div class="flex items-center gap-2">
               <input type="checkbox" v-model="agreed" id="agreement" class="w-5 h-5 accent-[#fc9303] rounded flex-shrink-0">
               <label for="agreement" class="text-sm text-gray-400">
-                Нажимая кнопку, Вы даете согласие на обработку персональных данных и соглашаетесь с 
-                <a href="#" class="text-[#fc9303] hover:underline">Политикой конфиденциальности</a> *
+                Нажимая кнопку, Вы даете согласие на
+                <a v-if="privacyPdfUrl" :href="privacyPdfUrl" target="_blank" rel="noopener" class="text-[#fc9303] hover:underline">обработку персональных данных и соглашаетесь с Политикой конфиденциальности</a>
+                <span v-else class="text-[#fc9303]">обработку персональных данных и соглашаетесь с Политикой конфиденциальности</span>
+                *
               </label>
             </div>
 
@@ -187,13 +194,13 @@
     <!-- Модальное окно успеха -->
     <Transition name="modal">
       <div v-if="successMessage" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="successMessage = null">
-        <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6 text-center">
+        <div role="dialog" aria-modal="true" aria-labelledby="modal-success-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6 text-center">
           <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
             <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
           </div>
-          <h3 class="text-xl font-bold mb-2 text-white">Заявка отправлена!</h3>
+          <h3 id="modal-success-title" class="text-xl font-bold mb-2 text-white">Заявка отправлена!</h3>
           <p class="text-gray-400 mb-6">{{ successMessage }}</p>
           <button @click="successMessage = null" class="w-full bg-[#fc9303] rounded-lg text-black font-semibold py-2 hover:bg-[#ff6b00] transition">Отлично</button>
         </div>
@@ -203,8 +210,8 @@
     <!-- Модальное окно для подтверждения исправления модели -->
     <Transition name="modal">
       <div v-if="showModelConfirm" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="closeModelConfirm">
-        <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
-          <h3 class="text-xl font-bold mb-4">Уточните модель</h3>
+        <div role="dialog" aria-modal="true" aria-labelledby="modal-model-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
+          <h3 id="modal-model-title" class="text-xl font-bold mb-4">Уточните модель</h3>
           <p class="text-gray-300 mb-4">Возможно, вы имели в виду:</p>
           <p class="text-lg font-semibold text-[#fc9303] mb-6">{{ suggestedModel }}</p>
           <div class="flex gap-3">
@@ -218,13 +225,13 @@
     <!-- Модальное окно ошибок -->
     <Transition name="modal">
       <div v-if="errorMessage" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="errorMessage = null">
-        <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
+        <div role="dialog" aria-modal="true" aria-labelledby="modal-error-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
           <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
             <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </div>
-          <h3 class="text-xl font-bold mb-4 text-center text-red-500">Ошибка</h3>
+          <h3 id="modal-error-title" class="text-xl font-bold mb-4 text-center text-red-500">Ошибка</h3>
           <p class="text-gray-300 mb-6 text-center">{{ errorMessage }}</p>
           <button @click="errorMessage = null" class="w-full bg-[#fc9303] rounded-lg text-black font-semibold py-2 hover:bg-[#ff6b00]">Закрыть</button>
         </div>
@@ -244,6 +251,7 @@ useHead({
   link: [{ rel: 'canonical', href: 'https://akita-studio.ru/booking' }],
   meta: [
     { name: 'description', content: 'Запишитесь в Akita Studio онлайн. Выберите желаемую дату и вид работ: полировка, химчистка, оклейка или защитное покрытие. Оставьте заявку, и мы свяжемся с вами для подтверждения!' },
+    { property: 'og:type', content: 'website' },
     { property: 'og:title', content: 'Онлайн запись в Akita Studio' },
     { property: 'og:description', content: 'Запишитесь онлайн: выберите дату и вид работ. Полировка, химчистка, оклейка, керамика.' },
     { property: 'og:url', content: 'https://akita-studio.ru/booking' },
@@ -280,6 +288,7 @@ const form = ref({
 })
 
 const agreed = ref(false)
+const privacyPdfUrl = ref('')
 
 // DaData для марок (запросы идут через наш backend-прокси, токен в JS не хранится)
 const carBrandQuery = ref('')
@@ -300,7 +309,7 @@ const fetchCategories = async () => {
     const res = await fetch(`${API_BASE}/categories`)
     const data = await res.json()
     if (data.success) categories.value = data.categories
-  } catch (err) { console.error(err) }
+  } catch {}
 }
 
 const fetchServices = async () => {
@@ -308,7 +317,7 @@ const fetchServices = async () => {
     const res = await fetch(`${API_BASE}/services`)
     const data = await res.json()
     if (data.success) services.value = data.services
-  } catch (err) { console.error(err) }
+  } catch {}
 }
 
 // Computed
@@ -323,23 +332,25 @@ const currentCategoryName = computed(() => {
 })
 
 // Подсказки марок — через backend-прокси (токен DaData скрыт на сервере)
-const fetchBrandSuggestions = async () => {
+let brandDebounceTimer = null
+const fetchBrandSuggestions = () => {
   const query = carBrandQuery.value.trim()
   if (!query) {
     brandSuggestions.value = []
     return
   }
-  try {
-    const res = await fetch(`${API_BASE}/car-brand-suggest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, count: 20 })
-    })
-    const data = await res.json()
-    brandSuggestions.value = data.suggestions || []
-  } catch (err) {
-    console.error('Brand suggest error:', err)
-  }
+  clearTimeout(brandDebounceTimer)
+  brandDebounceTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/car-brand-suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, count: 20 })
+      })
+      const data = await res.json()
+      brandSuggestions.value = data.suggestions || []
+    } catch {}
+  }, 300)
 }
 
 const selectBrand = async (brand) => {
@@ -355,9 +366,7 @@ const selectBrand = async (brand) => {
     const res = await fetch(`${API_BASE}/car-models?brand_name=${encodeURIComponent(brand.value)}`)
     const data = await res.json()
     if (data.success) allModelsForBrand.value = data.models
-  } catch (err) {
-    console.error('Model load error:', err)
-  }
+  } catch {}
 }
 
 const onModelInput = () => {
@@ -407,9 +416,7 @@ const validateModel = async () => {
       errorMessage.value = data.error
       setTimeout(() => errorMessage.value = null, 3000)
     }
-  } catch (err) {
-    console.error('Validation error:', err)
-  }
+  } catch {}
 }
 
 const acceptModelSuggestion = () => {
@@ -529,9 +536,8 @@ const handleSubmit = async () => {
     } else {
       errorMessage.value = data.error || 'Ошибка отправки'
     }
-  } catch (err) {
+  } catch {
     errorMessage.value = 'Ошибка соединения с сервером'
-    console.error(err)
   } finally {
     loading.value = false
   }
@@ -540,6 +546,10 @@ const handleSubmit = async () => {
 onMounted(() => {
   fetchCategories()
   fetchServices()
+  fetch(`${API_BASE}/settings`)
+    .then(r => r.json())
+    .then(d => { if (d.success && d.settings.privacy_pdf_url) privacyPdfUrl.value = d.settings.privacy_pdf_url })
+    .catch(() => {})
 })
 </script>
 
