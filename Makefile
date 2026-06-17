@@ -1,13 +1,22 @@
 -include .env
 export
 
-.PHONY: up down init
+.PHONY: up down init build-frontend prod
 
 up:
 	docker compose up -d
 
 down:
 	docker compose down
+
+build-frontend:
+	@echo "Сборка фронтенда (VITE_API_URL=$(VITE_API_URL))..."
+	docker compose run --rm --no-deps frontend npm run build
+	@echo "Готово: dist/"
+
+prod: build-frontend
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+	@echo "Продакшен запущен. Фронтенд: http://localhost:5173 | API: http://localhost:8000"
 
 init:
 	@echo "Установка npm-зависимостей..."
