@@ -22,7 +22,7 @@
             <!-- Выбор услуг по категориям -->
             <div class="flex flex-col lg:flex-row gap-8">
               <div class="lg:w-1/3">
-                <h3 class="text-xl font-semibold mb-4 border-l-2 border-[#fc9303] pl-3">Категории</h3>
+                <h3 class="text-xl font-semibold mb-4 border-l-2 border-[#fc9303] pl-3">Категории *</h3>
                 <div class="space-y-3">
                   <button
                     v-for="cat in categories"
@@ -183,7 +183,7 @@
               </label>
             </div>
 
-            <button type="submit" :disabled="loading" class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-5 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50">
+            <button type="submit" :disabled="loading || !isFormValid" class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-5 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed">
               {{ loading ? 'Отправка...' : 'Отправить заявку' }}
             </button>
           </form>
@@ -302,6 +302,15 @@ const modelSuggestions = ref([])
 
 // Минимальная дата
 const minDate = new Date().toISOString().split('T')[0]
+
+const isFormValid = computed(() =>
+  selectedServices.value.length > 0 &&
+  form.value.name.trim().length > 0 &&
+  form.value.phone.replace(/\D/g, '').length >= 11 &&
+  carBrandQuery.value.trim().length > 0 &&
+  form.value.carModel.trim().length > 0 &&
+  agreed.value
+)
 
 // API вызовы
 const fetchCategories = async () => {
