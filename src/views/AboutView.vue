@@ -84,7 +84,7 @@ const principles = [
             <div class="relative w-full max-w-md mx-auto">
               <div class="absolute -inset-1 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-2xl blur opacity-30 group-hover:opacity-70 transition duration-500"></div>
               <div class="relative rounded-2xl overflow-hidden">
-                <img :src="igorPhoto" alt="Игорь Шетогубов" class="w-full h-auto object-contain rounded-2xl">
+                <img :src="igorPhoto" alt="Игорь Шетогубов" loading="lazy" class="w-full h-auto object-contain rounded-2xl">
               </div>
             </div>
           </div>
@@ -96,14 +96,13 @@ const principles = [
             </div>
             <div class="h-px w-16 bg-gradient-to-r from-[#fc9303] to-transparent"></div>
             <p class="text-gray-300 text-lg leading-relaxed text-justify">Меня зовут Игорь Шетогубов, я создатель и руководитель одной из первых в регионе профессиональной тюнинг-студии «Akita Studio».</p>
-            <!-- Текст цитаты без кавычек и с обычным стилем -->
             <p class="text-gray-300 text-lg leading-relaxed text-justify">«Akita Studio» — это не просто тюнинг-студия с 10-летним опытом, это команда экспертов, любящих своё дело. Мы используем только самые современные технологии и профессиональные средства для достижения безупречного результата. Мы умеем превосходить ожидания и создавать для вас автомобиль мечты.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- НОВЫЙ БЛОК: НАШИ ПРИНЦИПЫ (карточки одинаковой высоты) -->
+    <!-- Наши принципы -->
     <section class="py-32 relative overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-b from-[#4d4d4d]/10 to-black"></div>
       <div class="container mx-auto px-4 relative z-10">
@@ -128,7 +127,7 @@ const principles = [
       </div>
     </section>
 
-    <!-- ПЯТЫЙ ЭКРАН: Манифест (без значков поверх видео) -->
+    <!-- Наша философия -->
     <section class="py-32 bg-gradient-to-b from-[#4d4d4d]/20 to-black">
       <div class="container mx-auto px-4">
         <h2 class="text-5xl md:text-6xl font-bold text-center mb-20">
