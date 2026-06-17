@@ -9,6 +9,7 @@ useHead({
     { name: 'description', content: 'Адрес студии Akita Studio: Хабаровск, ул. Кавказская 35/5. Телефон, email и форма обратной связи. Работаем ежедневно с 10:00 до 20:00. Запишитесь на профессиональный детейлинг прямо сейчас!' },
     { property: 'og:title', content: 'Контакты Akita Studio — Хабаровск, ул. Кавказская 35/5' },
     { property: 'og:description', content: 'Адрес: Хабаровск, ул. Кавказская 35/5. Телефон и email студии детейлинга Akita Studio.' },
+    { property: 'og:type', content: 'website' },
     { property: 'og:url', content: 'https://akita-studio.ru/contacts' },
     { property: 'og:image', content: 'https://akita-studio.ru/og-image.webp' },
     { property: 'og:image:width', content: '1080' },
@@ -29,28 +30,32 @@ const contactMethods = [
     title: 'Позвонить',
     value: '+7 909 802-98-68',
     link: 'tel:+79098029868',
-    color: 'from-green-500/20 to-transparent'
+    color: 'from-green-500/20 to-transparent',
+    external: false
   },
   {
     icon: '💬',
     title: 'Telegram',
     value: '@akita_auto',
     link: 'https://t.me/akita_auto',
-    color: 'from-blue-500/20 to-transparent'
+    color: 'from-blue-500/20 to-transparent',
+    external: true
   },
   {
     icon: '📱',
     title: 'WhatsApp',
     value: '+7 909 802-98-68',
     link: 'https://wa.me/79098029868',
-    color: 'from-green-400/20 to-transparent'
+    color: 'from-green-400/20 to-transparent',
+    external: true
   },
   {
     icon: '✉️',
     title: 'Электронная почта',
     value: 'auto.akita.studio@gmail.com',
     link: 'mailto:auto.akita.studio@gmail.com',
-    color: 'from-red-500/20 to-transparent'
+    color: 'from-red-500/20 to-transparent',
+    external: false
   }
 ]
 
@@ -66,18 +71,17 @@ const isOpen = computed(() => {
   return hour >= 10 && hour < 20
 })
 
-// Для параллакс-эффекта на карте
-const mouseX = ref(0)
-const mouseY = ref(0)
 const mapTilt = ref({ x: 0, y: 0 })
+let rafId = null
 
 const handleMouseMove = (e) => {
-  mouseX.value = (e.clientX / window.innerWidth - 0.5) * 0.05
-  mouseY.value = (e.clientY / window.innerHeight - 0.5) * 0.05
-  mapTilt.value = {
-    x: mouseY.value * 10,
-    y: mouseX.value * 10
-  }
+  if (rafId) return
+  rafId = requestAnimationFrame(() => {
+    const x = (e.clientY / window.innerHeight - 0.5) * 0.5
+    const y = (e.clientX / window.innerWidth - 0.5) * 0.5
+    mapTilt.value = { x, y }
+    rafId = null
+  })
 }
 
 onMounted(() => {
@@ -87,6 +91,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('mousemove', handleMouseMove)
+  if (rafId) cancelAnimationFrame(rafId)
   clearInterval(clockTimer)
 })
 </script>
@@ -94,9 +99,9 @@ onUnmounted(() => {
 <template>
   <div class="contacts-page bg-black text-white">
     
-    <!-- ЭКРАН 1: Герой с адресом (без изменений) -->
+    <!-- Герой -->
     <section class="relative h-screen flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline preload="none" class="absolute inset-0 w-full h-full object-cover opacity-40">
+      <video autoplay muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-40">
         <source src="@/assets/Video/portfolio2.mp4" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black"></div>
@@ -113,7 +118,7 @@ onUnmounted(() => {
       <div class="absolute bottom-1/4 left-1/4 w-96 h-96 bg-[#ff6b00] rounded-full filter blur-[150px] opacity-10"></div>
     </section>
 
-    <!-- ЭКРАН 2: Карта (без карточек-подсказок) -->
+    <!-- Карта -->
     <section class="pt-16 pb-8 relative overflow-hidden">
       <div class="site-container mx-auto px-4">
         <h2 class="text-4xl md:text-5xl font-bold text-center mb-16">
@@ -125,14 +130,14 @@ onUnmounted(() => {
             <div class="relative w-full h-[400px] md:h-[500px]">
               <iframe src="https://yandex.ru/map-widget/v1/?um=constructor%3A800b56c6d1df7d01e5c583c9b85fd3bf00d3c6c10408a95691382a2a63f77274&amp;source=constructor"
                       class="absolute top-0 left-0 w-full h-full border-0" allowfullscreen loading="lazy"
-                      title="Akita Studio на карте" style="filter: invert(90%) hue-rotate(180deg);"></iframe>
+                      title="Akita Studio на карте"></iframe>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ЭКРАН 3: Соцсети (только ссылки, без левых новостей) -->
+    <!-- Соцсети -->
     <section class="pt-8 pb-16 bg-gradient-to-b from-black to-[#4d4d4d]/20">
       <div class="site-container mx-auto px-4">
         <h2 class="text-4xl md:text-5xl font-bold text-center mb-16">
@@ -175,11 +180,11 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- ЭКРАН 4: Режим работы + контакты + связаться с нами -->
+    <!-- Режим работы и контакты -->
     <section class="py-12">
       <div class="site-container mx-auto px-4">
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 max-w-5xl mx-auto">
-          <!-- Левая колонка: Режим работы -->
+          <!-- Режим работы -->
           <div class="bg-gray-900/30 backdrop-blur-sm rounded-2xl border border-gray-800 p-8 text-center">
             <h2 class="text-3xl md:text-4xl font-bold mb-8">
               <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Режим работы</span>
@@ -202,16 +207,17 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Правая колонка: Связаться с нами (Telegram, WhatsApp) -->
+          <!-- Связаться с нами -->
           <div class="bg-gray-900/30 backdrop-blur-sm rounded-2xl border border-gray-800 p-8">
             <h2 class="text-3xl md:text-4xl font-bold text-center mb-8">
               <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Связаться с нами</span>
             </h2>
             <div class="space-y-4">
               <a v-for="method in contactMethods" :key="method.title"
-                 :href="method.link" target="_blank" rel="noopener noreferrer"
+                 :href="method.link"
+                 v-bind="method.external ? { target: '_blank', rel: 'noopener noreferrer' } : {}"
                  class="flex items-center gap-5 p-5 rounded-xl border border-gray-800 hover:border-[#fc9303] transition-all duration-300 group hover:-translate-x-1">
-                <div class="w-14 h-14 rounded-full bg-gradient-to-br flex items-center justify-center text-2xl group-hover:scale-110 transition-transform" :class="method.color">
+                <div aria-hidden="true" class="w-14 h-14 rounded-full bg-gradient-to-br flex items-center justify-center text-2xl group-hover:scale-110 transition-transform" :class="method.color">
                   {{ method.icon }}
                 </div>
                 <div>
@@ -225,9 +231,9 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <!-- ФИНАЛЬНЫЙ ЭКРАН: До встречи (без изменений) -->
+    <!-- CTA -->
     <section class="relative py-20 flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline class="absolute inset-0 w-full h-full object-cover opacity-20">
+      <video autoplay muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-20">
         <source src="@/assets/Video/portfolio3.mp4" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-radial from-transparent via-black to-black"></div>
