@@ -25,6 +25,7 @@
           <!-- Кнопка "Все" -->
           <button
             @click="activeFilter = 'all'"
+            :aria-pressed="activeFilter === 'all'"
             class="filter-btn px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300"
             :class="activeFilter === 'all' ? 'active' : 'inactive'"
           >
@@ -37,6 +38,7 @@
             v-for="cat in uniqueCategories"
             :key="cat.id"
             @click="activeFilter = cat.name"
+            :aria-pressed="activeFilter === cat.name"
             class="filter-btn px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300"
             :class="activeFilter === cat.name ? 'active' : 'inactive'"
           >
