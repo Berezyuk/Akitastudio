@@ -1,5 +1,4 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
 import { useHead } from '@unhead/vue'
 
 useHead({
@@ -7,6 +6,7 @@ useHead({
   link: [{ rel: 'canonical', href: 'https://akita-studio.ru/about' }],
   meta: [
     { name: 'description', content: 'Akita Studio — команда профессионалов с 2015 года. Используем премиальные материалы и современное оборудование. Качество, проверенное временем.' },
+    { property: 'og:type', content: 'website' },
     { property: 'og:title', content: 'О студии Akita Studio — Тюнинг-студия в Хабаровске' },
     { property: 'og:description', content: 'Akita Studio — команда профессионалов с 2015 года. Используем премиальные материалы и современное оборудование.' },
     { property: 'og:url', content: 'https://akita-studio.ru/about' },
@@ -20,13 +20,10 @@ useHead({
 import washMotorVideo from "@/assets/Video/Wash_motor.mp4"
 import portfolio2Video from "@/assets/Video/portfolio2.mp4"
 import portfolio3Video from "@/assets/Video/portfolio3.mp4"
-import portfolio4Video from "@/assets/Video/portfolio4.mp4"
 import portfolio5Video from "@/assets/Video/portfolio5.mp4"
 
 // Импорт фото основателя
 import igorPhoto from "@/assets/Images/Igor.png"
-
-const scrollProgress = ref(0)
 
 const principles = [
   {
@@ -49,19 +46,7 @@ const principles = [
   }
 ]
 
-const handleScroll = () => {
-  const scrollY = window.scrollY
-  const maxScroll = document.documentElement.scrollHeight - window.innerHeight
-  scrollProgress.value = scrollY / maxScroll
-}
 
-onMounted(() => {
-  window.addEventListener('scroll', handleScroll)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
-})
 </script>
 
 <template>
@@ -69,7 +54,7 @@ onUnmounted(() => {
     
     <!-- ПЕРВЫЙ ЭКРАН: Герой -->
     <section class="relative h-screen flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline preload="none" class="absolute inset-0 w-full h-full object-cover opacity-40">
+      <video autoplay muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-40">
         <source :src="portfolio5Video" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black"></div>
@@ -134,7 +119,7 @@ onUnmounted(() => {
                class="group relative bg-gray-900/40 backdrop-blur-sm rounded-2xl p-8 border border-gray-800 hover:border-[#fc9303] transition-all duration-500 hover:-translate-y-2 flex flex-col">
             <div class="absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500" :class="item.color"></div>
             <div class="relative z-10 flex flex-col h-full">
-              <div class="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300 text-center">{{ item.icon }}</div>
+              <div aria-hidden="true" class="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300 text-center">{{ item.icon }}</div>
               <h3 class="text-2xl font-bold text-white mb-4 text-center min-h-[4rem] flex items-center justify-center">{{ item.title }}</h3>
               <p class="text-gray-400 leading-relaxed text-justify flex-grow">{{ item.description }}</p>
             </div>
@@ -154,7 +139,7 @@ onUnmounted(() => {
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="washMotorVideo" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
+                <video :src="washMotorVideo" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Мы не моем.</h3>
@@ -164,7 +149,7 @@ onUnmounted(() => {
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow animation-delay-300"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="portfolio3Video" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
+                <video :src="portfolio3Video" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Каждая деталь</h3>
@@ -174,7 +159,7 @@ onUnmounted(() => {
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow animation-delay-600"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="portfolio5Video" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
+                <video :src="portfolio5Video" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Ваша машина</h3>
@@ -186,7 +171,7 @@ onUnmounted(() => {
 
     <!-- ФИНАЛЬНЫЙ ЭКРАН: CTA -->
     <section class="relative h-screen flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline preload="none" class="absolute inset-0 w-full h-full object-cover opacity-30">
+      <video autoplay muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-30">
         <source :src="portfolio2Video" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-radial from-transparent via-black to-black"></div>
@@ -212,25 +197,11 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-@keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-@keyframes spin-slow-reverse {
-  from { transform: rotate(360deg); }
-  to { transform: rotate(0deg); }
-}
 @keyframes ping-slow {
   75%, 100% {
     transform: scale(1.5);
     opacity: 0;
   }
-}
-.animate-spin-slow {
-  animation: spin-slow 8s linear infinite;
-}
-.animate-spin-slow-reverse {
-  animation: spin-slow-reverse 10s linear infinite;
 }
 .animate-ping-slow {
   animation: ping-slow 3s cubic-bezier(0, 0, 0.2, 1) infinite;
@@ -246,14 +217,6 @@ onUnmounted(() => {
 }
 .bg-gradient-radial {
   background: radial-gradient(circle at center, transparent 0%, black 100%);
-}
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.3s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
 }
 @media (max-width: 768px) {
   h1 {
