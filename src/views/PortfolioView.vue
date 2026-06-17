@@ -64,129 +64,40 @@
 
         <!-- Анимированная сетка -->
         <TransitionGroup v-if="!fetchError"
-          name="portfolio-grid" 
-          tag="div" 
-          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
+          name="portfolio-grid"
+          tag="div"
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 justify-items-center"
         >
           <div
-            v-for="(item, index) in filteredItems"
+            v-for="item in filteredItems"
             :key="item.id"
-            @mouseenter="handleMouseEnter(item, getOriginalIndex(item.id))"
-            @mouseleave="handleMouseLeave(getOriginalIndex(item.id))"
-            class="group relative aspect-[3/4] rounded-2xl overflow-hidden cursor-default portfolio-item"
+            class="portfolio_card"
           >
             <video
               v-if="isVideo(item.video_url)"
-              :ref="(el) => setVideoRef(el, getOriginalIndex(item.id))"
-              :src="item.video_url"
-              class="absolute inset-0 w-full h-full object-cover transition-all duration-700"
-              :class="{
-                'scale-110 brightness-110': hoveredItem === item.id,
-                'scale-100': hoveredItem !== item.id
-              }"
-              loop
+              :ref="el => setPortfolioVideoRef(el, item.id)"
               muted
+              loop
               playsinline
               preload="none"
-            ></video>
+              class="portfolio_img"
+              v-show="!portfolioVideoErrors[item.id]"
+              @error="portfolioVideoErrors[item.id] = true"
+            >
+              <source :src="item.video_url" type="video/mp4" />
+            </video>
             <img
               v-else
               :src="getMediaSrc(item.video_url)"
               :alt="item.category_name"
               loading="lazy"
-              class="absolute inset-0 w-full h-full object-cover transition-all duration-700"
-              :class="{
-                'scale-110 brightness-110': hoveredItem === item.id,
-                'scale-100': hoveredItem !== item.id
-              }"
+              class="portfolio_img"
             />
-
-            <div 
-              class="absolute inset-0 transition-opacity duration-500"
-              :class="[
-                hoveredItem === item.id 
-                  ? 'bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-90' 
-                  : 'bg-gradient-to-t from-black via-black/50 to-transparent opacity-60'
-              ]"
-            ></div>
-
-            <div 
-              v-if="hoveredItem === item.id"
-              class="absolute -inset-2 bg-gradient-to-r from-[#fc9303]/20 to-[#ff6b00]/20 blur-xl rounded-3xl -z-10"
-            ></div>
-
-            <div class="absolute inset-0 p-6 flex flex-col justify-end">
-              <span
-                v-if="item.service_name"
-                class="text-xs font-medium text-[#fc9303] mb-2 transition-all duration-500"
-                :class="[
-                  hoveredItem === item.id
-                    ? 'opacity-100 translate-y-0'
-                    : 'opacity-0 translate-y-4'
-                ]"
-              >
-                {{ item.service_name }}
-              </span>
-
-              <h3
-                class="text-2xl font-bold text-white mb-2 transition-all duration-500"
-                :class="[
-                  hoveredItem === item.id
-                    ? 'translate-y-0'
-                    : 'translate-y-4'
-                ]"
-              >
-                {{ item.category_name }}
-              </h3>
-
-              <!-- Кнопка звука -->
-              <button
-                v-if="hoveredItem === item.id"
-                @click.stop="toggleSound(item, getOriginalIndex(item.id), $event)"
-                :aria-label="soundEnabled[item.id] ? 'Выключить звук' : 'Включить звук'"
-              class="absolute top-4 left-4 flex items-center gap-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 hover:border-[#fc9303] transition-all duration-300 cursor-pointer group/btn"
-              >
-                <svg 
-                  v-if="soundEnabled[item.id]"
-                  class="w-4 h-4 text-[#fc9303]" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
-                </svg>
-                <svg 
-                  v-else
-                  class="w-4 h-4 text-gray-400" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
-                </svg>
-                <span class="text-xs text-white group-hover/btn:text-[#fc9303] transition-colors">
-                  {{ soundEnabled[item.id] ? 'Звук вкл' : 'Звук выкл' }}
-                </span>
-              </button>
-
-              <!-- Индикатор звука -->
-              <div 
-                v-if="soundEnabled[item.id] && hoveredItem !== item.id"
-                class="absolute top-4 left-4 w-6 h-6 bg-[#fc9303] rounded-full flex items-center justify-center"
-              >
-                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
-                </svg>
-              </div>
-            </div>
-
-            <!-- Индикатор "живого" видео -->
-            <div 
-              class="absolute top-4 right-4 w-3 h-3 transition-opacity duration-300"
-              :class="{ 'opacity-0': hoveredItem === item.id }"
-            >
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#fc9303] opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-3 w-3 bg-[#fc9303]"></span>
+            <h4 class="portfolio_title">{{ item.category_name }}</h4>
+            <div class="portfolio_hover-content">
+              <ul class="portfolio_list">
+                <li v-if="item.service_name">{{ item.service_name }}</li>
+              </ul>
             </div>
           </div>
         </TransitionGroup>
@@ -203,7 +114,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useHead } from '@unhead/vue'
 import { API_BASE } from '@/config/api.js'
 
@@ -225,10 +136,11 @@ useHead({
 const portfolioItems = ref([])
 const loading = ref(true)
 const fetchError = ref(false)
-const hoveredItem = ref(null)
-const videoRefs = ref([])
-const soundEnabled = ref({})
 const activeFilter = ref('all')
+
+const portfolioVideoRefs = ref({})
+const portfolioVideoErrors = ref({})
+let portfolioObserver = null
 
 // Получаем уникальные категории из портфолио
 const uniqueCategories = computed(() => {
@@ -252,10 +164,55 @@ const filteredItems = computed(() => {
   return portfolioItems.value.filter(item => item.category_name === activeFilter.value)
 })
 
-// Найти оригинальный индекс элемента по ID
-const getOriginalIndex = (itemId) => {
-  return portfolioItems.value.findIndex(item => item.id === itemId)
+const setPortfolioVideoRef = (el, id) => {
+  if (el) portfolioVideoRefs.value[id] = el
 }
+
+const setupPortfolioObserver = () => {
+  if (portfolioObserver) portfolioObserver.disconnect()
+
+  const videoIdMap = new WeakMap()
+  filteredItems.value.forEach((item) => {
+    const video = portfolioVideoRefs.value[item.id]
+    if (video) videoIdMap.set(video, item.id)
+  })
+
+  const tryPlay = (video, id, attemptsLeft) => {
+    video.play().catch(() => {
+      if (attemptsLeft > 0) {
+        setTimeout(() => tryPlay(video, id, attemptsLeft - 1), 400)
+      } else if (id != null) {
+        portfolioVideoErrors.value = { ...portfolioVideoErrors.value, [id]: true }
+        portfolioObserver?.unobserve(video)
+      }
+    })
+  }
+
+  portfolioObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target
+        const id = videoIdMap.get(video)
+        if (entry.isIntersecting) {
+          tryPlay(video, id, 2)
+        } else {
+          video.pause()
+        }
+      })
+    },
+    { threshold: 0.3 }
+  )
+
+  filteredItems.value.forEach((item) => {
+    const video = portfolioVideoRefs.value[item.id]
+    if (video) portfolioObserver.observe(video)
+  })
+}
+
+watch(filteredItems, async () => {
+  await nextTick()
+  setupPortfolioObserver()
+})
 
 const fetchPortfolio = async () => {
   loading.value = true
@@ -285,69 +242,122 @@ const getMediaSrc = (url) => {
   return url
 }
 
-const handleMouseEnter = (item, index) => {
-  hoveredItem.value = item.id
-  if (!isVideo(item.video_url)) return
-  const video = videoRefs.value[index]
-  if (video) {
-    video.volume = soundEnabled.value[item.id] ? 0.3 : 0
-    video.play().catch(() => {})
-  }
-}
-
-const handleMouseLeave = (index) => {
-  hoveredItem.value = null
-  const video = videoRefs.value[index]
-  if (video) {
-    video.pause()
-    video.currentTime = 0
-  }
-}
-
-const toggleSound = (item, index, event) => {
-  event.stopPropagation()
-  const video = videoRefs.value[index]
-  if (video) {
-    const newState = !soundEnabled.value[item.id]
-    soundEnabled.value = { ...soundEnabled.value, [item.id]: newState }
-    video.volume = newState ? 0.3 : 0
-  }
-}
-
-const setVideoRef = (el, index) => {
-  if (el && index !== -1) {
-    videoRefs.value[index] = el
-  }
-}
-
 onMounted(() => {
   fetchPortfolio()
 })
 
 onUnmounted(() => {
-  videoRefs.value.forEach(video => {
-    if (video) {
-      video.pause()
-      video.src = ''
-    }
-  })
+  portfolioObserver?.disconnect()
 })
 </script>
 
 <style scoped>
-@keyframes ping {
-  75%, 100% {
-    transform: scale(2);
-    opacity: 0;
-  }
+.portfolio_card {
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 2 / 3;
+  margin: 0 auto;
+  text-align: center;
+  background-color: #4d4d4d;
+  overflow: hidden;
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.4s ease;
 }
 
-.animate-ping {
-  animation: ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+.portfolio_card:hover {
+  border: 1px solid #fc9303;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
 }
 
-.aspect-\[3\/4\] {
-  aspect-ratio: 3/4;
+.portfolio_img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: all 0.5s ease;
+}
+
+.portfolio_card:hover .portfolio_img {
+  filter: brightness(0.6);
+  transform: scale(1.05);
+}
+
+.portfolio_title {
+  color: white;
+  font-size: 18px;
+  padding: 15px 0;
+  margin: 0;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  transition: all 0.4s ease;
+  z-index: 2;
+  white-space: normal;
+  word-break: break-word;
+  hyphens: auto;
+}
+
+.portfolio_card:hover .portfolio_title {
+  top: 20px;
+  bottom: auto;
+  background: none;
+  text-decoration: underline;
+  text-decoration-color: #fc9303;
+  text-underline-offset: 5px;
+}
+
+.portfolio_hover-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.4s ease;
+  padding: 90px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  z-index: 1;
+}
+
+.portfolio_card:hover .portfolio_hover-content {
+  opacity: 1;
+  visibility: visible;
+}
+
+.portfolio_list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  color: white;
+  text-align: left;
+}
+
+.portfolio_list li {
+  padding: 8px 0 8px 20px;
+  font-size: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+}
+
+.portfolio_list li::before {
+  content: "•";
+  color: #fc9303;
+  font-size: 20px;
+  position: absolute;
+  left: 0;
+  top: 6px;
+}
+
+.portfolio_list li:last-child {
+  border-bottom: none;
 }
 
 /* Стили фильтров */
@@ -398,19 +408,7 @@ onUnmounted(() => {
   position: absolute;
 }
 
-/* Анимация для карточек при фильтрации */
-.portfolio-item {
-  transition: all 0.3s ease;
-}
-
 @media (max-width: 768px) {
-  .grid {
-    gap: 1rem;
-  }
-  .aspect-\[3\/4\] {
-    aspect-ratio: 2/3;
-  }
-  
   .filter-btn {
     padding: 0.5rem 1rem;
     font-size: 0.75rem;
