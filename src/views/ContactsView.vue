@@ -239,7 +239,7 @@ onUnmounted(() => {
       <div class="absolute inset-0 bg-gradient-radial from-transparent via-black to-black"></div>
       <div class="relative z-10 text-center px-4">
         <div class="mb-8">
-          <img src="@/assets/Images/Logo.svg" alt="Akita Studio" class="h-20 mx-auto opacity-50">
+          <img src="@/assets/Images/Logo.svg" alt="Akita Studio" loading="lazy" class="h-20 mx-auto opacity-50">
         </div>
         <h2 class="text-5xl md:text-7xl font-bold mb-6">
           <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">До встречи!</span>
