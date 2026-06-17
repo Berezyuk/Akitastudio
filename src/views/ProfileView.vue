@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import AdminDashboard from './admin/AdminDashboard.vue'
@@ -64,6 +64,11 @@ onMounted(async () => {
   }
   checkMobile()
   window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+  document.body.style.overflow = ''
 })
 
 const handleLogout = async () => {

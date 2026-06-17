@@ -395,7 +395,7 @@ const fetchStatuses = async () => {
     const res = await fetch(`${API_BASE}/admin/order-statuses`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) statuses.value = data.statuses
-  } catch (err) { console.error(err) }
+  } catch {}
 }
 
 const fetchOrders = async () => {
@@ -411,9 +411,7 @@ const fetchOrders = async () => {
       orders.value = data.orders
       pagination.value.total = data.total ?? orders.value.length
     }
-  } catch (err) {
-    console.error(err)
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -437,8 +435,7 @@ const updateStatus = async (orderId, newStatusId) => {
     } else {
       alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'))
     }
-  } catch (err) {
-    console.error(err)
+  } catch {
     alert('Ошибка соединения')
   }
 }

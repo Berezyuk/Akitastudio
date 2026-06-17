@@ -46,7 +46,7 @@ const fetchPortfolio = async () => {
     const res = await fetch(`${API_BASE}/admin/portfolio`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) portfolio.value = data.portfolio
-  } catch (err) { console.error(err) }
+  } catch {}
   finally { loading.value = false }
 }
 
@@ -55,7 +55,7 @@ const fetchCategories = async () => {
     const res = await fetch(`${API_BASE}/admin/service-categories`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) categories.value = data.categories
-  } catch (err) { console.error(err) }
+  } catch {}
 }
 
 const fetchServicesByCategory = async (categoryId) => {
@@ -64,7 +64,7 @@ const fetchServicesByCategory = async (categoryId) => {
     const res = await fetch(`${API_BASE}/admin/services-by-category/${categoryId}`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) services.value = data.services
-  } catch (err) { console.error(err) }
+  } catch {}
 }
 
 watch(() => form.value.category_id, (newVal) => {

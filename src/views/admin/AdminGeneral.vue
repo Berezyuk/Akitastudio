@@ -24,9 +24,7 @@ const fetchSettings = async () => {
       currentVideoUrl.value = data.settings.about_video_url || ''
       privacyPdfUrl.value = data.settings.privacy_pdf_url || ''
     }
-  } catch (e) {
-    console.error(e)
-  }
+  } catch {}
 }
 
 const onFileSelect = async (e) => {

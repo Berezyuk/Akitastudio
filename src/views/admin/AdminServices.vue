@@ -44,9 +44,7 @@ const fetchServices = async () => {
     const res = await fetch(`${API_BASE}/admin/services`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) services.value = data.services
-  } catch (err) {
-    console.error(err)
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -56,9 +54,7 @@ const fetchCategories = async () => {
     const res = await fetch(`${API_BASE}/admin/service-categories`, { credentials: 'include' })
     const data = await res.json()
     if (data.success) categories.value = data.categories
-  } catch (err) {
-    console.error(err)
-  }
+  } catch {}
 }
 
 const openAddModal = () => {

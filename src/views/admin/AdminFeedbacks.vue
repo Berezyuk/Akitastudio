@@ -159,9 +159,7 @@ const fetchFeedbacks = async () => {
       feedbacks.value = data.feedbacks
       pagination.value.total = data.total ?? feedbacks.value.length
     }
-  } catch (err) {
-    console.error('Fetch error:', err)
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -198,8 +196,7 @@ const saveChanges = async () => {
     } else {
       alert('Ошибка: ' + (data.error || 'Не удалось сохранить'))
     }
-  } catch (err) {
-    console.error(err)
+  } catch {
     alert('Ошибка соединения')
   }
 }
@@ -217,8 +214,7 @@ const deleteFeedback = async (id) => {
     } else {
       alert('Ошибка: ' + (data.error || 'Не удалось удалить'))
     }
-  } catch (err) {
-    console.error(err)
+  } catch {
     alert('Ошибка соединения')
   }
 }

@@ -275,6 +275,7 @@ const carBrandQuery = ref('')
 const brandSuggestions = ref([])
 const selectedBrandId = ref(null)
 const selectedBrandName = ref('')
+let brandDebounceTimer = null
 
 // Минимальная дата (сегодня)
 const minDate = new Date().toISOString().split('T')[0]
@@ -320,23 +321,24 @@ const validateDateTime = () => {
 }
 
 // Подсказки марок — через backend-прокси
-const fetchBrandSuggestions = async () => {
+const fetchBrandSuggestions = () => {
   const query = carBrandQuery.value.trim()
   if (!query) {
     brandSuggestions.value = []
     return
   }
-  try {
-    const res = await fetch(`${API_BASE}/car-brand-suggest`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, count: 20 })
-    })
-    const data = await res.json()
-    brandSuggestions.value = data.suggestions || []
-  } catch (err) {
-    console.error('Brand suggest error:', err)
-  }
+  clearTimeout(brandDebounceTimer)
+  brandDebounceTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/car-brand-suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, count: 20 })
+      })
+      const data = await res.json()
+      brandSuggestions.value = data.suggestions || []
+    } catch {}
+  }, 300)
 }
 
 const selectBrand = (brand) => {
@@ -358,9 +360,7 @@ const fetchClients = async () => {
       clients.value = data.clients
       pagination.value.total = data.total ?? clients.value.length
     }
-  } catch (err) {
-    console.error(err)
-  } finally {
+  } catch {} finally {
     loading.value = false
   }
 }
@@ -375,9 +375,7 @@ const fetchCategories = async () => {
     const res = await fetch(`${API_BASE}/categories`)
     const data = await res.json()
     if (data.success) categories.value = data.categories
-  } catch (err) {
-    console.error(err)
-  }
+  } catch {}
 }
 
 const fetchServices = async () => {
@@ -385,9 +383,7 @@ const fetchServices = async () => {
     const res = await fetch(`${API_BASE}/services`)
     const data = await res.json()
     if (data.success) services.value = data.services
-  } catch (err) {
-    console.error(err)
-  }
+  } catch {}
 }
 
 const debouncedFetch = () => {
@@ -415,8 +411,7 @@ const saveClient = async () => {
     } else {
       alert('Ошибка: ' + (data.error || 'Не удалось сохранить'))
     }
-  } catch (err) {
-    console.error(err)
+  } catch {
     alert('Ошибка соединения')
   }
 }
@@ -430,9 +425,7 @@ const viewDetails = async (client) => {
       clientOrders.value = data.orders
       showModal.value = true
     }
-  } catch (err) {
-    console.error(err)
-  }
+  } catch {}
 }
 
 const openCreateOrderModal = (client) => {
@@ -484,8 +477,7 @@ const submitNewOrder = async () => {
     } else {
       alert('Ошибка: ' + (data.error || 'Не удалось создать заказ'))
     }
-  } catch (err) {
-    console.error(err)
+  } catch {
     alert('Ошибка соединения')
   } finally {
     creatingOrder.value = false

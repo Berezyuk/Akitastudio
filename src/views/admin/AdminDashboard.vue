@@ -267,9 +267,7 @@ const fetchDashboard = async () => {
       popularServices.value = data.popular_services || [];
       if (data.chart_data) renderChart(data.chart_data);
     }
-  } catch (err) {
-    console.error(err);
-  }
+  } catch {}
 };
 
 const renderChart = (chartData) => {
