@@ -293,7 +293,7 @@ onMounted(() => {
               <div class="md:col-span-2 flex items-center gap-3 px-1">
                 <input id="show_on_home" v-model="form.show_on_home" type="checkbox" class="w-5 h-5 accent-[#fc9303] rounded flex-shrink-0 cursor-pointer" />
                 <label for="show_on_home" class="text-sm text-gray-300 cursor-pointer select-none">
-                  Показывать на главной странице <span class="text-gray-500">(макс. 5)</span>
+                  Показывать на главной странице <span class="text-gray-500">(макс. 4)</span>
                 </label>
               </div>
               <div>

@@ -403,7 +403,7 @@ onMounted(() => {
             <div class="flex items-center justify-between py-2">
               <div>
                 <p class="text-sm font-medium">Показывать на главной странице</p>
-                <p class="text-xs text-gray-500">Карточка категории появится в секции «Наши услуги» <span class="text-gray-600">(макс. 5)</span></p>
+                <p class="text-xs text-gray-500">Карточка категории появится в секции «Наши услуги» <span class="text-gray-600">(макс. 4)</span></p>
               </div>
               <button @click="catForm.show_on_home = !catForm.show_on_home"
                       class="relative w-12 h-6 rounded-full transition-colors flex-shrink-0"
