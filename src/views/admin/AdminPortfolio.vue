@@ -258,7 +258,7 @@ onMounted(() => {
               >
                 <div v-if="uploading" class="flex flex-col items-center gap-2">
                   <div class="w-8 h-8 border-4 border-[#fc9303] border-t-transparent rounded-full animate-spin"></div>
-                  <p class="text-sm text-gray-400">Загружаю в MinIO...</p>
+                  <p class="text-sm text-gray-400">Загрузка файла...</p>
                 </div>
                 <div v-else-if="mediaFile && form.video_url" class="text-sm">
                   <p class="text-green-400 font-medium">✓ Файл загружен</p>

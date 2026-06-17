@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 import AlertModal from '@/components/admin/AlertModal.vue'
@@ -41,6 +41,10 @@ const hoursToMinutes = (hours) => Math.round(hours * 60)
 
 watch(durationHours, (v) => { form.value.duration_minutes = hoursToMinutes(v) })
 watch(() => form.value.duration_minutes, (v) => { if (v) durationHours.value = minutesToHours(v) })
+
+const isServiceFormValid = computed(() =>
+  !!form.value.name.trim() && !!form.value.category_id
+)
 
 const fetchServices = async () => {
   loading.value = true
@@ -124,6 +128,7 @@ const showCatModal = ref(false)
 const showCatLimitModal = ref(false)
 const editingCat = ref(null)
 const catForm = ref({ name: '', sort_order: 0, icon: '', show_on_home: false })
+const isCatFormValid = computed(() => !!catForm.value.name.trim())
 const catMediaUploading = ref(false)
 const catMediaPreview = ref(null)
 const catError = ref('')
@@ -462,8 +467,9 @@ onMounted(() => {
               Отмена
             </button>
             <button @click="saveCat"
-                    class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold hover:opacity-90 transition">
-              Сохранить
+                    :disabled="catMediaUploading || !isCatFormValid"
+                    class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed">
+              {{ catMediaUploading ? 'Загрузка...' : 'Сохранить' }}
             </button>
           </div>
         </div>
@@ -541,7 +547,8 @@ onMounted(() => {
               Отмена
             </button>
             <button @click="saveService"
-                    class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold">
+                    :disabled="!isServiceFormValid"
+                    class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
               Сохранить
             </button>
           </div>

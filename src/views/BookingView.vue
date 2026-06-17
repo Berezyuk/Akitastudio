@@ -244,6 +244,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { API_BASE } from '@/config/api.js'
 import { useAuthStore } from '@/stores/auth'
@@ -264,6 +265,7 @@ useHead({
 })
 
 const authStore = useAuthStore()
+const route = useRoute()
 
 // Данные
 const services = ref([])
@@ -578,9 +580,18 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(() => {
-  fetchCategories()
-  fetchServices()
+onMounted(async () => {
+  await Promise.all([fetchCategories(), fetchServices()])
+
+  const preselectedId = route.query.service_id ? Number(route.query.service_id) : null
+  if (preselectedId) {
+    const service = services.value.find(s => s.service_id === preselectedId)
+    if (service) {
+      selectedCategoryId.value = service.category_id
+      selectedServices.value = [preselectedId]
+    }
+  }
+
   fetch(`${API_BASE}/settings`)
     .then(r => r.json())
     .then(d => { if (d.success && d.settings.privacy_pdf_url) privacyPdfUrl.value = d.settings.privacy_pdf_url })
