@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import AlertModal from '@/components/admin/AlertModal.vue'
 
 // ============================================
 // ДАННЫЕ ТОВАРОВ
@@ -333,8 +334,11 @@ const updateQuantity = (itemId, delta) => {
   }
 }
 
+const alertModal = ref({ show: false, title: '', message: '' })
+const showAlert = (title, message = '') => { alertModal.value = { show: true, title, message } }
+
 const checkout = () => {
-  alert('Оформление заказа — в разработке. Свяжитесь с нами по телефону для заказа!')
+  showAlert('Оформление заказа', 'Функция в разработке. Свяжитесь с нами по телефону для оформления заказа.', )
 }
 
 // Активная категория
@@ -659,6 +663,13 @@ const filteredProducts = computed(() => {
         </div>
       </div>
     </section>
+    <AlertModal
+      :show="alertModal.show"
+      :title="alertModal.title"
+      :message="alertModal.message"
+      type="info"
+      @close="alertModal.show = false"
+    />
   </div>
 </template>
 

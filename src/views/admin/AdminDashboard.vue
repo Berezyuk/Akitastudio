@@ -224,7 +224,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 import Chart from "chart.js/auto";
 import { API_BASE } from '@/config/api.js'
 
@@ -384,5 +384,9 @@ const getStatusClass = (statusName) => {
 
 onMounted(() => {
   fetchDashboard();
+});
+
+onUnmounted(() => {
+  if (chartInstance) chartInstance.destroy();
 });
 </script>

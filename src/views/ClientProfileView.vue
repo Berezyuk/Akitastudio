@@ -219,6 +219,21 @@
         </div>
       </div>
     </Transition>
+
+    <AlertModal
+      :show="alertModal.show"
+      :title="alertModal.title"
+      :message="alertModal.message"
+      @close="alertModal.show = false"
+    />
+
+    <ConfirmModal
+      :show="confirmModal.show"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      @confirm="onConfirmOk"
+      @cancel="onConfirmCancel"
+    />
   </div>
 </template>
 
@@ -226,6 +241,8 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE } from '@/config/api.js'
+import AlertModal from '@/components/admin/AlertModal.vue'
+import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
 const authStore = useAuthStore()
 const activeTab = ref('orders')
@@ -264,6 +281,18 @@ const loading = ref({
 const rescheduleModal = ref({ open: false, orderId: null })
 const rescheduleForm = ref({ desired_date: '', desired_time: '' })
 
+const alertModal = ref({ show: false, title: '', message: '' })
+const showAlert = (title, message = '') => { alertModal.value = { show: true, title, message } }
+
+const confirmModal = ref({ show: false, title: '', message: '' })
+let confirmResolve = null
+const askConfirm = (title, message = '') => new Promise(resolve => {
+  confirmModal.value = { show: true, title, message }
+  confirmResolve = resolve
+})
+const onConfirmOk = () => { confirmModal.value.show = false; confirmResolve?.(true) }
+const onConfirmCancel = () => { confirmModal.value.show = false; confirmResolve?.(false) }
+
 const minDate = new Date().toISOString().split('T')[0]
 
 // API вызовы
@@ -279,9 +308,7 @@ const fetchOrders = async () => {
         await fetchOrderPhotos(order.order_id)
       }
     }
-  } catch (err) {
-    console.error(err)
-  } finally {
+  } catch {} finally {
     loading.value.orders = false
   }
 }
@@ -295,9 +322,7 @@ const fetchProfile = async () => {
       profile.value = data.profile
       profileForm.value = { ...data.profile }
     }
-  } catch (err) {
-    console.error(err)
-  } finally {
+  } catch {} finally {
     loading.value.profile = false
   }
 }
@@ -315,9 +340,7 @@ const fetchProgress = async () => {
       })
       progressData.value = progress
     }
-  } catch (err) {
-    console.error(err)
-  } finally {
+  } catch {} finally {
     loading.value.progress = false
   }
 }
@@ -329,9 +352,7 @@ const fetchOrderPhotos = async (orderId) => {
     if (data.success) {
       orderPhotos.value[orderId] = data.photos
     }
-  } catch (err) {
-    console.error(err)
-  }
+  } catch {}
 }
 
 const getOrderProgress = (orderId) => {
@@ -356,17 +377,17 @@ const updateProfile = async () => {
     if (data.success) {
       await fetchProfile()
     } else {
-      alert(data.error || 'Ошибка сохранения')
+      showAlert('Ошибка сохранения', data.error || '')
     }
-  } catch (err) {
-    alert('Ошибка соединения')
+  } catch {
+    showAlert('Ошибка соединения')
   } finally {
     loading.value.profile = false
   }
 }
 
 const cancelOrder = async (orderId) => {
-  if (!confirm('Вы уверены, что хотите отменить запись?')) return
+  if (!await askConfirm('Отменить запись?', 'Вы уверены, что хотите отменить запись?')) return
 
   try {
     const res = await fetch(`${API_BASE}/user/orders/${orderId}/cancel`, {
@@ -377,10 +398,10 @@ const cancelOrder = async (orderId) => {
     if (data.success) {
       await fetchOrders()
     } else {
-      alert(data.error || 'Не удалось отменить запись')
+      showAlert('Ошибка', data.error || 'Не удалось отменить запись')
     }
-  } catch (err) {
-    alert('Ошибка соединения')
+  } catch {
+    showAlert('Ошибка соединения')
   }
 }
 
@@ -396,7 +417,7 @@ const closeRescheduleModal = () => {
 
 const submitReschedule = async () => {
   if (!rescheduleForm.value.desired_date || !rescheduleForm.value.desired_time) {
-    alert('Заполните дату и время')
+    showAlert('Заполните поля', 'Укажите дату и время для переноса.')
     return
   }
 
@@ -413,10 +434,10 @@ const submitReschedule = async () => {
       closeRescheduleModal()
       await fetchOrders()
     } else {
-      alert(data.error || 'Не удалось перенести запись')
+      showAlert('Ошибка', data.error || 'Не удалось перенести запись')
     }
-  } catch (err) {
-    alert('Ошибка соединения')
+  } catch {
+    showAlert('Ошибка соединения')
   } finally {
     loading.value.reschedule = false
   }

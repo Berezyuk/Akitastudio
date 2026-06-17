@@ -104,6 +104,21 @@
       </div>
     </div>
 
+    <AlertModal
+      :show="alertModal.show"
+      :title="alertModal.title"
+      :message="alertModal.message"
+      @close="alertModal.show = false"
+    />
+
+    <ConfirmModal
+      :show="confirmModal.show"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      @confirm="onConfirmOk"
+      @cancel="onConfirmCancel"
+    />
+
     <!-- Лайтбокс для просмотра фото -->
     <div v-if="lightboxPhoto" class="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center" @click="lightboxPhoto = null">
       <div class="max-w-[90vw] max-h-[90vh]">
@@ -118,6 +133,8 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
+import AlertModal from '@/components/admin/AlertModal.vue'
+import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
 const props = defineProps({
   visible: Boolean,
@@ -135,6 +152,18 @@ const fileInput = ref(null)
 const newPhotoCaption = ref('')
 const lightboxPhoto = ref(null)
 
+const alertModal = ref({ show: false, title: '', message: '' })
+const showAlert = (title, message = '') => { alertModal.value = { show: true, title, message } }
+
+const confirmModal = ref({ show: false, title: '', message: '' })
+let confirmResolve = null
+const askConfirm = (title, message = '') => new Promise(resolve => {
+  confirmModal.value = { show: true, title, message }
+  confirmResolve = resolve
+})
+const onConfirmOk = () => { confirmModal.value.show = false; confirmResolve?.(true) }
+const onConfirmCancel = () => { confirmModal.value.show = false; confirmResolve?.(false) }
+
 // Загрузка услуг
 const fetchServices = async () => {
   if (!props.order) return
@@ -145,9 +174,7 @@ const fetchServices = async () => {
     })
     const data = await res.json()
     if (data.success) services.value = data.services
-  } catch (err) {
-    console.error(err)
-  } finally {
+  } catch {} finally {
     loading.value.services = false
   }
 }
@@ -162,9 +189,7 @@ const fetchPhotos = async () => {
     })
     const data = await res.json()
     if (data.success) photos.value = data.photos
-  } catch (err) {
-    console.error(err)
-  } finally {
+  } catch {} finally {
     loading.value.photos = false
   }
 }
@@ -179,9 +204,7 @@ const updateProgress = async (serviceId, progress) => {
       body: JSON.stringify({ progress_percent: progress })
     })
     emit('updated')
-  } catch (err) {
-    console.error(err)
-  }
+  } catch {}
 }
 
 // Загрузка фото
@@ -211,11 +234,10 @@ const uploadFile = async (file) => {
       await fetchPhotos()
       emit('updated')
     } else {
-      alert(data.error || 'Ошибка загрузки')
+      showAlert('Ошибка загрузки', data.error || '')
     }
-  } catch (err) {
-    console.error(err)
-    alert('Ошибка загрузки')
+  } catch {
+    showAlert('Ошибка загрузки')
   } finally {
     uploading.value = false
   }
@@ -223,7 +245,7 @@ const uploadFile = async (file) => {
 
 // Удаление фото
 const deletePhoto = async (photoId) => {
-  if (!confirm('Удалить это фото?')) return
+  if (!await askConfirm('Удалить фото?', 'Это действие нельзя отменить.')) return
   try {
     const res = await fetch(`${API_BASE}/admin/photos/${photoId}`, {
       method: 'DELETE',
@@ -234,11 +256,10 @@ const deletePhoto = async (photoId) => {
       await fetchPhotos()
       emit('updated')
     } else {
-      alert(data.error || 'Ошибка удаления')
+      showAlert('Ошибка удаления', data.error || '')
     }
-  } catch (err) {
-    console.error(err)
-    alert('Ошибка удаления')
+  } catch {
+    showAlert('Ошибка удаления')
   }
 }
 
