@@ -121,10 +121,10 @@
           </button>
 
           <div class="p-6 md:p-8">
-            <div class="mb-6">
+            <div class="mb-8">
               <h2
                 id="modal-service-title"
-                class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent mb-2"
+                class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent mb-4"
               >
                 {{ selectedService.name }}
               </h2>
