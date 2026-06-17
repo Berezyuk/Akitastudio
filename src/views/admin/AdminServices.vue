@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
+import AlertModal from '@/components/admin/AlertModal.vue'
 
 // ── Услуги ──────────────────────────────────────────────────────────────────
 const services = ref([])
@@ -9,6 +10,9 @@ const categories = ref([])
 const loading = ref(false)
 const showModal = ref(false)
 const editingService = ref(null)
+
+const alertModal = ref({ show: false, title: '', message: '' })
+const showAlert = (title, message = '') => { alertModal.value = { show: true, title, message } }
 
 const confirmModal = ref({ show: false, title: '', message: '' })
 let confirmResolve = null
@@ -97,7 +101,7 @@ const saveService = async () => {
     await fetchServices()
     showModal.value = false
   } else {
-    alert('Ошибка: ' + (data.error || 'Не удалось сохранить'))
+    showAlert('Ошибка', data.error || 'Не удалось сохранить')
   }
 }
 
@@ -111,7 +115,7 @@ const deleteService = async (id, name) => {
   if (data.success) {
     await fetchServices()
   } else {
-    alert('Ошибка удаления')
+    showAlert('Ошибка удаления')
   }
 }
 
@@ -223,7 +227,7 @@ const deleteCat = async (cat) => {
     await fetchCategories()
     await fetchServices()
   } else {
-    alert('Ошибка удаления: ' + (data.error || ''))
+    showAlert('Ошибка удаления', data.error || '')
   }
 }
 
@@ -568,6 +572,13 @@ onMounted(() => {
       :message="confirmModal.message"
       @confirm="onConfirmOk"
       @cancel="onConfirmCancel"
+    />
+
+    <AlertModal
+      :show="alertModal.show"
+      :title="alertModal.title"
+      :message="alertModal.message"
+      @close="alertModal.show = false"
     />
   </div>
 </template>

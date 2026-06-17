@@ -117,6 +117,13 @@
       @confirm="onConfirmOk"
       @cancel="onConfirmCancel"
     />
+
+    <AlertModal
+      :show="alertModal.show"
+      :title="alertModal.title"
+      :message="alertModal.message"
+      @close="alertModal.show = false"
+    />
   </div>
 </template>
 
@@ -125,6 +132,7 @@ import { ref, onMounted } from 'vue'
 import { API_BASE } from '@/config/api.js'
 import ThePagination from '@/components/ThePagination.vue'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
+import AlertModal from '@/components/admin/AlertModal.vue'
 
 const feedbacks = ref([])
 const loading = ref(false)
@@ -132,6 +140,9 @@ const search = ref('')
 const statusFilter = ref('all')
 const pagination = ref({ page: 1, limit: 30, total: 0 })
 let debounceTimer = null
+
+const alertModal = ref({ show: false, title: '', message: '' })
+const showAlert = (title, message = '') => { alertModal.value = { show: true, title, message } }
 
 const confirmModal = ref({ show: false, title: '', message: '' })
 let confirmResolve = null
@@ -194,10 +205,10 @@ const saveChanges = async () => {
       viewModalVisible.value = false
       fetchFeedbacks()
     } else {
-      alert('Ошибка: ' + (data.error || 'Не удалось сохранить'))
+      showAlert('Ошибка', data.error || 'Не удалось сохранить')
     }
   } catch {
-    alert('Ошибка соединения')
+    showAlert('Ошибка соединения')
   }
 }
 
@@ -212,10 +223,10 @@ const deleteFeedback = async (id) => {
     if (data.success) {
       fetchFeedbacks()
     } else {
-      alert('Ошибка: ' + (data.error || 'Не удалось удалить'))
+      showAlert('Ошибка', data.error || 'Не удалось удалить')
     }
   } catch {
-    alert('Ошибка соединения')
+    showAlert('Ошибка соединения')
   }
 }
 

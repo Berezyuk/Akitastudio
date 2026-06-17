@@ -210,6 +210,13 @@
       @close="modalVisible = false"
       @updated="refreshOrders"
     />
+
+    <AlertModal
+      :show="alertModal.show"
+      :title="alertModal.title"
+      :message="alertModal.message"
+      @close="alertModal.show = false"
+    />
   </div>
 </template>
 
@@ -218,6 +225,7 @@ import { ref, computed, onMounted } from 'vue'
 import AdminOrderModal from '@/components/AdminOrderModal.vue'
 import { API_BASE } from '@/config/api.js'
 import ThePagination from '@/components/ThePagination.vue'
+import AlertModal from '@/components/admin/AlertModal.vue'
 
 const orders = ref([])
 const statuses = ref([])
@@ -227,6 +235,8 @@ const sortField = ref('order_date')
 const sortOrder = ref('desc')
 const modalVisible = ref(false)
 const selectedOrder = ref(null)
+const alertModal = ref({ show: false, title: '', message: '' })
+const showAlert = (title, message = '') => { alertModal.value = { show: true, title, message } }
 
 const filters = ref({
   search: '',
@@ -433,10 +443,10 @@ const updateStatus = async (orderId, newStatusId) => {
     if (data.success) {
       await fetchOrders()
     } else {
-      alert('Ошибка: ' + (data.error || 'Не удалось обновить статус'))
+      showAlert('Ошибка', data.error || 'Не удалось обновить статус')
     }
   } catch {
-    alert('Ошибка соединения')
+    showAlert('Ошибка соединения')
   }
 }
 

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
+import AlertModal from '@/components/admin/AlertModal.vue'
 
 const portfolio = ref([])
 const categories = ref([])
@@ -10,6 +11,9 @@ const loading = ref(false)
 const showModal = ref(false)
 const showLimitModal = ref(false)
 const editingItem = ref(null)
+
+const alertModal = ref({ show: false, title: '', message: '' })
+const showAlert = (title, message = '') => { alertModal.value = { show: true, title, message } }
 
 const confirmModal = ref({ show: false, title: '', message: '' })
 let confirmResolve = null
@@ -169,7 +173,7 @@ const deleteItem = async (id, title) => {
   })
   const data = await res.json()
   if (data.success) await fetchPortfolio()
-  else alert('Ошибка удаления')
+  else showAlert('Ошибка удаления')
 }
 
 // Определяем тип медиа по URL для предпросмотра
@@ -353,6 +357,13 @@ onMounted(() => {
       :message="confirmModal.message"
       @confirm="onConfirmOk"
       @cancel="onConfirmCancel"
+    />
+
+    <AlertModal
+      :show="alertModal.show"
+      :title="alertModal.title"
+      :message="alertModal.message"
+      @close="alertModal.show = false"
     />
   </div>
 </template>

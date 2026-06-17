@@ -244,6 +244,13 @@
       @update:page="onPageChange"
       class="mt-4"
     />
+
+    <AlertModal
+      :show="alertModal.show"
+      :title="alertModal.title"
+      :message="alertModal.message"
+      @close="alertModal.show = false"
+    />
   </div>
 </template>
 
@@ -251,12 +258,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { API_BASE } from '@/config/api.js'
 import ThePagination from '@/components/ThePagination.vue'
+import AlertModal from '@/components/admin/AlertModal.vue'
 
 const clients = ref([])
 const loading = ref(false)
 const search = ref('')
 const pagination = ref({ page: 1, limit: 30, total: 0 })
 let debounceTimer = null
+const alertModal = ref({ show: false, title: '', message: '' })
+const showAlert = (title, message = '') => { alertModal.value = { show: true, title, message } }
 
 const editModalVisible = ref(false)
 const editForm = ref({ client_id: null, first_name: '', last_name: '', phone_number: '', email: '' })
@@ -305,14 +315,14 @@ const currentCategoryName = computed(() => {
 // Валидация даты и времени
 const validateDateTime = () => {
   if (newOrder.value.desired_date && newOrder.value.desired_date < minDate) {
-    alert('Нельзя выбрать прошедшую дату')
+    showAlert('Некорректная дата', 'Нельзя выбрать прошедшую дату.')
     newOrder.value.desired_date = ''
     return false
   }
   if (newOrder.value.desired_time) {
     const hour = parseInt(newOrder.value.desired_time.split(':')[0])
     if (hour < 10 || hour >= 20) {
-      alert('Студия работает с 10:00 до 20:00. Выберите время в этом диапазоне.')
+      showAlert('Некорректное время', 'Студия работает с 10:00 до 20:00. Выберите время в этом диапазоне.')
       newOrder.value.desired_time = ''
       return false
     }
@@ -409,10 +419,10 @@ const saveClient = async () => {
       editModalVisible.value = false
       fetchClients()
     } else {
-      alert('Ошибка: ' + (data.error || 'Не удалось сохранить'))
+      showAlert('Ошибка', data.error || 'Не удалось сохранить')
     }
   } catch {
-    alert('Ошибка соединения')
+    showAlert('Ошибка соединения')
   }
 }
 
@@ -446,7 +456,7 @@ const openCreateOrderModal = (client) => {
 
 const submitNewOrder = async () => {
   if (newOrder.value.service_ids.length === 0) {
-    alert('Выберите хотя бы одну услугу')
+    showAlert('Услуги не выбраны', 'Выберите хотя бы одну услугу.')
     return
   }
   
@@ -475,10 +485,10 @@ const submitNewOrder = async () => {
       createOrderModalVisible.value = false
       await viewDetails(selectedClient.value)
     } else {
-      alert('Ошибка: ' + (data.error || 'Не удалось создать заказ'))
+      showAlert('Ошибка', data.error || 'Не удалось создать заказ')
     }
   } catch {
-    alert('Ошибка соединения')
+    showAlert('Ошибка соединения')
   } finally {
     creatingOrder.value = false
   }
