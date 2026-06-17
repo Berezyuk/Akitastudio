@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: up down init build-frontend prod
+.PHONY: up down init build-frontend prerender prod
 
 up:
 	docker compose up -d
@@ -9,12 +9,22 @@ up:
 down:
 	docker compose down
 
+# Быстрая сборка без пре-рендера (для тестирования)
 build-frontend:
 	@echo "Сборка фронтенда (VITE_API_URL=$(VITE_API_URL))..."
 	docker compose run --rm --no-deps frontend npm run build
 	@echo "Готово: dist/"
 
-prod: build-frontend
+# Сборка + пре-рендер для SEO (запускать на хосте, требует Node.js и запущенного API)
+# VITE_API_URL должен указывать на продакшен-API до запуска этой команды
+prerender:
+	@echo "Сборка + пре-рендер (VITE_API_URL=$(VITE_API_URL))..."
+	@echo "Убедитесь, что API доступен по $(VITE_API_URL)"
+	npm run build:prerender
+	@echo "Готово: dist/ содержит HTML с контентом для поисковых ботов"
+
+# Полный продакшен-деплой: пре-рендер (SEO) + запуск всех сервисов
+prod: prerender
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 	@echo "Продакшен запущен. Фронтенд: http://localhost:5173 | API: http://localhost:8000"
 
