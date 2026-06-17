@@ -56,12 +56,19 @@
     <!-- Сетка портфолио -->
     <section class="py-8 pb-16">
       <div class="container mx-auto px-4">
-        <div v-if="loading" class="flex justify-center py-20">
+        <div v-if="loading" role="status" aria-label="Загрузка портфолио" class="flex justify-center py-20">
           <div class="w-10 h-10 border-4 border-[#fc9303] border-t-transparent rounded-full animate-spin"></div>
         </div>
 
+        <div v-else-if="fetchError" class="text-center py-20 text-gray-400">
+          <p class="text-lg mb-4">Не удалось загрузить портфолио</p>
+          <button @click="fetchPortfolio" class="px-6 py-2 rounded-lg border border-[#fc9303] text-[#fc9303] hover:bg-[#fc9303] hover:text-black transition cursor-pointer">
+            Попробовать снова
+          </button>
+        </div>
+
         <!-- Анимированная сетка -->
-        <TransitionGroup 
+        <TransitionGroup v-if="!fetchError"
           name="portfolio-grid" 
           tag="div" 
           class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
@@ -91,6 +98,7 @@
               v-else
               :src="getMediaSrc(item.video_url)"
               :alt="item.category_name"
+              loading="lazy"
               class="absolute inset-0 w-full h-full object-cover transition-all duration-700"
               :class="{
                 'scale-110 brightness-110': hoveredItem === item.id,
@@ -140,7 +148,8 @@
               <button
                 v-if="hoveredItem === item.id"
                 @click.stop="toggleSound(item, getOriginalIndex(item.id), $event)"
-                class="absolute top-4 left-4 flex items-center gap-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 hover:border-[#fc9303] transition-all duration-300 group/btn"
+                :aria-label="soundEnabled[item.id] ? 'Выключить звук' : 'Включить звук'"
+              class="absolute top-4 left-4 flex items-center gap-2 bg-black/70 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 hover:border-[#fc9303] transition-all duration-300 cursor-pointer group/btn"
               >
                 <svg 
                   v-if="soundEnabled[item.id]"
@@ -188,7 +197,7 @@
         </TransitionGroup>
 
         <!-- Пустое состояние -->
-        <div v-if="!loading && filteredItems.length === 0" class="text-center py-20">
+        <div v-if="!loading && !fetchError && filteredItems.length === 0" class="text-center py-20">
           <div class="text-6xl mb-4">🎬</div>
           <h3 class="text-xl font-semibold text-white mb-2">Нет работ в этой категории</h3>
           <p class="text-gray-400">Попробуйте выбрать другую категорию</p>
@@ -199,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useHead } from '@unhead/vue'
 import { API_BASE } from '@/config/api.js'
 
@@ -208,6 +217,7 @@ useHead({
   link: [{ rel: 'canonical', href: 'https://akita-studio.ru/portfolio' }],
   meta: [
     { name: 'description', content: 'Портфолио Akita Studio. Смотрите фото и видео результатов до и после: полировка, оклейка пленкой, химчистка, керамика. Реальные работы наших мастеров.' },
+    { property: 'og:type', content: 'website' },
     { property: 'og:title', content: 'Портфолио Akita Studio — Примеры работ' },
     { property: 'og:description', content: 'Фото и видео результатов: полировка, оклейка плёнкой, химчистка, керамика. Реальные работы мастеров Akita Studio.' },
     { property: 'og:url', content: 'https://akita-studio.ru/portfolio' },
@@ -219,6 +229,7 @@ useHead({
 
 const portfolioItems = ref([])
 const loading = ref(true)
+const fetchError = ref(false)
 const hoveredItem = ref(null)
 const videoRefs = ref([])
 const soundEnabled = ref({})
@@ -253,12 +264,13 @@ const getOriginalIndex = (itemId) => {
 
 const fetchPortfolio = async () => {
   loading.value = true
+  fetchError.value = false
   try {
     const res = await fetch(`${API_BASE}/portfolio`)
     const data = await res.json()
     if (data.success) portfolioItems.value = data.portfolio
-  } catch (err) {
-    console.error(err)
+  } catch {
+    fetchError.value = true
   } finally {
     loading.value = false
   }
@@ -315,6 +327,15 @@ const setVideoRef = (el, index) => {
 
 onMounted(() => {
   fetchPortfolio()
+})
+
+onUnmounted(() => {
+  videoRefs.value.forEach(video => {
+    if (video) {
+      video.pause()
+      video.src = ''
+    }
+  })
 })
 </script>
 
