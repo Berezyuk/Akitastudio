@@ -166,6 +166,13 @@ INSERT INTO services (category_id, name, description, base_price, duration_minut
     (4, 'Антигравийная плёнка (капот)', 'Защитная PPF-плёнка на капот', 12000, 300, TRUE, 1)
 ON CONFLICT DO NOTHING;
 
+CREATE TABLE IF NOT EXISTS login_attempts (
+    id           SERIAL PRIMARY KEY,
+    ip_address   VARCHAR(45) NOT NULL,
+    attempted_at TIMESTAMP   NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time ON login_attempts (ip_address, attempted_at);
+
 -- ─── Seed: администратор ────────────────────────────────────────────────────
 -- Пароль: admin123  (bcrypt)
 

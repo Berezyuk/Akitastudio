@@ -2,17 +2,32 @@
 // api/controllers/AuthController.php
 
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../helpers/RateLimiter.php';
 
 class AuthController {
-    
+
     public static function login() {
+        $db = (new Database())->getConnection();
+
+        if (RateLimiter::tooManyAttempts($db)) {
+            http_response_code(429);
+            echo json_encode(['error' => 'Слишком много попыток входа. Попробуйте через 15 минут.']);
+            return;
+        }
+
         $data = json_decode(file_get_contents('php://input'), true);
-        if(!isset($data['login']) || !isset($data['password'])) {
+        if (!isset($data['login']) || !isset($data['password'])) {
             echo json_encode(['error' => 'Логин и пароль обязательны']);
             return;
         }
-        $user = new User();
+
+        $user   = new User();
         $result = $user->login($data['login'], $data['password']);
+
+        if (!($result['success'] ?? false)) {
+            RateLimiter::hit($db);
+        }
+
         echo json_encode($result);
     }
 
