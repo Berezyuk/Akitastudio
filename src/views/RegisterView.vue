@@ -100,7 +100,7 @@ const handleRegister = async () => {
 
 <template>
     <div class="register-page min-h-screen bg-black flex items-center justify-center py-12">
-        <div class="bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gray-800 p-8 w-full max-w-md">
+        <div class="bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gray-800 p-8 w-full max-w-xl">
             <h1 class="text-3xl font-bold text-center mb-8">
                 <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">
                     Регистрация
