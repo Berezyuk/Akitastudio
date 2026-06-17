@@ -23,7 +23,6 @@ export const useAdminServicesStore = defineStore('adminServices', () => {
             }
         } catch (err) {
             error.value = err.message
-            console.error('Error fetching services:', err)
         } finally {
             loading.value = false
         }

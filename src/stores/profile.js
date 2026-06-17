@@ -17,8 +17,7 @@ export const useProfileStore = defineStore('profile', () => {
             if (data.success) {
                 profile.value = data.profile
             }
-        } catch (err) {
-            console.error('Error fetching profile:', err)
+        } catch {
         } finally {
             loading.value = false
         }
@@ -31,9 +30,7 @@ export const useProfileStore = defineStore('profile', () => {
             if (data.success) {
                 cars.value = data.cars
             }
-        } catch (err) {
-            console.error('Error fetching cars:', err)
-        }
+        } catch {}
     }
 
     async function addCar(carData) {
@@ -50,7 +47,6 @@ export const useProfileStore = defineStore('profile', () => {
             }
             return data
         } catch (err) {
-            console.error('Error adding car:', err)
             return { error: err.message }
         }
     }
@@ -62,9 +58,7 @@ export const useProfileStore = defineStore('profile', () => {
             if (data.success) {
                 orders.value = data.orders
             }
-        } catch (err) {
-            console.error('Error fetching orders:', err)
-        }
+        } catch {}
     }
 
     return {

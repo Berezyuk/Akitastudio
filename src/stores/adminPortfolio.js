@@ -27,7 +27,6 @@ export const useAdminPortfolioStore = defineStore('adminPortfolio', () => {
             }
         } catch (err) {
             error.value = err.message
-            console.error('Error fetching portfolio:', err)
         } finally {
             loading.value = false
         }
