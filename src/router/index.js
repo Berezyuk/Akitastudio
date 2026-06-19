@@ -20,7 +20,10 @@ const router = createRouter({
     { path: '/profile', name: 'profile', component: () => import('../views/ClientProfileView.vue'), meta: { requiresAuth: true, role: 'client' } },
     
     // Админ-панель (оставляем как было)
-    { path: '/admin/profile', name: 'admin-profile', component: () => import('../views/ProfileView.vue'), meta: { requiresAuth: true, role: 'admin' } }
+    { path: '/admin/profile', name: 'admin-profile', component: () => import('../views/ProfileView.vue'), meta: { requiresAuth: true, role: 'admin' } },
+
+    // Несуществующие страницы → главная
+    { path: '/:pathMatch(.*)*', redirect: '/' }
   ]
 })
 

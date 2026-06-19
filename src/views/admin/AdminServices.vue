@@ -23,14 +23,16 @@ const askConfirm = (title, message = '') => new Promise(resolve => {
 const onConfirmOk = () => { confirmModal.value.show = false; confirmResolve?.(true) }
 const onConfirmCancel = () => { confirmModal.value.show = false; confirmResolve?.(false) }
 
-const durationHours = ref(0)
+const durationHours = ref(null)
+const hasPrice = ref(false)
+const hasDuration = ref(false)
 
 const form = ref({
   category_id: null,
   name: '',
   description: '',
-  base_price: 0,
-  duration_minutes: 0,
+  base_price: null,
+  duration_minutes: null,
   is_active: true,
   icon_url: '',
   sort_order: 0
@@ -39,11 +41,14 @@ const form = ref({
 const minutesToHours = (minutes) => minutes / 60
 const hoursToMinutes = (hours) => Math.round(hours * 60)
 
-watch(durationHours, (v) => { form.value.duration_minutes = hoursToMinutes(v) })
-watch(() => form.value.duration_minutes, (v) => { if (v) durationHours.value = minutesToHours(v) })
+watch(durationHours, (v) => { form.value.duration_minutes = (v !== null && v !== '') ? hoursToMinutes(v) : null })
+watch(() => form.value.duration_minutes, (v) => { durationHours.value = v ? minutesToHours(v) : null })
 
 const isServiceFormValid = computed(() =>
-  !!form.value.name.trim() && !!form.value.category_id
+  !!form.value.name.trim() &&
+  !!form.value.category_id &&
+  (!hasPrice.value || (form.value.base_price !== null && form.value.base_price > 0)) &&
+  (!hasDuration.value || (durationHours.value !== null && durationHours.value > 0))
 )
 
 const fetchServices = async () => {
@@ -67,13 +72,15 @@ const fetchCategories = async () => {
 
 const openAddModal = () => {
   editingService.value = null
-  durationHours.value = 0
+  durationHours.value = null
+  hasPrice.value = false
+  hasDuration.value = false
   form.value = {
     category_id: categories.value[0]?.category_id || null,
     name: '',
     description: '',
-    base_price: 0,
-    duration_minutes: 0,
+    base_price: null,
+    duration_minutes: null,
     is_active: true,
     icon_url: '',
     sort_order: 0
@@ -84,7 +91,9 @@ const openAddModal = () => {
 const openEditModal = (service) => {
   editingService.value = service
   form.value = { ...service }
-  durationHours.value = minutesToHours(service.duration_minutes || 0)
+  hasPrice.value = service.base_price !== null
+  hasDuration.value = service.duration_minutes !== null
+  durationHours.value = service.duration_minutes ? minutesToHours(service.duration_minutes) : null
   showModal.value = true
 }
 
@@ -329,8 +338,8 @@ onMounted(() => {
               <div class="font-semibold">{{ service.name }}</div>
               <div class="text-sm text-gray-400">{{ service.description || '—' }}</div>
               <div class="text-sm text-[#fc9303]">
-                {{ service.base_price }} ₽ |
-                {{ Math.floor(service.duration_minutes / 60) }} ч {{ service.duration_minutes % 60 }} мин
+                {{ service.base_price !== null ? service.base_price + ' ₽' : 'по запросу' }} |
+                {{ service.duration_minutes ? (Math.floor(service.duration_minutes / 60) + ' ч ' + (service.duration_minutes % 60) + ' мин') : '—' }}
               </div>
               <div class="text-xs text-gray-500">Статус: {{ service.is_active ? 'Активна' : 'Неактивна' }}</div>
             </div>
@@ -510,15 +519,38 @@ onMounted(() => {
                           class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white"></textarea>
               </div>
               <div>
-                <label class="block text-sm text-gray-400 mb-1">Цена (₽)</label>
-                <input v-model.number="form.base_price" type="number"
-                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
+                <label class="flex items-center gap-2 mb-2 cursor-pointer select-none">
+                  <input type="checkbox" v-model="hasPrice"
+                         @change="!hasPrice && (form.base_price = null)"
+                         class="w-4 h-4 accent-[#fc9303] cursor-pointer">
+                  <span class="text-sm text-gray-300">Указать стоимость</span>
+                </label>
+                <input v-if="hasPrice"
+                       type="number" min="0"
+                       :value="form.base_price ?? ''"
+                       @input="form.base_price = $event.target.value !== '' ? Number($event.target.value) : null"
+                       placeholder="0"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-600">
+                <div v-else class="px-4 py-3 bg-gray-800/40 border border-gray-700/50 rounded-xl text-gray-500 text-sm">
+                  по запросу
+                </div>
               </div>
               <div>
-                <label class="block text-sm text-gray-400 mb-1">Длительность (часы)</label>
-                <input v-model.number="durationHours" type="number" step="0.5"
-                       placeholder="Например: 2.5"
-                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white">
+                <label class="flex items-center gap-2 mb-2 cursor-pointer select-none">
+                  <input type="checkbox" v-model="hasDuration"
+                         @change="!hasDuration && (durationHours = null)"
+                         class="w-4 h-4 accent-[#fc9303] cursor-pointer">
+                  <span class="text-sm text-gray-300">Указать длительность</span>
+                </label>
+                <input v-if="hasDuration"
+                       type="number" step="0.5" min="0"
+                       :value="durationHours ?? ''"
+                       @input="durationHours = $event.target.value !== '' ? Number($event.target.value) : null"
+                       placeholder="например: 2.5"
+                       class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-600">
+                <div v-else class="px-4 py-3 bg-gray-800/40 border border-gray-700/50 rounded-xl text-gray-500 text-sm">
+                  не указана
+                </div>
               </div>
               <div>
                 <label class="block text-sm text-gray-400 mb-1">URL иконки</label>
@@ -597,5 +629,8 @@ onMounted(() => {
 .modal-enter-from, .modal-leave-to {
   opacity: 0;
   transform: scale(0.95);
+}
+button {
+  cursor: pointer;
 }
 </style>

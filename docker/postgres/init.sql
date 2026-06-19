@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS services (
     category_id      INT REFERENCES service_categories(category_id) ON DELETE CASCADE,
     name             VARCHAR(255) NOT NULL,
     description      TEXT,
-    base_price       NUMERIC(10,2) NOT NULL DEFAULT 0,
-    duration_minutes INT NOT NULL DEFAULT 60,
+    base_price       NUMERIC(10,2) DEFAULT NULL,
+    duration_minutes INT DEFAULT NULL,
     is_active        BOOLEAN NOT NULL DEFAULT TRUE,
     icon_url         VARCHAR(255),
     sort_order       INT NOT NULL DEFAULT 0

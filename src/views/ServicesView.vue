@@ -80,7 +80,9 @@
                   >
                     <div class="flex justify-between items-start mb-4">
                       <h3 class="font-bold text-lg text-white group-hover:text-[#fc9303] transition">{{ service.name }}</h3>
-                      <span class="text-[#fc9303] font-bold whitespace-nowrap ml-2">от {{ service.base_price?.toLocaleString() }} ₽</span>
+                      <span class="text-[#fc9303] font-bold whitespace-nowrap ml-2">
+                        {{ service.base_price != null ? 'от ' + service.base_price.toLocaleString() + ' ₽' : 'по запросу' }}
+                      </span>
                     </div>
                     <button
                       @click="openServiceModal(service)"
@@ -131,7 +133,7 @@
               <div class="flex flex-wrap gap-4 text-sm">
                 <div class="flex items-center gap-2">
                   <span class="text-[#fc9303]" aria-hidden="true">💰</span>
-                  <span>от {{ selectedService.base_price?.toLocaleString() }} ₽</span>
+                  <span>{{ selectedService.base_price != null ? 'от ' + selectedService.base_price.toLocaleString() + ' ₽' : 'по запросу' }}</span>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-[#fc9303]" aria-hidden="true">⏱️</span>

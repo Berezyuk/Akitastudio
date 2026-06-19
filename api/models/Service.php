@@ -44,26 +44,34 @@ class Service {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
     
+    private static function bindNullable($stmt, string $param, $value, int $typeIfSet = PDO::PARAM_STR): void {
+        if ($value === null) {
+            $stmt->bindValue($param, null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue($param, $value, $typeIfSet);
+        }
+    }
+
     public function create($data) {
-        $query = "INSERT INTO services (category_id, name, description, base_price, duration_minutes, is_active, icon_url, sort_order) 
+        $query = "INSERT INTO services (category_id, name, description, base_price, duration_minutes, is_active, icon_url, sort_order)
                   VALUES (:category_id, :name, :description, :base_price, :duration_minutes, :is_active, :icon_url, :sort_order)";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':category_id', $data['category_id']);
-        $stmt->bindParam(':name', $data['name']);
-        $stmt->bindParam(':description', $data['description']);
-        $stmt->bindParam(':base_price', $data['base_price']);
-        $stmt->bindParam(':duration_minutes', $data['duration_minutes']);
-        $stmt->bindParam(':is_active', $data['is_active']);
-        $stmt->bindParam(':icon_url', $data['icon_url']);
-        $stmt->bindParam(':sort_order', $data['sort_order']);
-        if($stmt->execute()) {
+        $stmt->bindValue(':category_id', $data['category_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':name', $data['name']);
+        $stmt->bindValue(':description', $data['description'] ?? null);
+        self::bindNullable($stmt, ':base_price', $data['base_price'] ?? null);
+        self::bindNullable($stmt, ':duration_minutes', $data['duration_minutes'] ?? null, PDO::PARAM_INT);
+        $stmt->bindValue(':is_active', $data['is_active'] ?? true, PDO::PARAM_BOOL);
+        $stmt->bindValue(':icon_url', $data['icon_url'] ?? null);
+        $stmt->bindValue(':sort_order', $data['sort_order'] ?? 0, PDO::PARAM_INT);
+        if ($stmt->execute()) {
             return ['success' => true, 'service_id' => $this->conn->lastInsertId()];
         }
         return ['error' => 'Ошибка добавления услуги'];
     }
-    
+
     public function update($id, $data) {
-        $query = "UPDATE services SET 
+        $query = "UPDATE services SET
                   category_id = :category_id,
                   name = :name,
                   description = :description,
@@ -74,15 +82,15 @@ class Service {
                   sort_order = :sort_order
                   WHERE service_id = :id";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id', $id);
-        $stmt->bindParam(':category_id', $data['category_id']);
-        $stmt->bindParam(':name', $data['name']);
-        $stmt->bindParam(':description', $data['description']);
-        $stmt->bindParam(':base_price', $data['base_price']);
-        $stmt->bindParam(':duration_minutes', $data['duration_minutes']);
-        $stmt->bindParam(':is_active', $data['is_active']);
-        $stmt->bindParam(':icon_url', $data['icon_url']);
-        $stmt->bindParam(':sort_order', $data['sort_order']);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
+        $stmt->bindValue(':category_id', $data['category_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':name', $data['name']);
+        $stmt->bindValue(':description', $data['description'] ?? null);
+        self::bindNullable($stmt, ':base_price', $data['base_price'] ?? null);
+        self::bindNullable($stmt, ':duration_minutes', $data['duration_minutes'] ?? null, PDO::PARAM_INT);
+        $stmt->bindValue(':is_active', $data['is_active'] ?? true, PDO::PARAM_BOOL);
+        $stmt->bindValue(':icon_url', $data['icon_url'] ?? null);
+        $stmt->bindValue(':sort_order', $data['sort_order'] ?? 0, PDO::PARAM_INT);
         return ['success' => $stmt->execute()];
     }
     

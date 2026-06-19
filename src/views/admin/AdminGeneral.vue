@@ -213,3 +213,7 @@ onMounted(fetchSettings)
     </div>
   </div>
 </template>
+
+<style scoped>
+button { cursor: pointer; }
+</style>

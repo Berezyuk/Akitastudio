@@ -376,4 +376,7 @@ onMounted(() => {
   opacity: 0;
   transform: scale(0.95);
 }
+button {
+  cursor: pointer;
+}
 </style>

@@ -537,4 +537,7 @@ onMounted(() => {
   border-radius: 0.25rem;
   flex-shrink: 0;
 }
+button {
+  cursor: pointer;
+}
 </style>
