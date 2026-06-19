@@ -146,7 +146,7 @@ onUnmounted(() => {
                 </svg>
               </div>
               <div>
-                <h3 class="text-2xl font-bold text-white">Instagram</h3>
+                <h3 class="text-2xl font-bold text-white">Instagram<span class="text-[#fc9303] ml-0.5">*</span></h3>
                 <p class="text-[#fc9303]">@auto.akita</p>
               </div>
             </div>
@@ -162,7 +162,7 @@ onUnmounted(() => {
                 </svg>
               </div>
               <div>
-                <h3 class="text-2xl font-bold text-white">Telegram</h3>
+                <h3 class="text-2xl font-bold text-white">Telegram<span class="text-[#fc9303] ml-0.5">*</span></h3>
                 <p class="text-[#fc9303]">@akita_auto</p>
               </div>
             </div>
@@ -213,7 +213,7 @@ onUnmounted(() => {
                   {{ method.icon }}
                 </div>
                 <div>
-                  <p class="text-gray-400 text-sm">{{ method.title }}</p>
+                  <p class="text-gray-400 text-sm">{{ method.title }}<span v-if="['Telegram','WhatsApp'].includes(method.title)" class="text-[#fc9303] ml-0.5">*</span></p>
                   <p class="text-white text-xl font-semibold">{{ method.value }}</p>
                 </div>
               </a>

@@ -74,7 +74,7 @@ class AdminController {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $portfolio = new Portfolio();
-        if (!empty($data['show_on_home']) && $portfolio->countHomeItems() >= 4) {
+        if (!empty($data['show_on_home']) && $portfolio->countHomeItems() >= 8) {
             echo json_encode(['success' => false, 'home_limit_exceeded' => true]);
             return;
         }
@@ -86,7 +86,7 @@ class AdminController {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $portfolio = new Portfolio();
-        if (!empty($data['show_on_home']) && $portfolio->countHomeItems($id) >= 4) {
+        if (!empty($data['show_on_home']) && $portfolio->countHomeItems($id) >= 8) {
             echo json_encode(['success' => false, 'home_limit_exceeded' => true]);
             return;
         }
@@ -287,7 +287,7 @@ class AdminController {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $cat = new ServiceCategory();
-        if (!empty($data['show_on_home']) && $cat->countHomeItems() >= 4) {
+        if (!empty($data['show_on_home']) && $cat->countHomeItems() >= 8) {
             echo json_encode(['success' => false, 'home_limit_exceeded' => true]);
             return;
         }
@@ -304,7 +304,7 @@ class AdminController {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
         $cat = new ServiceCategory();
-        if (!empty($data['show_on_home']) && $cat->countHomeItems($id) >= 4) {
+        if (!empty($data['show_on_home']) && $cat->countHomeItems($id) >= 8) {
             echo json_encode(['success' => false, 'home_limit_exceeded' => true]);
             return;
         }

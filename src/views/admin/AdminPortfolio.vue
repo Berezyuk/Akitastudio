@@ -293,7 +293,7 @@ onMounted(() => {
               <div class="md:col-span-2 flex items-center gap-3 px-1">
                 <input id="show_on_home" v-model="form.show_on_home" type="checkbox" class="w-5 h-5 accent-[#fc9303] rounded flex-shrink-0 cursor-pointer" />
                 <label for="show_on_home" class="text-sm text-gray-300 cursor-pointer select-none">
-                  Показывать на главной странице <span class="text-gray-500">(макс. 4)</span>
+                  Показывать на главной странице <span class="text-gray-500">(макс. 8)</span>
                 </label>
               </div>
               <div>
@@ -343,7 +343,7 @@ onMounted(() => {
             </svg>
           </div>
           <h3 class="text-lg font-bold mb-2">Лимит превышен</h3>
-          <p class="text-gray-400 text-sm mb-6">На главной странице можно разместить не более <span class="text-white font-semibold">4 работ портфолио</span>. Снимите отметку «На главной» у одной из существующих работ и попробуйте снова.</p>
+          <p class="text-gray-400 text-sm mb-6">На главной странице можно разместить не более <span class="text-white font-semibold">8 работ портфолио</span>. Снимите отметку «На главной» у одной из существующих работ и попробуйте снова.</p>
           <button @click="showLimitModal = false" class="w-full px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold transition hover:brightness-110">
             Понятно
           </button>

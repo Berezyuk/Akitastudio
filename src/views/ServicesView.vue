@@ -78,9 +78,9 @@
                     :key="service.service_id"
                     class="service-card p-5 bg-gray-800/50 rounded-xl border border-gray-700 hover:border-[#fc9303]/50 transition-all duration-300 group"
                   >
-                    <div class="flex justify-between items-start mb-4">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 gap-1">
                       <h3 class="font-bold text-lg text-white group-hover:text-[#fc9303] transition">{{ service.name }}</h3>
-                      <span class="text-[#fc9303] font-bold whitespace-nowrap ml-2">
+                      <span class="text-[#fc9303] font-bold whitespace-nowrap sm:ml-2">
                         {{ service.base_price != null ? 'от ' + service.base_price.toLocaleString() + ' ₽' : 'по запросу' }}
                       </span>
                     </div>

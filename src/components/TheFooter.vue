@@ -14,7 +14,7 @@ const navLinks = [
       <div class="footer-content">
         <div class="footer-brand">
           <img src="../assets/Images/Logo.svg" alt="Akita Studio" class="footer-logo" />
-          <p class="footer-inn">ИНН 270395035874<br>ОГРНИП 313272226600018</p>
+          <p class="footer-inn">ИП Шетогубов Игорь Дмитриевич<br>ИНН 270395035874<br>ОГРНИП 313272226600018</p>
           <p class="footer-copyright">
             © 2025 Все права защищены. Использование материалов разрешено только с
             согласия правообладателей.
