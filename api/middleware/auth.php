@@ -24,6 +24,20 @@ function requireRole($role) {
         echo json_encode(['error' => 'Доступ запрещен']);
         exit;
     }
-    
+
     return $user;
+}
+
+// Единый guard для админских эндпоинтов
+function requireAdmin() {
+    if (!isset($_SESSION['user_id'])) {
+        http_response_code(401);
+        echo json_encode(['error' => 'Не авторизован']);
+        exit;
+    }
+    if (($_SESSION['role'] ?? '') !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['error' => 'Доступ запрещён']);
+        exit;
+    }
 }

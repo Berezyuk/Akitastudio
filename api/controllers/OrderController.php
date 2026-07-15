@@ -6,10 +6,13 @@ require_once __DIR__ . '/../models/Order.php';
 class OrderController {
 
    public static function createOrder() {
-    $data = json_decode(file_get_contents('php://input'), true);
+    $data = json_decode(file_get_contents('php://input'), true) ?? [];
 
-    // Если пользователь авторизован, принудительно используем client_id из сессии
-    if (isset($_SESSION['client_id']) && $_SESSION['client_id']) {
+    // client_id берём ТОЛЬКО из сессии. Раньше сессия его лишь переопределяла,
+    // а без сессии значение приходило из тела запроса — аноним мог подбросить
+    // заказ в кабинет любого клиента, зная его id (IDOR).
+    unset($data['client_id']);
+    if (!empty($_SESSION['client_id'])) {
         $data['client_id'] = $_SESSION['client_id'];
     }
 

@@ -321,7 +321,7 @@ onMounted(() => {
               <button
                 @click="saveItem"
                 :disabled="uploading || saving || !isFormValid"
-                class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold disabled:opacity-50 transition flex items-center justify-center gap-2"
+                class="flex-1 px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-black font-semibold disabled:opacity-50 transition flex items-center justify-center gap-2"
               >
                 <div v-if="saving" class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 {{ saving ? 'Сохранение...' : uploading ? 'Загрузка...' : 'Сохранить' }}
@@ -344,7 +344,7 @@ onMounted(() => {
           </div>
           <h3 class="text-lg font-bold mb-2">Лимит превышен</h3>
           <p class="text-gray-400 text-sm mb-6">На главной странице можно разместить не более <span class="text-white font-semibold">8 работ портфолио</span>. Снимите отметку «На главной» у одной из существующих работ и попробуйте снова.</p>
-          <button @click="showLimitModal = false" class="w-full px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-white font-semibold transition hover:brightness-110">
+          <button @click="showLimitModal = false" class="w-full px-4 py-3 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] rounded-xl text-black font-semibold transition hover:brightness-110">
             Понятно
           </button>
         </div>

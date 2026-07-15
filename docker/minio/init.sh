@@ -15,7 +15,13 @@ echo "MinIO is ready. Creating buckets..."
 mc mb --ignore-existing local/order-photos
 mc mb --ignore-existing local/portfolio
 
-mc anonymous set download local/order-photos
+# portfolio — публичный: его содержимое и так показывается всем на сайте.
 mc anonymous set download local/portfolio
 
-echo "MinIO initialized: buckets 'order-photos' and 'portfolio' are ready."
+# order-photos — приватный: это фото чужих машин. Раньше здесь тоже стоял
+# `anonymous set download`, и любой объект открывался по прямой ссылке без
+# авторизации. Приложение отдаёт их временными подписанными ссылками
+# (MinioHelper::presignedUrl). Снимаем политику, если осталась с прошлых запусков.
+mc anonymous set none local/order-photos
+
+echo "MinIO initialized: 'portfolio' (public), 'order-photos' (private)."

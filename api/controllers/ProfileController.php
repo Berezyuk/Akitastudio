@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/MinioHelper.php';
 
 class ProfileController {
     
@@ -65,7 +66,9 @@ class ProfileController {
         $order = $check->fetch();
         
         // Нельзя отменить уже выполненный или отменённый заказ
-        if($order['status_id'] == 4 || $order['status_id'] == 5) {
+        // >= 3: Готово(3), Выдан(4), Отменён(5). Раньше ловило только 4 и 5,
+        // и клиент мог отменить уже выполненную работу.
+        if($order['status_id'] >= 3) {
             echo json_encode(['error' => 'Этот заказ нельзя отменить']);
             return;
         }
@@ -76,7 +79,14 @@ class ProfileController {
             $now = new DateTime();
             $diff = $now->diff($desiredDateTime);
             $hoursLeft = ($diff->days * 24) + $diff->h + ($diff->i / 60);
-            
+
+            // diff возвращает модуль разницы, направление — в ->invert.
+            // Без этой проверки вчерашняя запись давала hoursLeft ≈ 24 и
+            // отменялась задним числом.
+            if($diff->invert === 1) {
+                echo json_encode(['error' => 'Отмена недоступна: время записи уже прошло']);
+                return;
+            }
             if($hoursLeft < 1) {
                 echo json_encode(['error' => 'Отмена недоступна: до записи осталось меньше часа']);
                 return;
@@ -100,7 +110,20 @@ class ProfileController {
             echo json_encode(['error' => 'Укажите новую дату и время']);
             return;
         }
-        
+
+        // Валидация формата: дата YYYY-MM-DD, время HH:MM
+        $date = DateTime::createFromFormat('Y-m-d', $data['desired_date']);
+        $time = DateTime::createFromFormat('H:i', $data['desired_time']);
+        if (!$date || $date->format('Y-m-d') !== $data['desired_date']
+            || !$time || $time->format('H:i') !== $data['desired_time']) {
+            echo json_encode(['error' => 'Некорректный формат даты или времени']);
+            return;
+        }
+        if ($data['desired_date'] < date('Y-m-d')) {
+            echo json_encode(['error' => 'Дата не может быть в прошлом']);
+            return;
+        }
+
         $db = (new Database())->getConnection();
         
         // Проверяем, что заказ принадлежит клиенту
@@ -117,7 +140,10 @@ class ProfileController {
         $order = $check->fetch();
         
         // Нельзя переносить выполненный или отменённый заказ
-        if($order['status_id'] == 4 || $order['status_id'] == 5) {
+        // >= 3: перенос выполненной работы сбрасывал статус в «Новый», при том
+        // что прогресс услуг оставался 100% — авто-синхронизация возвращала
+        // заказ в «Готово» на ещё не наступившую дату.
+        if($order['status_id'] >= 3) {
             echo json_encode(['error' => 'Этот заказ нельзя перенести']);
             return;
         }
@@ -130,29 +156,6 @@ class ProfileController {
         $update->execute();
         
         echo json_encode(['success' => true]);
-    }
-    
-    // Получить автомобили клиента (из истории заказов)
-    // Получить автомобили клиента (из истории заказов)
-public static function getCars() {
-    $user = authenticate();
-
-    $db = (new Database())->getConnection();
-
-    $query = "SELECT DISTINCT cb.name as brand_name, cm.name as model_name
-              FROM orders o
-              JOIN car_brands cb ON o.brand_id = cb.brand_id
-              JOIN car_models cm ON o.model_id = cm.model_id
-              WHERE o.client_id = :client_id
-              ORDER BY o.order_date DESC";
-
-    $stmt = $db->prepare($query);
-    $stmt->bindParam(':client_id', $user['client_id']);
-    $stmt->execute();
-
-    $cars = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    echo json_encode(['success' => true, 'cars' => $cars]);
     }
     
     // Получить данные профиля
@@ -177,28 +180,42 @@ public static function getCars() {
     // Обновить профиль
         public static function updateProfile() {
         $user = authenticate();
-        $data = json_decode(file_get_contents('php://input'), true);
-        
+        $data = json_decode(file_get_contents('php://input'), true) ?? [];
+
+        $firstName  = trim($data['first_name'] ?? '');
+        $lastName   = trim($data['last_name'] ?? '');
+        $patronymic = trim($data['patronymic'] ?? '') ?: null;
+        $email      = trim($data['email'] ?? '') ?: null;
+
+        if ($firstName === '' || $lastName === '') {
+            echo json_encode(['error' => 'Имя и фамилия обязательны']);
+            return;
+        }
+        if ($email !== null && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['error' => 'Некорректный email']);
+            return;
+        }
+
         $db = (new Database())->getConnection();
-        
-        $query = "UPDATE clients SET 
+
+        $query = "UPDATE clients SET
                   first_name = :first_name,
                   last_name = :last_name,
                   patronymic = :patronymic,
                   email = :email
                   WHERE user_id = :user_id";
-        
+
         $stmt = $db->prepare($query);
-        $stmt->bindParam(':first_name', $data['first_name']);
-        $stmt->bindParam(':last_name', $data['last_name']);
-        $stmt->bindParam(':patronymic', $data['patronymic']);
-        $stmt->bindParam(':email', $data['email']);
+        $stmt->bindParam(':first_name', $firstName);
+        $stmt->bindParam(':last_name', $lastName);
+        $stmt->bindParam(':patronymic', $patronymic);
+        $stmt->bindParam(':email', $email);
         $stmt->bindParam(':user_id', $user['user_id']);
         $stmt->execute();
-        
+
         // Обновляем имя в сессии
-        $_SESSION['name'] = $data['first_name'] . ' ' . $data['last_name'];
-        
+        $_SESSION['name'] = $firstName . ' ' . $lastName;
+
         echo json_encode(['success' => true]);
     }
 
@@ -259,9 +276,14 @@ public static function getCars() {
     $stmt = $db->prepare($query);
     $stmt->bindParam(':order_id', $orderId);
     $stmt->execute();
-    
+
     $photos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+    // Бакет order-photos приватный — отдаём временные подписанные ссылки.
+    foreach ($photos as &$p) {
+        $p['photo_url'] = MinioHelper::refreshUrl($p['photo_url']);
+    }
+    unset($p);
+
     echo json_encode(['success' => true, 'photos' => $photos]);
     }
 }

@@ -1,7 +1,8 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth'
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -18,6 +19,18 @@ const mobileMenuOpen = ref(false)
 const closeMenu = () => {
     mobileMenuOpen.value = false
 }
+
+// Меню — полноэкранная панель с role-семантикой модалки, но Esc её не закрывал.
+// Паттерн взят из ServicesView.
+const handleKeydown = (e) => {
+    if (e.key === 'Escape' && mobileMenuOpen.value) closeMenu()
+}
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
+
+// Панель во весь экран: без ловушки Tab уходил на страницу под ней.
+const menuPanel = ref(null)
+useFocusTrap(mobileMenuOpen, menuPanel)
 </script>
 
 <template>
@@ -30,7 +43,7 @@ const closeMenu = () => {
       
       <!-- Десктопная навигация (убраны лишние пункты, "Компания" заменён на прямой "О компании") -->
       <nav class="hidden md:block">
-        <ul class="flex gap-5 lg:gap-[30px] items-center">
+        <ul class="flex gap-5 md:gap-6 lg:gap-[30px] items-center">
           <li><router-link to="/" class="text-sm" :class="[$route.path === '/' ? 'opacity-100 text-[#fc9303]' : 'opacity-70 hover:opacity-90']">Главная</router-link></li>
           <li><router-link to="/services" class="text-sm" :class="[$route.path === '/services' ? 'opacity-100 text-[#fc9303]' : 'opacity-70 hover:opacity-90']">Услуги</router-link></li>
           <li><router-link to="/portfolio" class="text-sm" :class="[$route.path === '/portfolio' ? 'opacity-100 text-[#fc9303]' : 'opacity-70 hover:opacity-90']">Портфолио</router-link></li>
@@ -41,7 +54,7 @@ const closeMenu = () => {
       
       <div class="flex items-center gap-2 md:gap-4">
         <!-- Кнопка "Записаться" (только десктоп — на мобилке вынесена в бургер) -->
-        <router-link to="/booking" class="hidden md:flex items-center justify-center text-sm px-4 py-2 bg-black border border-white rounded-[5px] hover:bg-[#fc9303] hover:border-[#fc9303] text-white whitespace-nowrap transition-all">
+        <router-link to="/booking" class="hidden md:flex items-center justify-center text-sm px-4 py-2 bg-black border border-white rounded-[5px] hover:bg-[#fc9303] hover:border-[#fc9303] text-white hover:text-black whitespace-nowrap transition-all">
           Записаться
         </router-link>
 
@@ -65,7 +78,7 @@ const closeMenu = () => {
         </div>
 
         <!-- Бургер-меню (только мобильные) -->
-        <button @click="mobileMenuOpen = true" class="block md:hidden text-white focus:outline-none">
+        <button @click="mobileMenuOpen = true" aria-label="Открыть меню" class="block md:hidden text-white focus:outline-none p-2 -m-2">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
           </svg>
@@ -85,20 +98,24 @@ const closeMenu = () => {
     <Transition name="slide">
       <div
         v-if="mobileMenuOpen"
+        ref="menuPanel"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Меню"
         class="mobile-menu-panel fixed top-0 left-0 right-0 bottom-0 z-[9999] shadow-2xl flex flex-col p-6 text-white"
       >
-        <button @click="closeMenu" class="self-end text-white mb-6">
+        <button @click="closeMenu" aria-label="Закрыть меню" class="self-end text-white mb-6 p-2 -m-2 mt-0">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
           </svg>
         </button>
 
         <nav class="flex flex-col gap-4">
-          <router-link to="/" class="text-lg text-white" @click="closeMenu">Главная</router-link>
-          <router-link to="/services" class="text-lg text-white" @click="closeMenu">Услуги</router-link>
-          <router-link to="/portfolio" class="text-lg text-white" @click="closeMenu">Портфолио</router-link>
-          <router-link to="/about" class="text-lg text-white" @click="closeMenu">О компании</router-link>
-          <router-link to="/contacts" class="text-lg text-white" @click="closeMenu">Контакты</router-link>
+          <router-link to="/" class="text-lg text-white py-2" @click="closeMenu">Главная</router-link>
+          <router-link to="/services" class="text-lg text-white py-2" @click="closeMenu">Услуги</router-link>
+          <router-link to="/portfolio" class="text-lg text-white py-2" @click="closeMenu">Портфолио</router-link>
+          <router-link to="/about" class="text-lg text-white py-2" @click="closeMenu">О компании</router-link>
+          <router-link to="/contacts" class="text-lg text-white py-2" @click="closeMenu">Контакты</router-link>
         </nav>
 
         <div class="mt-auto pt-6 border-t border-white/20">
@@ -106,7 +123,7 @@ const closeMenu = () => {
             <router-link to="/booking" class="flex-1 text-center py-2 border border-white/50 rounded-full text-white bg-black hover:border-[#fc9303] transition-colors" @click="closeMenu">
               Записаться
             </router-link>
-            <router-link to="/login" class="flex-1 text-center py-2 border border-[#fc9303] rounded-full text-white bg-[#fc9303] hover:opacity-90 transition-opacity" @click="closeMenu">
+            <router-link to="/login" class="flex-1 text-center py-2 border border-[#fc9303] rounded-full text-black bg-[#fc9303] hover:opacity-90 transition-opacity" @click="closeMenu">
               Войти
             </router-link>
           </div>
@@ -139,11 +156,3 @@ const closeMenu = () => {
 }
 </style>
 
-<style scoped>
-/* Для экранов от 750px до 900px увеличиваем расстояние между пунктами меню */
-@media (min-width: 750px) and (max-width: 900px) {
-  .header nav ul {
-    gap: 1.5rem !important;
-  }
-}
-</style>

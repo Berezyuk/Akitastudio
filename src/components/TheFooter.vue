@@ -47,12 +47,22 @@ const navLinks = [
             <h3 class="footer-column-title">Соцсети</h3>
             <ul class="footer-menu">
               <li class="footer-menu-item">
+                <a href="https://web.max.ru/76436410" target="_blank" rel="noopener noreferrer">MAX</a>
+              </li>
+              <li class="footer-menu-item">
                 <a href="https://t.me/akita_auto" target="_blank" rel="noopener noreferrer">Telegram</a>
                 <span class="restricted-badge">*</span>
               </li>
               <li class="footer-menu-item">
                 <a href="https://www.instagram.com/auto.akita/" target="_blank" rel="noopener noreferrer">Instagram</a>
                 <span class="restricted-badge">*</span>
+              </li>
+              <li class="footer-menu-item">
+                <a href="https://wa.me/79098029868" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+                <span class="restricted-badge">*</span>
+              </li>
+              <li class="footer-menu-item">
+                <a href="https://yandex.ru/maps/org/avto_akita/193553178512/?ll=135.062781%2C48.465607&amp;z=15" target="_blank" rel="noopener noreferrer">Яндекс Карты</a>
               </li>
               <li class="footer-menu-item">
                 <a href="https://2gis.ru/khabarovsk/firm/70000001028746438" target="_blank" rel="noopener noreferrer">2GIS</a>
@@ -150,7 +160,7 @@ footer {
 }
 
 .footer-menu-item {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -169,6 +179,11 @@ footer {
   text-decoration: none;
   transition: all 0.3s ease;
   font-style: normal;
+}
+
+/* Тач-цель: 15px*1.5 = 22.5px — ниже минимума WCAG 2.5.8 (24px) */
+.footer-menu-item a {
+  padding: 4px 0;
 }
 
 .footer-menu-item a:hover {

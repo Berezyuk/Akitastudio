@@ -75,16 +75,16 @@ const handleLogin = async () => {
         <button 
           type="submit" 
           :disabled="loading || !isFormValid"
-          class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-4 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+          class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-semibold py-4 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
         >
           {{ loading ? 'Вход...' : 'Войти' }}
         </button>
       </form>
       
       <!-- Ссылка на регистрацию -->
-      <p class="text-center text-gray-500 text-sm mt-6">
+      <p class="text-center text-gray-400 text-sm mt-6">
         Нет аккаунта? 
-        <router-link to="/register" class="text-[#fc9303] hover:underline transition">
+        <router-link to="/register" class="inline-block py-2 text-[#fc9303] hover:underline transition">
           Зарегистрироваться
         </router-link>
       </p>

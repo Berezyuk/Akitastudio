@@ -3,6 +3,23 @@
 
 require_once __DIR__ . '/config/env.php';
 
+// Любая необработанная ошибка -> 500 + нейтральный JSON, детали только в лог.
+// Иначе клиент получает либо стек-трейс (display_errors=On), либо пустой 200.
+set_exception_handler(function (Throwable $e) {
+    error_log(sprintf('Uncaught %s: %s in %s:%d', get_class($e), $e->getMessage(), $e->getFile(), $e->getLine()));
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json');
+    }
+    echo json_encode(['error' => 'Внутренняя ошибка сервера']);
+    exit;
+});
+
+// Secure-cookie управляется через env: в проде за TLS ставить SESSION_COOKIE_SECURE=true.
+// В dev (HTTP) оставлять пустым/false, иначе браузер не отдаст cookie.
+if (filter_var(getenv('SESSION_COOKIE_SECURE'), FILTER_VALIDATE_BOOLEAN)) {
+    ini_set('session.cookie_secure', '1');
+}
 session_start();
 
 $corsOrigin = getenv('CORS_ORIGIN') ?: 'http://localhost:5173';
@@ -17,405 +34,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-require_once __DIR__ . '/controllers/AuthController.php';
-require_once __DIR__ . '/controllers/ServiceController.php';
-require_once __DIR__ . '/controllers/PortfolioController.php';
-require_once __DIR__ . '/controllers/AdminController.php';
+foreach (glob(__DIR__ . '/controllers/*.php') as $controller) {
+    require_once $controller;
+}
+require_once __DIR__ . '/models/SiteSettings.php';
 
-$requestUri = $_SERVER['REQUEST_URI'];
-$requestMethod = $_SERVER['REQUEST_METHOD'];
-$path = trim(str_replace('/api/', '', parse_url($requestUri, PHP_URL_PATH)), '/');
+$method = $_SERVER['REQUEST_METHOD'];
+$path = trim(str_replace('/api/', '', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)), '/');
 
-// Публичные маршруты (без авторизации)
-if ($path === 'settings' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/models/SiteSettings.php';
-    $s = new SiteSettings();
-    echo json_encode(['success' => true, 'settings' => $s->getAll()]);
-    exit;
-}
-if ($path === 'services' && $requestMethod === 'GET') {
-    ServiceController::getServices();
-    exit;
-}
-if ($path === 'portfolio' && $requestMethod === 'GET') {
-    PortfolioController::getPortfolio();
-    exit;
-}
-if ($path === 'auth/login' && $requestMethod === 'POST') {
-    AuthController::login();
-    exit;
-}
-if ($path === 'auth/logout' && $requestMethod === 'POST') {
-    AuthController::logout();
-    exit;
-}
-if ($path === 'auth/me' && $requestMethod === 'GET') {
-    AuthController::me();
-    exit;
-}
-if ($path === 'order/create' && $requestMethod === 'POST') {
-    require_once __DIR__ . '/controllers/OrderController.php';
-    OrderController::createOrder();
-    exit;
-}
-if ($path === 'validate-car' && $requestMethod === 'POST') {
-    require_once __DIR__ . '/controllers/CarValidationController.php';
-    CarValidationController::validateCar();
-    exit;
-}
-// Прокси для DaData (токен остаётся на сервере)
-if ($path === 'car-brand-suggest' && $requestMethod === 'POST') {
-    require_once __DIR__ . '/controllers/CarValidationController.php';
-    CarValidationController::suggestBrand();
-    exit;
-}
-// Обратная связь (публичный)
-if ($path === 'feedback' && $requestMethod === 'POST') {
-    require_once __DIR__ . '/controllers/FeedbackController.php';
-    FeedbackController::sendFeedback();
-    exit;
-}
-// Регистрация (публичный маршрут)
-if ($path === 'auth/register' && $requestMethod === 'POST') {
-    AuthController::register();
-    exit;
-}
+// Таблица маршрутов: [метод, шаблон, обработчик].
+// Шаблон — регэксп без якорей (якоря ^$ добавляются при матче).
+// Группы (\d+) попадают в $m[1], $m[2]... Авторизация проверяется внутри контроллеров.
+$routes = [
+    // ── Публичные ──
+    ['GET',    'settings',                          fn($m) => print(json_encode(['success' => true, 'settings' => (new SiteSettings())->getAll()]))],
+    ['GET',    'services',                           fn($m) => ServiceController::getServices()],
+    ['GET',    'portfolio',                          fn($m) => PortfolioController::getPortfolio()],
+    ['POST',   'auth/login',                         fn($m) => AuthController::login()],
+    ['POST',   'auth/logout',                        fn($m) => AuthController::logout()],
+    ['GET',    'auth/me',                            fn($m) => AuthController::me()],
+    ['POST',   'auth/register',                      fn($m) => AuthController::register()],
+    ['POST',   'order/create',                       fn($m) => OrderController::createOrder()],
+    ['POST',   'validate-car',                       fn($m) => CarValidationController::validateCar()],
+    ['POST',   'car-brand-suggest',                  fn($m) => CarValidationController::suggestBrand()],
+    ['POST',   'feedback',                           fn($m) => FeedbackController::sendFeedback()],
+    ['GET',    'car-models',                         fn($m) => CarController::getModels()],
+    ['GET',    'categories',                         fn($m) => CategoryController::getCategories()],
 
-// ========== ЛИЧНЫЙ КАБИНЕТ КЛИЕНТА ==========
-// Все эти маршруты требуют авторизации (клиент или админ)
+    // ── Личный кабинет клиента ──
+    ['GET',    'user/orders',                        fn($m) => ProfileController::getOrders()],
+    ['GET',    'user/orders/progress',               fn($m) => ProfileController::getOrdersProgress()],
+    ['POST',   'user/orders/(\d+)/cancel',           fn($m) => ProfileController::cancelOrder($m[1])],
+    ['POST',   'user/orders/(\d+)/reschedule',       fn($m) => ProfileController::rescheduleOrder($m[1])],
+    ['GET',    'user/orders/(\d+)/photos',           fn($m) => ProfileController::getClientOrderPhotos($m[1])],
+    ['GET',    'user/profile',                       fn($m) => ProfileController::getProfile()],
+    ['PUT',    'user/profile',                       fn($m) => ProfileController::updateProfile()],
 
-// Получить заказы клиента
-if ($path === 'user/orders' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/ProfileController.php';
-    ProfileController::getOrders();
-    exit;
-}
+    // ── Админ: дашборд/пароль ──
+    ['GET',    'admin/dashboard',                    fn($m) => AdminSystemController::getDashboardStats()],
+    ['POST',   'admin/change-password',              fn($m) => AdminSystemController::changePassword()],
 
-// Отменить заказ
-if (preg_match('/^user\/orders\/(\d+)\/cancel$/', $path, $matches) && $requestMethod === 'POST') {
-    require_once __DIR__ . '/controllers/ProfileController.php';
-    ProfileController::cancelOrder($matches[1]);
-    exit;
-}
+    // ── Админ: обратная связь ──
+    ['GET',    'admin/feedbacks',                    fn($m) => FeedbackController::getAllFeedbacks()],
+    ['PUT',    'admin/feedbacks/(\d+)/status',       fn($m) => FeedbackController::updateFeedbackStatus($m[1])],
+    ['DELETE', 'admin/feedbacks/(\d+)',              fn($m) => FeedbackController::deleteFeedback($m[1])],
 
-// Перенести заказ
-if (preg_match('/^user\/orders\/(\d+)\/reschedule$/', $path, $matches) && $requestMethod === 'POST') {
-    require_once __DIR__ . '/controllers/ProfileController.php';
-    ProfileController::rescheduleOrder($matches[1]);
-    exit;
-}
+    // ── Админ: услуги ──
+    ['GET',    'admin/services',                     fn($m) => AdminServicesController::getServices()],
+    ['POST',   'admin/services',                     fn($m) => AdminServicesController::addService()],
+    ['PUT',    'admin/services/(\d+)',               fn($m) => AdminServicesController::updateService($m[1])],
+    ['DELETE', 'admin/services/(\d+)',               fn($m) => AdminServicesController::deleteService($m[1])],
+    ['GET',    'admin/services-by-category/(\d+)',   fn($m) => AdminServicesController::getServicesByCategory($m[1])],
 
-// Получить прогресс заказов клиента
-if ($path === 'user/orders/progress' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/ProfileController.php';
-    ProfileController::getOrdersProgress();
-    exit;
-}
+    // ── Админ: портфолио ──
+    ['GET',    'admin/portfolio',                    fn($m) => AdminPortfolioController::getPortfolio()],
+    ['POST',   'admin/portfolio/upload',             fn($m) => AdminPortfolioController::uploadPortfolioMedia()],
+    ['POST',   'admin/portfolio',                    fn($m) => AdminPortfolioController::addPortfolio()],
+    ['PUT',    'admin/portfolio/(\d+)',              fn($m) => AdminPortfolioController::updatePortfolio($m[1])],
+    ['DELETE', 'admin/portfolio/(\d+)',              fn($m) => AdminPortfolioController::deletePortfolio($m[1])],
 
-// Админские роуты для прогресса
-if (preg_match('/^admin\/orders\/(\d+)\/progress$/', $path, $matches) && $requestMethod === 'GET') {
-    AdminController::getOrderServicesWithProgress($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/orders\/(\d+)\/services\/(\d+)\/progress$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updateServiceProgress($matches[1], $matches[2]);
-    exit;
-}
+    // ── Админ: клиенты ──
+    ['GET',    'admin/clients',                      fn($m) => AdminClientsController::getClientsList()],
+    ['GET',    'admin/clients/export',               fn($m) => AdminClientsController::exportClientsCSV()],
+    ['GET',    'admin/clients/(\d+)',                fn($m) => AdminClientsController::getClientDetails($m[1])],
+    ['PUT',    'admin/clients/(\d+)',                fn($m) => AdminClientsController::updateClient($m[1])],
 
-// Получить автомобили клиента
-if ($path === 'user/cars' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/ProfileController.php';
-    ProfileController::getCars();
-    exit;
-}
+    // ── Админ: заказы ──
+    ['GET',    'admin/orders',                       fn($m) => AdminOrdersController::getOrders()],
+    ['GET',    'admin/orders/(\d+)/progress',        fn($m) => AdminOrdersController::getOrderServicesWithProgress($m[1])],
+    ['PUT',    'admin/orders/(\d+)/services/(\d+)/progress', fn($m) => AdminOrdersController::updateServiceProgress($m[1], $m[2])],
+    ['GET',    'admin/orders/(\d+)/photos',          fn($m) => AdminOrdersController::getOrderPhotos($m[1])],
+    ['POST',   'admin/orders/(\d+)/photos/upload',   fn($m) => AdminOrdersController::uploadOrderPhoto($m[1])],
+    ['PUT',    'admin/orders/(\d+)/status',          fn($m) => AdminOrdersController::updateOrderStatus($m[1])],
+    ['DELETE', 'admin/photos/(\d+)',                 fn($m) => AdminOrdersController::deleteOrderPhoto($m[1])],
 
-// Получить профиль клиента
-if ($path === 'user/profile' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/ProfileController.php';
-    ProfileController::getProfile();
-    exit;
-}
+    // ── Админ: категории услуг ──
+    ['GET',    'admin/service-categories',           fn($m) => AdminServicesController::getServiceCategories()],
+    ['POST',   'admin/service-categories',           fn($m) => AdminServicesController::addServiceCategory()],
+    ['POST',   'admin/service-categories/(\d+)/media', fn($m) => AdminServicesController::uploadCategoryMedia($m[1])],
+    ['DELETE', 'admin/service-categories/(\d+)/media', fn($m) => AdminServicesController::deleteCategoryMedia($m[1])],
+    ['PUT',    'admin/service-categories/(\d+)',     fn($m) => AdminServicesController::updateServiceCategory($m[1])],
+    ['DELETE', 'admin/service-categories/(\d+)',     fn($m) => AdminServicesController::deleteServiceCategory($m[1])],
 
-// Обновить профиль клиента
-if ($path === 'user/profile' && $requestMethod === 'PUT') {
-    require_once __DIR__ . '/controllers/ProfileController.php';
-    ProfileController::updateProfile();
-    exit;
-}
-if (preg_match('/^user\/orders\/(\d+)\/photos$/', $path, $matches) && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/ProfileController.php';
-    ProfileController::getClientOrderPhotos($matches[1]);
-    exit;
-}
+    // ── Админ: статусы заказов ──
+    ['GET',    'admin/order-statuses',               fn($m) => AdminOrdersController::getOrderStatuses()],
 
+    // ── Админ: настройки ──
+    ['GET',    'admin/settings',                     fn($m) => AdminSystemController::getSettings()],
+    ['POST',   'admin/settings/about-video/upload',  fn($m) => AdminSystemController::uploadAboutVideo()],
+    ['POST',   'admin/settings/privacy-pdf/upload',  fn($m) => AdminSystemController::uploadPrivacyPdf()],
+    ['DELETE', 'admin/settings/privacy-pdf',         fn($m) => AdminSystemController::deletePrivacyPdf()],
+];
 
-// Все остальные маршруты требуют авторизации (админ)
-// В начале каждого метода AdminController уже проверяется сессия, но можно добавить middleware
-
-// Дашборд (админ)
-if ($path === 'admin/dashboard' && $requestMethod === 'GET') {
-    AdminController::getDashboardStats();
-    exit;
-}
-if ($path === 'admin/change-password' && $requestMethod === 'POST') {
-    AdminController::changePassword();
-    exit;
-}
-
-// Обратная связь (админ)
-if ($path === 'admin/feedbacks' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/FeedbackController.php';
-    FeedbackController::getAllFeedbacks();
-    exit;
-}
-if (preg_match('/^admin\/feedbacks\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/FeedbackController.php';
-    FeedbackController::getFeedback($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/feedbacks\/(\d+)\/status$/', $path, $matches) && $requestMethod === 'PUT') {
-    require_once __DIR__ . '/controllers/FeedbackController.php';
-    FeedbackController::updateFeedbackStatus($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/feedbacks\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    require_once __DIR__ . '/controllers/FeedbackController.php';
-    FeedbackController::deleteFeedback($matches[1]);
-    exit;
-}
-
-
-// Услуги (админ)
-if ($path === 'admin/services' && $requestMethod === 'GET') {
-    AdminController::getServices();
-    exit;
-}
-if ($path === 'admin/services' && $requestMethod === 'POST') {
-    AdminController::addService();
-    exit;
-}
-if (preg_match('/^admin\/services\/(\d+)$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updateService($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/services\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteService($matches[1]);
-    exit;
-}
-
-// Портфолио (админ)
-if ($path === 'admin/portfolio' && $requestMethod === 'GET') {
-    AdminController::getPortfolio();
-    exit;
-}
-if ($path === 'admin/portfolio/upload' && $requestMethod === 'POST') {
-    AdminController::uploadPortfolioMedia();
-    exit;
-}
-if ($path === 'admin/portfolio' && $requestMethod === 'POST') {
-    AdminController::addPortfolio();
-    exit;
-}
-if (preg_match('/^admin\/portfolio\/(\d+)$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updatePortfolio($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/portfolio\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deletePortfolio($matches[1]);
-    exit;
-}
-
-// Клиенты (админ)
-
-if ($path === 'admin/clients' && $requestMethod === 'GET') {
-    AdminController::getClientsList();
-    exit;
-}
-if (preg_match('/^admin\/clients\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
-    AdminController::getClientDetails($matches[1]);
-    exit;
-}
-if ($path === 'admin/clients' && $requestMethod === 'POST') {
-    AdminController::addClient();
-    exit;
-}
-if (preg_match('/^admin\/clients\/(\d+)$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updateClient($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/clients\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteClient($matches[1]);
-    exit;
-}
-if ($path === 'admin/clients/export' && $requestMethod === 'GET') {
-    AdminController::exportClientsCSV();
-    exit;
-}
-
-// Заказы (админ)
-if ($path === 'admin/orders' && $requestMethod === 'GET') {
-    AdminController::getOrders();
-    exit;
-}
-if ($path === 'admin/orders/export' && $requestMethod === 'GET') {
-    AdminController::exportOrders();
-    exit;
-}
-if (preg_match('/^admin\/orders\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
-    AdminController::getOrder($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/orders\/(\d+)$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updateOrder($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/orders\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteOrder($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/orders\/(\d+)\/photos$/', $path, $matches) && $requestMethod === 'GET') {
-    AdminController::getOrderPhotos($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/orders\/(\d+)\/photos\/upload$/', $path, $matches) && $requestMethod === 'POST') {
-    AdminController::uploadOrderPhoto($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/photos\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteOrderPhoto($matches[1]);
-    exit;
-}
-
-
-// Марки авто (админ)
-if ($path === 'admin/car-brands' && $requestMethod === 'GET') {
-    AdminController::getCarBrands();
-    exit;
-}
-if ($path === 'admin/car-brands' && $requestMethod === 'POST') {
-    AdminController::addCarBrand();
-    exit;
-}
-if (preg_match('/^admin\/car-brands\/(\d+)$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updateCarBrand($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/car-brands\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteCarBrand($matches[1]);
-    exit;
-}
-
-// Модели авто (админ)
-if ($path === 'admin/car-models' && $requestMethod === 'GET') {
-    AdminController::getCarModels();
-    exit;
-}
-if ($path === 'admin/car-models' && $requestMethod === 'POST') {
-    AdminController::addCarModel();
-    exit;
-}
-if (preg_match('/^admin\/car-models\/(\d+)$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updateCarModel($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/car-models\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteCarModel($matches[1]);
-    exit;
-}
-
-// Категории услуг (админ)
-if ($path === 'admin/service-categories' && $requestMethod === 'GET') {
-    AdminController::getServiceCategories();
-    exit;
-}
-if ($path === 'admin/service-categories' && $requestMethod === 'POST') {
-    AdminController::addServiceCategory();
-    exit;
-}
-if (preg_match('/^admin\/service-categories\/(\d+)$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updateServiceCategory($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/service-categories\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteServiceCategory($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/service-categories\/(\d+)\/media$/', $path, $matches) && $requestMethod === 'POST') {
-    AdminController::uploadCategoryMedia($matches[1]);
-    exit;
-}
-if (preg_match('/^admin\/service-categories\/(\d+)\/media$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteCategoryMedia($matches[1]);
-    exit;
-}
-
-// Сотрудники (админ)
-if ($path === 'admin/employees' && $requestMethod === 'GET') {
-    AdminController::getEmployees();
-    exit;
-}
-if ($path === 'admin/employees' && $requestMethod === 'POST') {
-    AdminController::addEmployee();
-    exit;
-}
-if (preg_match('/^admin\/employees\/(\d+)$/', $path, $matches) && $requestMethod === 'DELETE') {
-    AdminController::deleteEmployee($matches[1]);
-    exit;
-}
-
-// Статусы заказов (админ)
-if ($path === 'admin/order-statuses' && $requestMethod === 'GET') {
-    AdminController::getOrderStatuses();
-    exit;
-}
-if (preg_match('/^admin\/orders\/(\d+)\/status$/', $path, $matches) && $requestMethod === 'PUT') {
-    AdminController::updateOrderStatus($matches[1]);
-    exit;
-}
-
-// Получение услуг по категории (для админки)
-if (preg_match('/^admin\/services-by-category\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
-    AdminController::getServicesByCategory($matches[1]);
-    exit;
-}
-
-// Публичные маршруты
-if (preg_match('/^services-by-category\/(\d+)$/', $path, $matches) && $requestMethod === 'GET') {
-    ServiceController::getServicesByCategory($matches[1]);
-    exit;
-}
-if ($path === 'car-brands' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/CarController.php';
-    CarController::getBrands();
-    exit;
-}
-if ($path === 'car-models' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/CarController.php';
-    CarController::getModels();
-    exit;
-}
-if ($path === 'categories' && $requestMethod === 'GET') {
-    require_once __DIR__ . '/controllers/CategoryController.php';
-    CategoryController::getCategories();
-    exit;
-}
-
-
-if ($path === 'admin/settings' && $requestMethod === 'GET') {
-    AdminController::getSettings();
-    exit;
-}
-if ($path === 'admin/settings/about-video/upload' && $requestMethod === 'POST') {
-    AdminController::uploadAboutVideo();
-    exit;
-}
-if ($path === 'admin/settings/privacy-pdf/upload' && $requestMethod === 'POST') {
-    AdminController::uploadPrivacyPdf();
-    exit;
-}
-if ($path === 'admin/settings/privacy-pdf' && $requestMethod === 'DELETE') {
-    AdminController::deletePrivacyPdf();
-    exit;
+foreach ($routes as [$routeMethod, $pattern, $handler]) {
+    if ($method === $routeMethod && preg_match('#^' . $pattern . '$#', $path, $m)) {
+        $handler($m);
+        exit;
+    }
 }
 
 http_response_code(404);

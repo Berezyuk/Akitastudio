@@ -44,15 +44,7 @@ init:
 	printf "INSERT INTO users (login, password_hash, role) VALUES ('$(ADMIN_LOGIN)', '%s', 'admin') ON CONFLICT (login) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = 'admin';\n" "$$hash" | \
 	docker compose exec -T postgres sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB'
 	
-	@echo "Ожидание готовности MinIO..."
-	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' akita_minio)" = "healthy" ]; do sleep 2; done
-	
-	@echo "Создание бакетов MinIO..."
-	@docker run --rm \
-			--network container:akita_minio \
-			-e MC_HOST_local="http://$(MINIO_ROOT_USER):$(MINIO_ROOT_PASSWORD)@localhost:9000" \
-			--entrypoint sh minio/mc -c \
-			"mc mb --ignore-existing local/order-photos local/portfolio && \
-			 mc anonymous set download local/order-photos local/portfolio"
-			 
+	@echo "Ожидание бакетов MinIO..."
+	@until [ "$$(docker inspect --format='{{.State.Status}}' akita_minio_init 2>/dev/null)" = "exited" ]; do sleep 2; done
+
 	@echo "Готово. Приложение: http://localhost:5173 | Администратор: $(ADMIN_LOGIN)"

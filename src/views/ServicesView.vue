@@ -111,7 +111,7 @@
       >
         <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
 
-        <div class="relative bg-gray-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
+        <div ref="serviceModalPanel" class="relative bg-gray-900 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-700 shadow-2xl">
           <button
             @click="closeModal"
             aria-label="Закрыть"
@@ -126,7 +126,7 @@
             <div class="mb-8">
               <h2
                 id="modal-service-title"
-                class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent mb-4"
+                class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent mb-4 pr-12"
               >
                 {{ selectedService.name }}
               </h2>
@@ -172,10 +172,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useHead } from '@unhead/vue'
 import { useRouter } from 'vue-router'
 import { API_BASE } from '@/config/api.js'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 useHead({
   title: 'Услуги детейлинга в Хабаровске — Цены и виды работ | Akita Studio',
@@ -197,6 +198,10 @@ const categories = ref([])
 const services = ref([])
 const openCategories = ref([])
 const selectedService = ref(null)
+
+// Ловушка фокуса: Tab уводил из модалки в аккордеон под ней.
+const serviceModalPanel = ref(null)
+useFocusTrap(computed(() => !!selectedService.value), serviceModalPanel)
 const loading = ref(true)
 const fetchError = ref(false)
 
@@ -392,11 +397,6 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-@media (max-width: 640px) {
-  .break-words {
-    word-break: break-word;
-  }
-}
 
 .modal-content {
   scrollbar-width: thin;

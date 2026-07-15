@@ -1,4 +1,5 @@
 <script setup>
+import { onMounted, onUnmounted } from 'vue'
 import { useHead } from '@unhead/vue'
 
 useHead({
@@ -46,7 +47,29 @@ const principles = [
   }
 ]
 
+// Ленивая загрузка фоновых видео — тот же приём, что в HomeView.
+// С autoplay браузер обязан скачать файл сразу и молча игнорирует preload="none":
+// страница тянула ~35 МБ на телефоне. Без autoplay preload="none" соблюдается,
+// и файл запрашивается только когда observer вызовет play() при появлении в кадре.
+let videoObserver = null
 
+onMounted(() => {
+  const videos = document.querySelectorAll('video[data-lazy-video]')
+  if (!videos.length) return
+
+  videoObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) entry.target.play().catch(() => {})
+        else entry.target.pause()
+      })
+    },
+    { threshold: 0.25 }
+  )
+  videos.forEach((v) => videoObserver.observe(v))
+})
+
+onUnmounted(() => videoObserver?.disconnect())
 </script>
 
 <template>
@@ -54,7 +77,7 @@ const principles = [
     
     <!-- ПЕРВЫЙ ЭКРАН: Герой -->
     <section class="relative h-[55vh] md:h-screen flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-40">
+      <video data-lazy-video muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-40">
         <source :src="portfolio5Video" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black"></div>
@@ -113,9 +136,9 @@ const principles = [
           </h2>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           <div v-for="(item, idx) in principles" :key="idx"
-               class="group relative bg-gray-900/40 backdrop-blur-sm rounded-2xl p-8 border border-gray-800 hover:border-[#fc9303] transition-all duration-500 hover:-translate-y-2 flex flex-col">
+               class="group relative bg-gray-900/40 backdrop-blur-sm rounded-2xl p-5 md:p-8 border border-gray-800 hover:border-[#fc9303] transition-all duration-500 hover:-translate-y-2 flex flex-col">
             <div class="absolute inset-0 rounded-2xl bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500" :class="item.color"></div>
             <div class="relative z-10 flex flex-col h-full">
               <div aria-hidden="true" class="text-6xl mb-6 group-hover:scale-110 transition-transform duration-300 text-center">{{ item.icon }}</div>
@@ -133,12 +156,12 @@ const principles = [
         <h2 class="text-5xl md:text-6xl font-bold text-center mb-20">
           <span class="bg-gradient-to-r from-[#fc9303] to-[#ff6b00] bg-clip-text text-transparent">Наша философия</span>
         </h2>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-12">
           <div class="text-center group">
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="washMotorVideo" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
+                <video :src="washMotorVideo" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline preload="none" data-lazy-video></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Мы не моем.</h3>
@@ -148,7 +171,7 @@ const principles = [
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow animation-delay-300"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="portfolio3Video" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
+                <video :src="portfolio3Video" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline preload="none" data-lazy-video></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Каждая деталь</h3>
@@ -158,7 +181,7 @@ const principles = [
             <div class="relative w-48 h-48 mx-auto mb-8">
               <div class="absolute inset-0 rounded-full bg-gradient-to-r from-[#fc9303]/10 to-transparent animate-ping-slow animation-delay-600"></div>
               <div class="absolute inset-4 rounded-full bg-gradient-to-br from-[#fc9303]/20 to-transparent backdrop-blur-sm flex items-center justify-center overflow-hidden">
-                <video :src="portfolio5Video" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline autoplay preload="none"></video>
+                <video :src="portfolio5Video" aria-hidden="true" class="w-full h-full object-cover opacity-30 group-hover:opacity-50 transition-opacity duration-500" muted loop playsinline preload="none" data-lazy-video></video>
               </div>
             </div>
             <h3 class="text-2xl font-bold text-white mb-4">Ваша машина</h3>
@@ -170,16 +193,16 @@ const principles = [
 
     <!-- ФИНАЛЬНЫЙ ЭКРАН: CTA -->
     <section class="relative h-screen flex items-center justify-center overflow-hidden">
-      <video autoplay muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-30">
+      <video data-lazy-video muted loop playsinline preload="none" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover opacity-30">
         <source :src="portfolio2Video" type="video/mp4">
       </video>
       <div class="absolute inset-0 bg-gradient-radial from-transparent via-black to-black"></div>
       <div class="relative z-10 text-center px-4 container">
-        <h2 class="text-5xl md:text-7xl font-bold mb-12 max-w-4xl mx-auto">
+        <h2 class="text-3xl sm:text-4xl md:text-7xl font-bold mb-12 max-w-4xl mx-auto">
           <span class="bg-gradient-to-r from-white to-[#fc9303] bg-clip-text text-transparent">Готовы почувствовать разницу?</span>
         </h2>
         <div class="flex flex-col sm:flex-row gap-6 justify-center">
-          <router-link to="/booking" class="group relative px-12 py-5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-bold text-xl rounded-full overflow-hidden">
+          <router-link to="/booking" class="group relative px-12 py-5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-bold text-xl rounded-full overflow-hidden">
             <span class="relative z-10">Записаться</span>
             <span class="absolute inset-0 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left opacity-20"></span>
           </router-link>
@@ -216,13 +239,5 @@ const principles = [
 }
 .bg-gradient-radial {
   background: radial-gradient(circle at center, transparent 0%, black 100%);
-}
-@media (max-width: 768px) {
-  h1 {
-    font-size: 4rem;
-  }
-  h2 {
-    font-size: 2.5rem;
-  }
 }
 </style>

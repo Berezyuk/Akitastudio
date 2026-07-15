@@ -39,6 +39,9 @@ $stmt->bindParam(':user_id', $user['user_id']);
 $stmt->execute();
 $userData = $stmt->fetch();
 
+// Новый ID сессии при смене привилегий — против фиксации сессии.
+session_regenerate_id(true);
+
 $_SESSION['user_id'] = $userData['user_id'];
 $_SESSION['role'] = $userData['role'];
 $_SESSION['client_id'] = $userData['client_id'];
@@ -57,6 +60,12 @@ return [
     }
     
     public function logout() {
+        // session_destroy() сам по себе не чистит $_SESSION и не гасит cookie.
+        $_SESSION = [];
+        if (ini_get('session.use_cookies')) {
+            $p = session_get_cookie_params();
+            setcookie(session_name(), '', time() - 42000, $p['path'], $p['domain'], $p['secure'], $p['httponly']);
+        }
         session_destroy();
         return ['success' => true];
     }
@@ -129,25 +138,8 @@ public function register($data) {
         
     } catch(Exception $e) {
         $this->conn->rollBack();
-        return ['error' => 'Ошибка регистрации: ' . $e->getMessage()];
+        error_log('Register error: ' . $e->getMessage());
+        return ['error' => 'Ошибка регистрации. Попробуйте позже.'];
     }
-    }
-    
-    // Создание тестового админа (для первого запуска)
-    public function createTestAdmin() {
-        $login = 'admin';
-        $password = 'admin123';
-        $hash = password_hash($password, PASSWORD_BCRYPT);
-        
-        $query = "INSERT INTO users (login, password_hash) VALUES (:login, :hash) ON CONFLICT (login) DO NOTHING";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':login', $login);
-        $stmt->bindParam(':hash', $hash);
-        $stmt->execute();
-        
-        if($stmt->rowCount() > 0) {
-            return ['success' => true, 'message' => 'Администратор создан'];
-        }
-        return ['info' => 'Администратор уже существует'];
     }
 }

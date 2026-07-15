@@ -68,10 +68,4 @@ class AuthController {
     }
     echo json_encode(['success' => true, 'user' => $current]);
     }
-    
-    public static function createTestAdmin() {
-        $user = new User();
-        $result = $user->createTestAdmin();
-        echo json_encode($result);
-    }
 }

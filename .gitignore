@@ -47,3 +47,6 @@ coverage
 
 # Vitest
 __screenshots__/
+
+# Local notes (not for repo)
+local/
