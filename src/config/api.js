@@ -11,6 +11,12 @@ export async function apiFetch(path, options = {}) {
     const data = await res.json().catch(() => ({}))
     // Бэкенд отдаёт валидный JSON и на 4xx/5xx — без проверки статуса
     // ошибка неотличима от обычного ответа и тонет молча.
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+    if (!res.ok) {
+        // Статус кладём на ошибку: по тексту 401 от сетевого сбоя не отличить,
+        // а вызывающим это нужно (гость на публичной странице — не авария).
+        const err = new Error(data.error || `HTTP ${res.status}`)
+        err.status = res.status
+        throw err
+    }
     return data
 }

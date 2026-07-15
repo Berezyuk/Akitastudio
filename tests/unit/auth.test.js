@@ -15,7 +15,12 @@ beforeEach(() => {
   setActivePinia(createPinia())
   vi.spyOn(console, 'error').mockImplementation(() => {})
 })
-afterEach(() => vi.unstubAllGlobals())
+// restoreAllMocks обязателен: без него spy на console.error переживает тест и
+// копит вызовы соседей — проверки «не писал в консоль» врут зелёным.
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 describe('login', () => {
   test('успех кладёт пользователя в стор', async () => {
@@ -91,5 +96,26 @@ describe('checkAuth', () => {
     const s = useAuthStore()
     await s.checkAuth()
     expect(s.isAuthenticated).toBe(false)
+  })
+
+  // Гость на публичной странице — норма, а не авария. После перехода /auth/me на
+  // честный 401 apiFetch начал бросать, и каждый посетитель видел в консоли
+  // «checkAuth failed» на каждой загрузке.
+  test('гость (401) -> в консоль НЕ пишет', async () => {
+    vi.stubGlobal('fetch', json({ error: 'Не авторизован' }, 401))
+    await useAuthStore().checkAuth()
+    expect(console.error).not.toHaveBeenCalled()
+  })
+
+  test('настоящий сбой (500) -> в консоль пишет', async () => {
+    vi.stubGlobal('fetch', json({ error: 'Внутренняя ошибка сервера' }, 500))
+    await useAuthStore().checkAuth()
+    expect(console.error).toHaveBeenCalled()
+  })
+
+  test('сеть отвалилась -> в консоль пишет', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    await useAuthStore().checkAuth()
+    expect(console.error).toHaveBeenCalled()
   })
 })
