@@ -10,7 +10,8 @@
 //       docker compose exec -T postgres sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
 //         DELETE FROM order_services WHERE order_id IN (SELECT order_id FROM orders WHERE client_notes LIKE '"'"'test-%'"'"');
 //         DELETE FROM orders WHERE client_notes LIKE '"'"'test-%'"'"';
-//         DELETE FROM clients WHERE phone_number LIKE '"'"'7999555%'"'"';"'
+//         DELETE FROM clients WHERE phone_number LIKE '"'"'7999555%'"'"';
+//         DELETE FROM visits;"'
 import { test, describe, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -237,6 +238,80 @@ describe('GET /admin/analytics', () => {
     assert.ok(Array.isArray(data.top_hosts))
     // У direct нет хоста (referer_host IS NULL) — в топ сайтов ему попадать нечем.
     for (const row of data.top_hosts) assert.ok(row.referer_host)
+  })
+})
+
+// Beacon визитов. Referer из заголовка тут бесполезен (на fetch из SPA он равен
+// URL текущей страницы), поэтому источник приходит в теле — см. спеку.
+// Каждый тест берёт свой X-Real-IP: hash = f(ip, ua), значит своя корзина
+// антинакрутки и никакого влияния тестов друг на друга.
+describe('POST /visit: сбор визитов', () => {
+  let cookie
+
+  const visit = (body, headers = {}) =>
+    fetch(API + '/visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(body),
+    })
+
+  const analytics = async () =>
+    (await fetch(API + '/admin/analytics?days=7', { headers: { Cookie: cookie } })).json()
+
+  const countBy = (rows, key, val) => Number(rows?.find((r) => r[key] === val)?.count ?? 0)
+
+  const UA_DESKTOP = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36'
+  const UA_MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
+
+  before(async () => {
+    cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+  })
+
+  test('отвечает 204 и увеличивает счётчик визитов', async () => {
+    const before = await analytics()
+    const res = await visit({ referrer: '' }, { 'X-Real-IP': '198.51.100.10', 'User-Agent': UA_DESKTOP })
+    assert.equal(res.status, 204)
+    const after = await analytics()
+    assert.equal(after.today.visits - before.today.visits, 1)
+  })
+
+  test('переход с поисковика -> source=search', async () => {
+    const before = await analytics()
+    await visit(
+      { referrer: 'https://yandex.ru/search/?text=детейлинг' },
+      { 'X-Real-IP': '198.51.100.11', 'User-Agent': UA_DESKTOP }
+    )
+    const after = await analytics()
+    assert.equal(countBy(after.sources, 'source', 'search') - countBy(before.sources, 'source', 'search'), 1)
+  })
+
+  test('пустой referrer -> source=direct', async () => {
+    const before = await analytics()
+    await visit({ referrer: '' }, { 'X-Real-IP': '198.51.100.12', 'User-Agent': UA_DESKTOP })
+    const after = await analytics()
+    assert.equal(countBy(after.sources, 'source', 'direct') - countBy(before.sources, 'source', 'direct'), 1)
+  })
+
+  test('переход со своего же сайта -> source=direct, а не other', async () => {
+    const own = env.CORS_ORIGIN
+    const before = await analytics()
+    await visit({ referrer: `${own}/services` }, { 'X-Real-IP': '198.51.100.13', 'User-Agent': UA_DESKTOP })
+    const after = await analytics()
+    assert.equal(countBy(after.sources, 'source', 'direct') - countBy(before.sources, 'source', 'direct'), 1)
+  })
+
+  test('iPhone -> device=mobile', async () => {
+    const before = await analytics()
+    await visit({ referrer: '' }, { 'X-Real-IP': '198.51.100.14', 'User-Agent': UA_MOBILE })
+    const after = await analytics()
+    assert.equal(countBy(after.devices, 'device', 'mobile') - countBy(before.devices, 'device', 'mobile'), 1)
+  })
+
+  test('десктопный User-Agent -> device=desktop', async () => {
+    const before = await analytics()
+    await visit({ referrer: '' }, { 'X-Real-IP': '198.51.100.15', 'User-Agent': UA_DESKTOP })
+    const after = await analytics()
+    assert.equal(countBy(after.devices, 'device', 'desktop') - countBy(before.devices, 'device', 'desktop'), 1)
   })
 })
 

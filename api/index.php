@@ -75,6 +75,7 @@ $routes = [
     ['POST',   'validate-car',                       fn($m) => CarValidationController::validateCar()],
     ['POST',   'car-brand-suggest',                  fn($m) => CarValidationController::suggestBrand()],
     ['POST',   'feedback',                           fn($m) => FeedbackController::sendFeedback()],
+    ['POST',   'visit',                             fn($m) => VisitController::track()],
     ['GET',    'car-models',                         fn($m) => CarController::getModels()],
     ['GET',    'categories',                         fn($m) => CategoryController::getCategories()],
 
