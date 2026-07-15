@@ -53,6 +53,7 @@ describe('guard: админские роуты без сессии', () => {
     '/admin/order-statuses',
     '/admin/feedbacks',
     '/admin/settings',
+    '/admin/analytics',
   ]
 
   for (const route of adminRoutes) {
@@ -176,6 +177,66 @@ describe('дашборд', () => {
     assert.ok(data.success)
     // Тесты выше создали заказы сегодня — счётчик обязан быть > 0.
     assert.ok(data.stats.today_orders > 0, 'today_orders = 0 при созданных сегодня заказах')
+  })
+
+  test('chart_data: 7 точек, числа, а не строки из PDO', async () => {
+    const cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+    const data = await (await fetch(API + '/admin/dashboard', { headers: { Cookie: cookie } })).json()
+
+    assert.equal(data.chart_data.labels.length, 7)
+    assert.equal(data.chart_data.values.length, 7)
+    assert.equal(data.chart_data.revenue.length, 7)
+    // PDO отдаёт COUNT/SUM строками. Контроллер их приводит — если рефакторинг
+    // приведение потеряет, JSON поедет со строками и тест поймает это здесь.
+    for (const v of data.chart_data.values) assert.equal(typeof v, 'number')
+    for (const r of data.chart_data.revenue) assert.equal(typeof r, 'number')
+  })
+})
+
+describe('GET /admin/analytics', () => {
+  let cookie
+  before(async () => {
+    cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+  })
+
+  const get = (qs) => fetch(API + '/admin/analytics' + qs, { headers: { Cookie: cookie } })
+
+  test('days=7 отдаёт ряд ровно на 7 точек', async () => {
+    const data = await (await get('?days=7')).json()
+    assert.ok(data.success)
+    assert.equal(data.chart_data.labels.length, 7)
+    assert.equal(data.chart_data.visits.length, 7)
+    assert.equal(data.chart_data.uniques.length, 7)
+  })
+
+  test('ряд отдаётся числами, а не строками из PDO', async () => {
+    const data = await (await get('?days=7')).json()
+    for (const v of data.chart_data.visits) assert.equal(typeof v, 'number')
+    for (const u of data.chart_data.uniques) assert.equal(typeof u, 'number')
+    assert.equal(typeof data.today.visits, 'number')
+    assert.equal(typeof data.today.uniques, 'number')
+  })
+
+  test('days=30 отдаёт ряд ровно на 30 точек', async () => {
+    const data = await (await get('?days=30')).json()
+    assert.equal(data.chart_data.labels.length, 30)
+  })
+
+  test('days вне whitelist -> 400, а не подстановка в SQL', async () => {
+    const res = await get('?days=99')
+    assert.equal(res.status, 400)
+  })
+
+  test('без days работает как days=7', async () => {
+    const data = await (await get('')).json()
+    assert.equal(data.chart_data.labels.length, 7)
+  })
+
+  test('top_hosts отдаётся массивом и не содержит прямых заходов', async () => {
+    const data = await (await get('?days=7')).json()
+    assert.ok(Array.isArray(data.top_hosts))
+    // У direct нет хоста (referer_host IS NULL) — в топ сайтов ему попадать нечем.
+    for (const row of data.top_hosts) assert.ok(row.referer_host)
   })
 })
 

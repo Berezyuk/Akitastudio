@@ -89,6 +89,7 @@ $routes = [
 
     // ── Админ: дашборд/пароль ──
     ['GET',    'admin/dashboard',                    fn($m) => AdminSystemController::getDashboardStats()],
+    ['GET',    'admin/analytics',                   fn($m) => AdminSystemController::getAnalytics()],
     ['POST',   'admin/change-password',              fn($m) => AdminSystemController::changePassword()],
 
     // ── Админ: обратная связь ──
