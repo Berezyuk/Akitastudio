@@ -39,7 +39,9 @@ foreach (glob(__DIR__ . '/controllers/*.php') as $controller) {
 }
 require_once __DIR__ . '/models/SiteSettings.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
+// HEAD матчим как GET: иначе health-check'и и мониторинги получали 404 на всех
+// GET-роутах. Тело ответа nginx для HEAD отбросит сам.
+$method = $_SERVER['REQUEST_METHOD'] === 'HEAD' ? 'GET' : $_SERVER['REQUEST_METHOD'];
 $path = trim(str_replace('/api/', '', parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH)), '/');
 
 // Таблица маршрутов: [метод, шаблон, обработчик].
@@ -128,7 +130,24 @@ $routes = [
 
 foreach ($routes as [$routeMethod, $pattern, $handler]) {
     if ($method === $routeMethod && preg_match('#^' . $pattern . '$#', $path, $m)) {
+        // Контроллеры сообщают об ошибке через echo json_encode(['error' => ...]) и
+        // статус не трогают — клиент получал HTTP 200 и не мог отличить отказ от
+        // успеха, не разбирая тело. Проставляем 400 здесь, а не правим ~68 точек:
+        // так корректный статус работает и для нового кода по умолчанию.
+        // Явно выставленный контроллером код (401/403/429 из guard'ов и RateLimiter)
+        // не трогаем — до этой строки они доходят через exit, с уже готовым статусом.
+        ob_start();
         $handler($m);
+        $body = ob_get_clean();
+
+        if (http_response_code() === 200) {
+            $decoded = json_decode($body, true);
+            if (is_array($decoded) && isset($decoded['error']) && empty($decoded['success'])) {
+                http_response_code(400);
+            }
+        }
+
+        echo $body;
         exit;
     }
 }

@@ -27,9 +27,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Локальный разлогин не должен зависеть от доступности сервера: apiFetch бросает
+  // на любой не-2xx, и без перехвата упавший бэкенд оставлял пользователя
+  // залогиненным, а редирект у вызывающих (TheHeader, ProfileView) не срабатывал.
   async function logout() {
-    await apiFetch('/auth/logout', { method: 'POST' })
-    user.value = null
+    try {
+      await apiFetch('/auth/logout', { method: 'POST' })
+    } catch (err) {
+      console.error('logout request failed', err)
+    } finally {
+      user.value = null
+    }
   }
 
   async function checkAuth() {

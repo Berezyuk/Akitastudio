@@ -8,17 +8,14 @@ class AdminOrdersController {
         requireAdmin();
     }
 
+    // Отдаём все заказы разом: пагинация переехала на клиент. Иначе фильтры,
+    // сортировка и счётчики в админке видели только текущую страницу и врали
+    // (поиск не находил заказ со второй страницы при «320 записей» в пагинаторе).
+    // ponytail: весь список в один ответ; фильтровать на сервере, если заказов станет >5k
     public static function getOrders() {
         self::checkAdmin();
 
-        $page  = max(1, (int)($_GET['page']  ?? 1));
-        $limit = min(100, max(1, (int)($_GET['limit'] ?? 50)));
-        $offset = ($page - 1) * $limit;
-
         $db = (new Database())->getConnection();
-
-        // Общее кол-во для пагинатора
-        $total = (int)$db->query("SELECT COUNT(*) FROM orders")->fetchColumn();
 
         $stmt = $db->prepare(
             "SELECT o.order_id, o.order_date, o.total_price, o.prepayment, o.notes,
@@ -35,26 +32,20 @@ class AdminOrdersController {
              LEFT JOIN car_brands cb ON o.brand_id = cb.brand_id
              LEFT JOIN car_models cm ON o.model_id = cm.model_id
              LEFT JOIN order_statuses os ON o.status_id = os.status_id
-             ORDER BY o.order_date DESC, o.order_id DESC
-             LIMIT :limit OFFSET :offset"
+             ORDER BY o.order_date DESC, o.order_id DESC"
         );
-        $stmt->bindValue(':limit',  $limit,  \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
         $stmt->execute();
 
         echo json_encode([
             'success' => true,
             'orders'  => $stmt->fetchAll(PDO::FETCH_ASSOC),
-            'total'   => $total,
-            'page'    => $page,
-            'limit'   => $limit,
         ]);
     }
 
     public static function updateOrderStatus($id) {
         self::checkAdmin();
         $data     = json_decode(file_get_contents('php://input'), true);
-        $statusId = $data['status_id'];
+        $statusId = $data['status_id'] ?? null;   // валидацию делает Order::updateStatus
         $order    = new Order();
         echo json_encode($order->updateStatus($id, $statusId));
     }

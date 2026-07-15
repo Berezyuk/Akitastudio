@@ -16,6 +16,16 @@ class Order {
     }
     
     public function createFromRequest($data) {
+    // Услуги проверяем ПЕРВЫМ делом, до findOrCreate клиента: иначе отказ ниже
+    // оставлял в БД клиента без единого заказа (аноним мог так засорять таблицу).
+    // is_array обязателен: скаляр проходит empty(), а foreach по нему — warning,
+    // а не ошибка. Тело цикла не выполнялось, и заказ уходил в БД на 0 ₽ без услуг,
+    // мимо проверок is_active и цен ниже.
+    $serviceIds = $data['service_ids'] ?? [];
+    if (!is_array($serviceIds) || empty($serviceIds)) {
+        return ['error' => 'Выберите хотя бы одну услугу'];
+    }
+
     // Если передан client_id, используем его
     if (!empty($data['client_id'])) {
         $clientId = $data['client_id'];
@@ -50,11 +60,7 @@ class Order {
     if (!$modelResult['success']) return ['error' => 'Ошибка с моделью'];
     $modelId = $modelResult['model_id'];
 
-    // 3. Услуги
-    $serviceIds = $data['service_ids'] ?? [];
-    if (empty($serviceIds)) return ['error' => 'Выберите хотя бы одну услугу'];
-
-    // 4. Расчёт общей суммы
+    // 3. Расчёт общей суммы
     // Раньше цикл молча пропускал всё, что не нашлось (`if ($service)` без else):
     // несуществующий id давал заказ на 0 ₽ без единой услуги, а частичный список
     // тихо занижал сумму. Любой нерезолвнутый id — теперь отказ.
@@ -124,11 +130,27 @@ class Order {
      * Обновить статус заказа
      */
     public function updateStatus($id, $statusId) {
-        $query = "UPDATE orders SET status_id = :status_id WHERE order_id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':id', $id);
-        $stmt->bindParam(':status_id', $statusId);
-        return ['success' => $stmt->execute()];
+        // Без валидации отсутствующий status_id уходил в UPDATE как NULL: заказ
+        // терял статус и выпадал из счётчиков дашборда (status_id IN (1,2,3)),
+        // а несуществующий id ронял FK в 500. EXISTS отдаёт оба случая ошибкой.
+        $statusId = filter_var($statusId, FILTER_VALIDATE_INT);
+        if ($statusId === false) {
+            return ['error' => 'Некорректный статус'];
+        }
+
+        $stmt = $this->conn->prepare(
+            "UPDATE orders SET status_id = :status_id
+             WHERE order_id = :id
+               AND EXISTS (SELECT 1 FROM order_statuses WHERE status_id = :status_id)"
+        );
+        $stmt->execute([':id' => $id, ':status_id' => $statusId]);
+
+        // execute() = true и при нуле затронутых строк: без rowCount несуществующий
+        // заказ отвечал success.
+        if ($stmt->rowCount() === 0) {
+            return ['error' => 'Заказ или статус не найден'];
+        }
+        return ['success' => true];
     }
     
 }

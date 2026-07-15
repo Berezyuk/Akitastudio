@@ -16,11 +16,9 @@ class OrderController {
         $data['client_id'] = $_SESSION['client_id'];
     }
 
-    // Проверка услуг
-    if (empty($data['service_ids']) && empty($data['service_id'])) {
-        echo json_encode(['error' => 'Выберите хотя бы одну услугу']);
-        return;
-    }
+    // Услуги не проверяем: это делает Order::createFromRequest первым же шагом.
+    // Здешняя копия пропускала одиночный service_id (модель читает только
+    // service_ids), и такой запрос доходил до создания клиента-сироты.
 
     // Если нет client_id, то нужны имя и телефон
     if (empty($data['client_id']) && (empty($data['client_name']) || empty($data['client_phone']))) {
