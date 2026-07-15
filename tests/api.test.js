@@ -320,6 +320,21 @@ describe('HTTP-статусы: ошибка не должна приходить
   })
 })
 
+describe('заголовки: версия PHP наружу не уходит', () => {
+  // expose_php живёт в docker/php/php.ini, а тот КОПИРУЕТСЯ в образ. Правка без
+  // --build не доезжает молча (на этом уже теряли session.cookie_secure на месяц),
+  // поэтому проверка идёт по живому ответу, а не по файлу.
+  test('X-Powered-By отсутствует', async () => {
+    const res = await fetch(API + '/services')
+    assert.equal(res.headers.get('x-powered-by'), null, 'сервер сообщает версию PHP')
+  })
+
+  test('и на ошибках тоже', async () => {
+    const res = await fetch(API + '/auth/me')
+    assert.equal(res.headers.get('x-powered-by'), null)
+  })
+})
+
 describe('session-cookie: Secure по HTTPS без настройки в .env', () => {
   // На проде SESSION_COOKIE_SECURE в .env просто не оказалось, и кука на
   // HTTPS-сайте уходила без Secure — настройка проваливалась в небезопасную
