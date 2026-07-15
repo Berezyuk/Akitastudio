@@ -63,6 +63,9 @@ class AuthController {
     $user = new User();
     $current = $user->getCurrentUser();
     if(!$current) {
+        // Именно 401, а не общий 400 от роутера: «кто я» без сессии — это
+        // неавторизован, и checkAuth на фронте различает это по статусу.
+        http_response_code(401);
         echo json_encode(['error' => 'Не авторизован']);
         return;
     }
