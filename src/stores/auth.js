@@ -47,7 +47,11 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = data.user
       }
     } catch (err) {
-      console.error('checkAuth failed', err)
+      // 401 — это гость: нормальное состояние любой публичной страницы, не авария.
+      // /auth/me раньше отдавал 200 с телом {error}, apiFetch не бросал, и молчание
+      // выходило само собой. Теперь статус честный, и без этой проверки каждый гость
+      // видел в консоли «checkAuth failed» на каждой загрузке.
+      if (err.status !== 401) console.error('checkAuth failed', err)
     }
   }
 

@@ -30,6 +30,22 @@ describe('apiFetch', () => {
     await expect(apiFetch('/auth/me')).rejects.toThrow('Не авторизован')
   })
 
+  // По тексту 401 от сетевого сбоя не отличить, а вызывающим это нужно:
+  // гость на публичной странице — не авария и не повод шуметь в консоль.
+  test('кладёт статус на ошибку', async () => {
+    mockFetch({ error: 'Не авторизован' }, { status: 401 })
+    await expect(apiFetch('/auth/me')).rejects.toMatchObject({ status: 401 })
+    mockFetch({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
+    await expect(apiFetch('/x')).rejects.toMatchObject({ status: 500 })
+  })
+
+  test('сетевой сбой -> статуса нет (это не ответ сервера)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    const err = await apiFetch('/x').catch((e) => e)
+    expect(err).toBeInstanceOf(TypeError)
+    expect(err.status).toBeUndefined()
+  })
+
   test('бросает на 5xx даже без тела', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 500 })))
     await expect(apiFetch('/services')).rejects.toThrow('HTTP 500')
