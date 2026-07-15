@@ -313,6 +313,67 @@ describe('POST /visit: сбор визитов', () => {
     const after = await analytics()
     assert.equal(countBy(after.devices, 'device', 'desktop') - countBy(before.devices, 'device', 'desktop'), 1)
   })
+
+  // Потолок — MAX_PER_HOUR в контроллере, сейчас 300. Хеш ответа всегда 204
+  // (и при отказе тоже — накрутчику не сообщаем, где предел), поэтому "записалось
+  // или нет" проверяем только по разнице today.visits, не по HTTP-статусу.
+  // UA внутри цикла заполнения нарочно каждый раз новый: потолок общий на IP
+  // (ip_hash), а не на пару (IP, UA) — до фикса ротация UA его обходила.
+  // 301 запрос — медленный тест (~секунды), но короче не проверить границу
+  // реальной константы: занижать MAX_PER_HOUR ради теста нельзя.
+  // IP — случайный, не из статичного пула остальных тестов файла: корзина
+  // ip_hash копится по часу, и повторный прогон в пределах того же часа
+  // на фиксированном IP застал бы её уже заполненной прошлым прогоном.
+  test('потолок: 300 визитов с одного IP проходят, 301-й — нет, ротация User-Agent не спасает', async () => {
+    const ip = `198.51.100.30-${crypto.randomUUID()}`
+    const before = await analytics()
+    for (let i = 0; i < 300; i++) {
+      await visit({ referrer: '' }, { 'X-Real-IP': ip, 'User-Agent': `bench-ua-${i}` })
+    }
+    const afterFill = await analytics()
+    assert.equal(afterFill.today.visits - before.today.visits, 300, 'не все 300 визитов в пределах потолка записались')
+
+    // Лимит исчерпан. Новый, ранее не встречавшийся User-Agent с того же IP —
+    // ровно сценарий обхода из ревью (curl с ротацией UA).
+    const res = await visit({ referrer: '' }, { 'X-Real-IP': ip, 'User-Agent': 'brand-new-rotated-ua' })
+    assert.equal(res.status, 204)
+    const afterOver = await analytics()
+    assert.equal(
+      afterOver.today.visits - before.today.visits,
+      300,
+      'визит сверх потолка записался — ротация User-Agent обошла лимит'
+    )
+  })
+
+  test('хост реферера длиннее 255 -> 204, а не 500, и без записи в top_hosts', async () => {
+    const longHost = 'a'.repeat(300) + '.com'
+    const before = await analytics()
+    const res = await visit(
+      { referrer: `https://${longHost}/x` },
+      { 'X-Real-IP': '198.51.100.31', 'User-Agent': UA_DESKTOP }
+    )
+    assert.equal(res.status, 204)
+    const after = await analytics()
+    assert.ok(!after.top_hosts.some((r) => r.referer_host === longHost), 'слишком длинный хост попал в top_hosts')
+  })
+
+  test('мусор в теле запроса -> 204, без падения', async () => {
+    const ip = '198.51.100.32'
+    const garbage = [
+      'не json',
+      JSON.stringify({ referrer: 12345 }),
+      JSON.stringify({ referrer: null }),
+      JSON.stringify({ referrer: ['a', 'b'] }),
+    ]
+    for (const rawBody of garbage) {
+      const res = await fetch(API + '/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Real-IP': ip, 'User-Agent': UA_DESKTOP },
+        body: rawBody,
+      })
+      assert.equal(res.status, 204, `тело ${rawBody} уронило запрос`)
+    }
+  })
 })
 
 describe('личный кабинет: чужой заказ недоступен (IDOR)', () => {

@@ -91,27 +91,41 @@ CREATE TABLE IF NOT EXISTS visits (
     visit_id     BIGSERIAL PRIMARY KEY,
     visited_at   TIMESTAMP NOT NULL DEFAULT NOW(),
     visitor_hash CHAR(64) NOT NULL,
+    ip_hash      CHAR(64) NOT NULL,
     source       VARCHAR(20) NOT NULL,
     referer_host VARCHAR(255),
     device       VARCHAR(10) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_visits_date ON visits (visited_at);
-CREATE INDEX IF NOT EXISTS idx_visits_hash ON visits (visitor_hash, visited_at);
+CREATE INDEX IF NOT EXISTS idx_visits_hash ON visits (ip_hash, visited_at);
 ```
 
-Второй индекс — под проверку накрутки: она бьёт по `visitor_hash` на каждом
-визите, без индекса это seq scan на каждый заход.
+Второй индекс — под проверку накрутки: она бьёт по `ip_hash` на каждом
+визите, без индекса это seq scan на каждый заход. По `visitor_hash` точечных
+выборок нет — уники считаются агрегатом за диапазон, там индекс не работает.
 
 `init.sql` применяется только на пустом томе — на проде тот же SQL выполняется
 руками. Это отдельный пункт плана, не «оно само».
 
 ### Приватность
 
-Сырой IP не хранится нигде, только `visitor_hash`:
+Сырой IP не хранится нигде, только два хеша:
 
 ```
-visitor_hash = sha256(ip . user_agent . VISIT_SALT . date('Y-m-d'))
+visitor_hash = sha256(ip . user_agent . VISIT_SALT . date('Y-m-d'))   # уники
+ip_hash      = sha256(ip . VISIT_SALT . date('Y-m-d'))                # потолок накрутки
 ```
+
+**Почему два, а не один.** Изначально хеш был один, и потолок накрутки считался
+по нему же — то есть корзина была привязана к паре (IP, UA), и `curl` с ротацией
+`User-Agent` обходил потолок целиком (проверено на стенде: после 30/30 с одного
+IP двадцать запросов с разными UA записались все двадцать).
+
+Убрать UA из единственного хеша нельзя: мобильные операторы держат сотни
+абонентов за одним IP (CGNAT), и уники схлопнулись бы именно на мобильном
+трафике — а он тут основной. Поэтому уники считает `visitor_hash` (с UA),
+а потолок — `ip_hash` (без UA, подделать нечем). Приватность у обоих одинаковая:
+соль + суточная компонента.
 
 IP по 152-ФЗ — персональные данные. Соль (`VISIT_SALT`, новая env-переменная,
 в `.env.example` без значения) не даёт перебрать диапазон IP и восстановить
@@ -135,13 +149,16 @@ IP по 152-ФЗ — персональные данные. Соль (`VISIT_SAL
    - `yandex|google|bing|mail|duckduckgo` → `search`
    - `vk|t.me|telegram|instagram|youtube` → `social`
    - иначе → `other`
-3. `visitor_hash` — по формуле выше
+3. `visitor_hash` и `ip_hash` — по формулам выше
 4. Ответ `204`, без тела
 
 Свой хост определяется по `CORS_ORIGIN` — переменная уже есть, новой сущности не надо.
 
 **Защита от накрутки.** Эндпоинт открытый, `curl` в цикле надует счётчик.
-Не больше 30 строк на один `visitor_hash` в час — `COUNT(*)` перед вставкой.
+Не больше 300 строк на один `ip_hash` в час — `COUNT(*)` перед вставкой.
+Именно `ip_hash`, а не `visitor_hash`: иначе потолок обходится сменой
+`User-Agent`. Потолок высокий, потому что корзина общая на IP, а за одним
+мобильным IP сидят сотни живых людей; 300/час всё ещё режет `curl` в цикле.
 `RateLimiter` не переиспользуем: он завязан на таблицу `login_attempts` и своё
 окно; счётчик по своей же таблице дешевле, чем обобщать чужой класс под второго
 потребителя.
