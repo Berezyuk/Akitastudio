@@ -1,0 +1,135 @@
+# Прод-конфиг nginx: единственная точка входа, TLS терминируется здесь.
+#
+# Файл — ШАБЛОН: nginx:alpine прогоняет /etc/nginx/templates/*.template через
+# envsubst при старте и кладёт результат в /etc/nginx/conf.d/.
+#
+# Подставляется ТОЛЬКО ${DOMAIN} — за это отвечает NGINX_ENVSUBST_FILTER в
+# docker-compose.prod.yml. Поэтому переменные самого nginx ($host, $uri, ...)
+# пишутся как обычно и экранировать их не нужно: envsubst их не видит.
+# Расширишь фильтр — проверь, что не съел $-переменные nginx.
+#
+# Сертификаты кладёт certbot. ПЕРЕД первым запуском прода нужен `make tls-init`:
+# без файлов сертификата nginx не стартует (ssl_certificate — обязательный путь).
+
+# ── HTTP: только ACME-челлендж и редирект (оба домена) ───────────────────────
+server {
+    listen 80;
+    server_name ${DOMAIN} ${MEDIA_DOMAIN};
+
+    # Продление сертификата: certbot кладёт сюда токен, LE читает его по HTTP.
+    # Должно оставаться доступным без редиректа, иначе renew отвалится.
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ── HTTPS: API + статика SPA ─────────────────────────────────────────────────
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    ssl_protocols             TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache         shared:SSL:10m;
+    ssl_session_timeout       1d;
+    ssl_session_tickets       off;
+
+    client_max_body_size 110m;
+
+    add_header X-Content-Type-Options  "nosniff"                        always;
+    add_header X-Frame-Options         "DENY"                           always;
+    add_header Referrer-Policy         "strict-origin-when-cross-origin" always;
+    # HSTS имеет смысл только здесь: на HTTP-блоке выше он игнорируется.
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    # Раздачи /api/uploads/ здесь нет: в БД не осталось ссылок на этот путь
+    # (order_photos.photo_url — все в MinIO), новые загрузки туда не пишутся.
+
+    # API — в PHP-FPM
+    location /api {
+        fastcgi_pass         php:9000;
+        fastcgi_param        SCRIPT_FILENAME /var/www/api/index.php;
+        fastcgi_param        REQUEST_URI     $request_uri;
+        fastcgi_param        REQUEST_METHOD  $request_method;
+        fastcgi_param        CONTENT_TYPE    $content_type;
+        fastcgi_param        CONTENT_LENGTH  $content_length;
+        fastcgi_param        QUERY_STRING    $query_string;
+        fastcgi_param        HTTP_X_REAL_IP  $remote_addr;
+        # HTTPS=on: PHP должен знать, что снаружи TLS, иначе session.cookie_secure
+        # выставит куку, которую сам же и не увидит.
+        fastcgi_param        HTTPS           on;
+        include              fastcgi_params;
+    }
+
+    # Всё остальное — статика SPA из frontend-контейнера (он же держит
+    # SPA-fallback, gzip и правила кеширования — см. frontend.conf).
+    location / {
+        proxy_pass       http://frontend:80;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+}
+
+# ── HTTPS: медиа из MinIO ────────────────────────────────────────────────────
+# Отдельный поддомен, а не префикс вроде /s3/ на основном домене. Причина:
+# подпись SigV4 считается по хосту И по пути. Префикс пришлось бы срезать при
+# проксировании, и MinIO увидел бы путь, отличный от подписанного, — подпись
+# перестала бы сходиться на всех приватных фото заказов.
+#
+# Сертификат общий: `certbot -d ${DOMAIN} -d ${MEDIA_DOMAIN}` кладёт оба имени
+# в одну lineage, названную по первому домену.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${MEDIA_DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+
+    ssl_protocols             TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache         shared:SSL:10m;
+    ssl_session_timeout       1d;
+    ssl_session_tickets       off;
+
+    # Заливка идёт не сюда (PHP пишет в MinIO по внутренней сети), но пусть
+    # лимит совпадает с основным сервером — на случай ручных операций.
+    client_max_body_size 110m;
+
+    # Здесь лежит пользовательский контент, поэтому nosniff обязателен.
+    # Свой домен уже изолирует его от origin приложения, но браузер всё равно
+    # не должен додумывать тип за нас.
+    add_header X-Content-Type-Options     "nosniff"          always;
+    add_header Strict-Transport-Security  "max-age=31536000" always;
+
+    location / {
+        proxy_pass http://minio:9000;
+
+        # MinIO шлёт свой X-Content-Type-Options, и вместе с add_header выше
+        # заголовок уходил дважды. Прячем его, чтобы значение задавали только мы.
+        proxy_hide_header X-Content-Type-Options;
+
+        # Host обязан дойти неизменным: ссылку подписывал SDK на ${MEDIA_DOMAIN},
+        # и MinIO проверяет подпись по тому Host, который получил. Подменишь —
+        # все приватные ссылки начнут отдавать SignatureDoesNotMatch.
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+
+        # Видео из портфолио отдаётся кусками по Range. Буферизация ломает
+        # перемотку и заставляет nginx тянуть файл целиком в память.
+        proxy_buffering off;
+        proxy_http_version 1.1;
+    }
+}
