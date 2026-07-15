@@ -7,9 +7,8 @@
  */
 
 import puppeteer from 'puppeteer'
-import { createServer } from 'node:net'
-import { execSync, spawn } from 'node:child_process'
-import { writeFileSync, mkdirSync, readFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { writeFileSync, mkdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -18,16 +17,6 @@ const distDir = resolve(__dirname, '../dist')
 
 const ROUTES = ['/', '/services', '/portfolio', '/about', '/contacts', '/booking']
 const PORT = 4173
-
-const findFreePort = () =>
-  new Promise((res, rej) => {
-    const srv = createServer()
-    srv.listen(0, () => {
-      const { port } = srv.address()
-      srv.close(() => res(port))
-    })
-    srv.on('error', rej)
-  })
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 

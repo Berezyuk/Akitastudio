@@ -1,6 +1,5 @@
 {
     "require": {
-        "aws/aws-sdk-php": "^3",
-        "zelenin/smsru": "*"
+        "aws/aws-sdk-php": "^3"
     }
 }

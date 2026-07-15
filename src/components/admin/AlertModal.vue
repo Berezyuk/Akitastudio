@@ -47,7 +47,7 @@ const emit = defineEmits(['close'])
 
         <button
           @click="emit('close')"
-          class="w-full px-4 py-2.5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold rounded-xl hover:brightness-110 transition"
+          class="w-full px-4 py-2.5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-semibold rounded-xl hover:brightness-110 transition"
         >
           {{ okLabel }}
         </button>

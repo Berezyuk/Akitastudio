@@ -24,13 +24,17 @@ const isMobile = ref(false)
 const isOpen = ref(false)
 
 const checkMobile = () => {
-  isMobile.value = window.innerWidth < 768
+  // <= 768, чтобы совпадать с CSS @media (max-width: 768px) ниже.
+  // При < 768 ровно на 768px (iPad portrait) индикатор «нажми» показан, а тап не работал.
+  isMobile.value = window.innerWidth <= 768
 }
 
+// Тоггл на всех ширинах. Раньше он молча выходил при !isMobile: на десктопе
+// клик/Enter ничего не делали, а aria-expanded всегда врал «false», хотя контент
+// был виден по hover/focus. Теперь hover и focus раскрывают временно, а
+// клик/Enter — фиксируют (.active), и атрибут отражает реальное состояние.
 const toggleContent = () => {
-  if (isMobile.value) {
-    isOpen.value = !isOpen.value
-  }
+  isOpen.value = !isOpen.value
 }
 
 onMounted(() => {
@@ -44,10 +48,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div 
-    class="services_card" 
+  <!-- tabindex+role+keydown: раньше это был <div @click> без единого способа
+       добраться с клавиатуры, а на десктопе список услуг открывался только
+       по :hover — то есть был недоступен ни с клавиатуры, ни с тача на 769px+. -->
+  <div
+    class="services_card"
     :class="{ active: isOpen }"
+    tabindex="0"
+    role="button"
+    :aria-expanded="isOpen"
+    :aria-label="`Услуги категории «${title}»`"
     @click="toggleContent"
+    @keydown.enter.prevent="toggleContent"
+    @keydown.space.prevent="toggleContent"
   >
     <video v-if="isVideo" :src="imageUrl" class="services_img" autoplay muted loop playsinline></video>
     <img v-else :src="imageUrl" :alt="title" class="services_img" />
@@ -83,6 +96,9 @@ onUnmounted(() => {
 .services_card {
   width: 100%;
   max-width: 260px;
+  /* Тот же формат, что у .portfolio_card на главной — иначе высота зависит
+     от intrinsic-размера медиа и карточки в соседних секциях разъезжаются. */
+  aspect-ratio: 2 / 3;
   margin: 0 auto;
   text-align: center;
   background-color: #4d4d4d;
@@ -158,9 +174,18 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-.services_card:hover .card_hover-content {
+/* focus-within наравне с hover: на десктопе контент раскрывался только мышью,
+   поэтому пользователь клавиатуры не мог прочитать список услуг вообще. */
+.services_card:hover .card_hover-content,
+.services_card:focus-visible .card_hover-content,
+.services_card:focus-within .card_hover-content {
   opacity: 1;
   visibility: visible;
+}
+
+.services_card:focus-visible {
+  outline: 2px solid #fc9303;
+  outline-offset: 2px;
 }
 
 .services_list_wrapper {
@@ -231,13 +256,15 @@ onUnmounted(() => {
   }
 }
 
+/* .active — на всех ширинах: раньше правило жило только в @media(max-width:768),
+   поэтому клик на десктопе не давал ничего. */
+.services_card.active .card_hover-content {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* Дополнительные стили для мобильных устройств (ширина < 768px) */
 @media (max-width: 768px) {
-  .services_card.active .card_hover-content {
-    opacity: 1;
-    visibility: visible;
-  }
-  
   .mobile-tap-indicator {
     position: absolute;
     top: 12px;

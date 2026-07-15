@@ -2,6 +2,7 @@
 // api/controllers/FeedbackController.php
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../middleware/auth.php';
 
 class FeedbackController {
     
@@ -43,16 +44,7 @@ class FeedbackController {
     // ========== АДМИНСКИЕ МЕТОДЫ ==========
     
     private static function checkAdmin() {
-        if (!isset($_SESSION['user_id'])) {
-            http_response_code(401);
-            echo json_encode(['error' => 'Не авторизован']);
-            exit;
-        }
-        if (($_SESSION['role'] ?? '') !== 'admin') {
-            http_response_code(403);
-            echo json_encode(['error' => 'Доступ запрещён']);
-            exit;
-        }
+        requireAdmin();
     }
     
     // Получить все заявки
@@ -99,26 +91,6 @@ class FeedbackController {
             'page'      => $page,
             'limit'     => $limit,
         ]);
-    }
-    
-    // Получить одну заявку
-    public static function getFeedback($id) {
-        self::checkAdmin();
-        
-        $db = new Database();
-        $conn = $db->getConnection();
-        
-        $stmt = $conn->prepare("SELECT * FROM feedbacks WHERE feedback_id = :id");
-        $stmt->bindParam(':id', $id);
-        $stmt->execute();
-        $feedback = $stmt->fetch(PDO::FETCH_ASSOC);
-        
-        if (!$feedback) {
-            echo json_encode(['error' => 'Заявка не найдена']);
-            return;
-        }
-        
-        echo json_encode(['success' => true, 'feedback' => $feedback]);
     }
     
     // Обновить статус и заметки

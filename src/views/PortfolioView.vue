@@ -26,7 +26,7 @@
           <button
             @click="activeFilter = 'all'"
             :aria-pressed="activeFilter === 'all'"
-            class="filter-btn px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300"
+            class="filter-btn px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-300"
             :class="activeFilter === 'all' ? 'active' : 'inactive'"
           >
             <span class="relative z-10">Все работы</span>
@@ -39,7 +39,7 @@
             :key="cat.id"
             @click="activeFilter = cat.name"
             :aria-pressed="activeFilter === cat.name"
-            class="filter-btn px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300"
+            class="filter-btn px-4 sm:px-6 py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all duration-300"
             :class="activeFilter === cat.name ? 'active' : 'inactive'"
           >
             <span class="relative z-10">{{ cat.name }}</span>
@@ -168,7 +168,11 @@ const filteredItems = computed(() => {
 })
 
 const setPortfolioVideoRef = (el, id) => {
+  // При размонтировании Vue зовёт колбэк с null. Без delete в объекте
+  // остаётся ссылка на оторванный <video> с его буферами — при смене
+  // фильтра такие узлы копятся и не собираются GC.
   if (el) portfolioVideoRefs.value[id] = el
+  else delete portfolioVideoRefs.value[id]
 }
 
 const setupPortfolioObserver = () => {
@@ -411,10 +415,4 @@ onUnmounted(() => {
   position: absolute;
 }
 
-@media (max-width: 768px) {
-  .filter-btn {
-    padding: 0.5rem 1rem;
-    font-size: 0.75rem;
-  }
-}
 </style>

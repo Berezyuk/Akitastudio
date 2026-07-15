@@ -1,8 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { API_BASE } from '@/config/api.js'
 import { useHead } from '@unhead/vue'
+
+// Отложенный редирект после успешной регистрации. Без отмены он сработает,
+// даже если пользователь уже ушёл на другую страницу, и утащит его на /login.
+let redirectTimer = null
+onUnmounted(() => clearTimeout(redirectTimer))
 
 useHead({
   title: 'Регистрация — Akita Studio',
@@ -117,7 +122,7 @@ const handleRegister = async () => {
                 phone: '',
                 email: ''
             }
-            setTimeout(() => {
+            redirectTimer = setTimeout(() => {
                 router.push('/login')
             }, 2000)
         } else {
@@ -145,7 +150,7 @@ const handleRegister = async () => {
             </div>
             
             <form @submit.prevent="handleRegister" class="space-y-4">
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label for="reg-first-name" class="block text-sm text-gray-400 mb-1">Имя *</label>
                         <input
@@ -232,15 +237,15 @@ const handleRegister = async () => {
                 <button 
                     type="submit"
                     :disabled="isLoading || !isFormValid"
-                    class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-4 rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-semibold py-4 rounded-xl transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                     {{ isLoading ? 'Регистрация...' : 'Зарегистрироваться' }}
                 </button>
             </form>
             
-            <p class="text-center text-gray-500 text-sm mt-6">
+            <p class="text-center text-gray-400 text-sm mt-6">
                 Уже есть аккаунт? 
-                <router-link to="/login" class="text-[#fc9303] hover:underline transition">Войти</router-link>
+                <router-link to="/login" class="inline-block py-2 text-[#fc9303] hover:underline transition">Войти</router-link>
             </p>
         </div>
     </div>

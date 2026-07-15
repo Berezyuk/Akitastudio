@@ -10,11 +10,5 @@ class ServiceController {
         $services = $service->getActive();
         echo json_encode(['success' => true, 'services' => $services]);
     }
-
-    public static function getServicesByCategory($categoryId) {
-    $service = new Service();
-    $services = $service->getByCategory($categoryId);
-    echo json_encode(['success' => true, 'services' => $services]);
-    }
 }
 

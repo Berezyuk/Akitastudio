@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch, nextTick } from "vue";
 import { useHead } from '@unhead/vue'
 import ServiceCard from "../components/ServiceCard.vue";
 import { API_BASE } from '@/config/api.js'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 
 useHead({
   title: 'Akita Studio — Профессиональная тюнинг-студия в Хабаровске | Уход за авто премиум-класса',
@@ -211,7 +212,9 @@ const portfolioVideoErrors = ref({})
 let portfolioObserver = null
 
 const setPortfolioVideoRef = (el, id) => {
+  // См. PortfolioView: без delete остаётся ссылка на оторванный <video>.
   if (el) portfolioVideoRefs.value[id] = el
+  else delete portfolioVideoRefs.value[id]
 }
 
 const setupPortfolioObserver = () => {
@@ -256,13 +259,26 @@ const setupPortfolioObserver = () => {
   })
 }
 
+// Без { once: true }: при повторной загрузке портфолио обсервер нужно
+// пересобрать, иначе видео перестанут автоплеиться. setupPortfolioObserver
+// сам отключает предыдущий обсервер.
 watch(portfolioItems, async () => {
   await nextTick()
   setupPortfolioObserver()
-}, { once: true })
+})
+
+// Модалка объявлена как aria-modal, но Esc её не закрывал. Паттерн из ServicesView.
+const handleKeydown = (e) => {
+  if (e.key === 'Escape' && feedbackModal.value.show) feedbackModal.value.show = false
+};
+
+// Ловушка фокуса: Tab уводил из модалки в форму под ней.
+const feedbackModalPanel = ref(null)
+useFocusTrap(computed(() => feedbackModal.value.show), feedbackModalPanel)
 
 onMounted(() => {
   window.addEventListener("mousemove", handleMouseMove);
+  window.addEventListener("keydown", handleKeydown);
   fetchServices();
   fetchCategories();
   fetchPortfolio();
@@ -279,6 +295,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener("mousemove", handleMouseMove);
+  window.removeEventListener("keydown", handleKeydown);
   if (rafId) cancelAnimationFrame(rafId);
   portfolioObserver?.disconnect()
 });
@@ -334,23 +351,26 @@ onUnmounted(() => {
               PREMIUM DETAILING STUDIO
             </span>
           </div>
-          <div class="text-center">
-            <div
-              class="text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium"
+          <!-- h1, а не div: это заголовок страницы. Главная была единственной
+               клиентской страницей без h1 — бьёт и по SEO (есть пререндер), и по
+               навигации скринридером. Внутри span.block: h1 не может содержать div. -->
+          <h1 class="text-center">
+            <span
+              class="block text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium"
             >
               ПРОФЕССИОНАЛЬНАЯ
-            </div>
-            <div
-              class="text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium mt-1 sm:mt-2 md:mt-3"
+            </span>
+            <span
+              class="block text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium mt-1 sm:mt-2 md:mt-3"
             >
               ТЮНИНГ-СТУДИЯ
-            </div>
-            <div
-              class="text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium mt-1 sm:mt-2 md:mt-3"
+            </span>
+            <span
+              class="block text-white text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl leading-tight tracking-[0.02em] font-medium mt-1 sm:mt-2 md:mt-3"
             >
               В ХАБАРОВСКЕ
-            </div>
-          </div>
+            </span>
+          </h1>
           <p
             class="text-white text-center tracking-[0.02em] text-sm sm:text-base md:text-lg lg:text-xl mt-3 sm:mt-4 md:mt-5"
           >
@@ -361,7 +381,7 @@ onUnmounted(() => {
           >
             <router-link
               to="/services"
-              class="group w-full sm:w-auto px-4 sm:px-6 md:px-10 py-2 sm:py-3 md:py-4 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold text-sm sm:text-base md:text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/30 flex items-center justify-center gap-2"
+              class="group w-full sm:w-auto px-4 sm:px-6 md:px-10 py-2 sm:py-3 md:py-4 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-semibold text-sm sm:text-base md:text-lg rounded-full transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-orange-500/30 flex items-center justify-center gap-2"
             >
               Выбрать услугу
               <svg
@@ -380,7 +400,7 @@ onUnmounted(() => {
             </router-link>
             <router-link
               to="/portfolio"
-              class="group w-full sm:w-auto px-4 sm:px-6 md:px-10 py-2 sm:py-3 md:py-4 border border-[#fc9303] text-white font-semibold text-sm sm:text-base md:text-lg rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center justify-center gap-2"
+              class="group w-full sm:w-auto px-4 sm:px-6 md:px-10 py-2 sm:py-3 md:py-4 border border-[#fc9303] text-white hover:text-black font-semibold text-sm sm:text-base md:text-lg rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center justify-center gap-2"
             >
               Портфолио
               <svg
@@ -453,7 +473,7 @@ onUnmounted(() => {
           <router-link
             to="/services"
             @click="scrollToTop"
-            class="group px-5 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 border border-[#fc9303] text-white text-sm sm:text-base rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center gap-2"
+            class="group px-5 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 border border-[#fc9303] text-white hover:text-black text-sm sm:text-base rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center gap-2"
           >
             Узнать больше
             <svg
@@ -632,7 +652,11 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <section class="portfolio py-12 sm:py-16 md:py-24 bg-black">
+    <!-- Единый фон на три секции: портфолио → форма → CTA. Градиент живёт на общей
+         обёртке, а не на каждой секции: иначе он начинается заново в каждой и на
+         стыках видны швы. Секции внутри — прозрачные. -->
+    <div class="bg-gradient-to-br from-[#fc9303]/20 via-black to-[#ff6b00]/15">
+    <section class="portfolio py-12 sm:py-16 md:py-24">
       <div class="container mx-auto px-4">
         <div class="text-center mb-8 sm:mb-12 md:mb-16">
           <span
@@ -687,7 +711,7 @@ onUnmounted(() => {
           <router-link
             to="/portfolio"
             @click="scrollToTop"
-            class="group px-5 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 border border-[#fc9303] text-white text-sm sm:text-base rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center gap-2"
+            class="group px-5 sm:px-6 md:px-8 py-2 sm:py-2.5 md:py-3 border border-[#fc9303] text-white hover:text-black text-sm sm:text-base rounded-full hover:bg-[#fc9303] transition-all duration-300 flex items-center gap-2"
           >
             Все работы
             <svg
@@ -708,7 +732,7 @@ onUnmounted(() => {
       </div>
     </section>
 
-    <section class="feedback-section pb-12 sm:pb-16 md:pb-24 bg-black">
+    <section class="feedback-section pb-12 sm:pb-16 md:pb-24">
       <div class="container mx-auto px-4">
         <div class="max-w-3xl mx-auto">
           <div class="text-center mb-8 sm:mb-12">
@@ -805,7 +829,7 @@ onUnmounted(() => {
               <button
                 type="submit"
                 :disabled="feedbackLoading || !isFeedbackValid"
-                class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-3 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-semibold py-3 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {{ feedbackLoading ? "Отправка..." : "Отправить сообщение" }}
               </button>
@@ -819,6 +843,7 @@ onUnmounted(() => {
       <div v-if="feedbackModal.show" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="feedbackModal.show = false"></div>
         <div
+          ref="feedbackModalPanel"
           role="dialog"
           aria-modal="true"
           aria-labelledby="feedback-modal-title"
@@ -849,10 +874,11 @@ onUnmounted(() => {
       </div>
     </Transition>
 
+    <!-- Свой градиент и затемнение bg-black/30 убраны: они перебивали общий фон
+         обёртки и давали шов на стыке с формой. -->
     <section
-      class="relative pb-12 sm:pb-16 md:pb-24 overflow-hidden bg-gradient-to-b from-black to-[#4d4d4d]/20"
+      class="relative pb-12 sm:pb-16 md:pb-24 overflow-hidden"
     >
-      <div class="absolute inset-0 bg-black/30"></div>
       <div class="container mx-auto px-4 text-center relative z-10">
         <h2
           class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-3 sm:mb-4 md:mb-6"
@@ -873,7 +899,7 @@ onUnmounted(() => {
         >
           <router-link
             to="/booking"
-            class="px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 lg:py-5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-bold text-sm sm:text-base md:text-lg rounded-full hover:scale-105 transition-all duration-300 shadow-lg shadow-orange-500/30"
+            class="px-6 sm:px-8 md:px-12 py-2 sm:py-3 md:py-4 lg:py-5 bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-bold text-sm sm:text-base md:text-lg rounded-full hover:scale-105 transition-all duration-300 shadow-lg shadow-orange-500/30"
           >
             Записаться
           </router-link>
@@ -886,6 +912,7 @@ onUnmounted(() => {
         </div>
       </div>
     </section>
+    </div><!-- /единый фон -->
   </div>
 </template>
 
@@ -902,6 +929,14 @@ onUnmounted(() => {
   position: relative;
   cursor: pointer;
   transition: all 0.4s ease;
+}
+
+/* На мобильных — во всю ширину, как .services_card (размеры карточек
+   в секциях «Услуги» и «Портфолио» должны совпадать) */
+@media (max-width: 640px) {
+  .portfolio_card {
+    max-width: 100%;
+  }
 }
 
 .portfolio_card:hover {

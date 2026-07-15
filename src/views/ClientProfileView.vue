@@ -45,8 +45,8 @@
             <div class="flex flex-wrap justify-between items-start gap-4">
               <div class="flex-1">
                 <div class="flex flex-wrap items-center gap-3 mb-2">
-                  <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', getStatusColor(order.status_name)]">
-                    {{ getStatusName(order.status_name) }}
+                  <span :class="['px-2 py-0.5 rounded-full text-xs font-semibold', getStatusColor(order.status_id)]">
+                    {{ order.status_name }}
                   </span>
                 </div>
 
@@ -238,7 +238,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE } from '@/config/api.js'
 import AlertModal from '@/components/admin/AlertModal.vue'
@@ -472,8 +472,12 @@ const nextPhoto = () => {
   }
 }
 
+// Статусы (order_statuses): 1-Новый, 2-В работе, 3-Готово, 4-Выдан, 5-Отменён.
+// Ключом служит status_id: раньше сравнивали status_name с английскими
+// 'completed'/'cancelled', которых в БД нет (там русские названия), поэтому
+// гейт не срабатывал никогда и кнопки показывались даже на отменённых заказах.
 const canCancel = (order) => {
-  if (order.status_name === 'completed' || order.status_name === 'cancelled') return false
+  if (order.status_id >= 3) return false
   if (!order.desired_date) return true
   const desiredDateTime = new Date(order.desired_date + 'T' + (order.desired_time || '10:00'))
   const now = new Date()
@@ -481,9 +485,7 @@ const canCancel = (order) => {
   return hoursLeft > 1
 }
 
-const canReschedule = (order) => {
-  return order.status_name !== 'completed' && order.status_name !== 'cancelled'
-}
+const canReschedule = (order) => order.status_id < 3
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
@@ -495,32 +497,29 @@ const formatPrice = (price) => {
   return Number(price).toLocaleString('ru-RU') + ' ₽'
 }
 
-const getStatusColor = (statusName) => {
+// Цвет по status_id. Прежняя карта была на английских ключах — не совпадала
+// ни с чем, и каждый бейдж падал в серый fallback.
+const getStatusColor = (statusId) => {
   const colors = {
-    pending: 'bg-yellow-500/20 text-yellow-400',
-    confirmed: 'bg-blue-500/20 text-blue-400',
-    in_progress: 'bg-orange-500/20 text-orange-400',
-    completed: 'bg-green-500/20 text-green-400',
-    cancelled: 'bg-red-500/20 text-red-400',
+    1: 'bg-yellow-500/20 text-yellow-400',  // Новый
+    2: 'bg-orange-500/20 text-orange-400',  // В работе
+    3: 'bg-green-500/20 text-green-400',    // Готово
+    4: 'bg-blue-500/20 text-blue-400',      // Выдан
+    5: 'bg-red-500/20 text-red-400',        // Отменён
   }
-  return colors[statusName] || 'bg-gray-500/20 text-gray-400'
-}
-
-const getStatusName = (statusName) => {
-  const names = {
-    pending: 'Ожидание',
-    confirmed: 'Подтверждён',
-    in_progress: 'В работе',
-    completed: 'Выполнен',
-    cancelled: 'Отменён',
-  }
-  return names[statusName] || statusName
+  return colors[statusId] || 'bg-gray-500/20 text-gray-400'
 }
 
 onMounted(() => {
   fetchOrders()
   fetchProfile()
   fetchProgress()
+})
+
+// Галерея ставит overflow:hidden на body. Если уйти со страницы с открытой
+// галереей, блокировка останется на всём SPA до перезагрузки.
+onUnmounted(() => {
+  document.body.style.overflow = ''
 })
 </script>
 

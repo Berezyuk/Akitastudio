@@ -7,7 +7,20 @@ use Aws\Exception\AwsException;
 
 class MinioHelper {
     private static ?S3Client $client = null;
+    private static ?S3Client $signingClient = null;
     private static array $publicPolicySet = [];
+
+    // Бакеты с публичным чтением: их содержимое и так показывается всем
+    // на сайте. order-photos сюда НЕ входит — это фото чужих машин,
+    // они отдаются только по временной подписанной ссылке.
+    private const PUBLIC_BUCKETS = ['portfolio', 'documents'];
+
+    private static function credentials(): array {
+        return [
+            'key'    => getenv('MINIO_ACCESS_KEY') ?: getenv('MINIO_ROOT_USER') ?: '',
+            'secret' => getenv('MINIO_SECRET_KEY') ?: getenv('MINIO_ROOT_PASSWORD') ?: '',
+        ];
+    }
 
     // ── Внутренний клиент (соединение к MinIO внутри Docker-сети) ────────────
     private static function client(): S3Client {
@@ -22,13 +35,54 @@ class MinioHelper {
                 'region'                  => 'us-east-1',
                 'endpoint'                => $endpoint,
                 'use_path_style_endpoint' => true,
-                'credentials'             => [
-                    'key'    => getenv('MINIO_ACCESS_KEY') ?: getenv('MINIO_ROOT_USER') ?: '',
-                    'secret' => getenv('MINIO_SECRET_KEY') ?: getenv('MINIO_ROOT_PASSWORD') ?: '',
-                ],
+                'credentials'             => self::credentials(),
             ]);
         }
         return self::$client;
+    }
+
+    // ── Клиент для подписи ссылок ────────────────────────────────────────────
+    // Подпись SigV4 включает хост, поэтому ссылку нужно подписывать сразу на
+    // публичный адрес (MINIO_PUBLIC_URL). Ссылка, подписанная на внутренний
+    // http://minio:9000, из браузера недоступна, а подменить хост нельзя —
+    // подпись перестанет сходиться.
+    private static function signingClient(): S3Client {
+        if (self::$signingClient === null) {
+            self::$signingClient = new S3Client([
+                'version'                 => 'latest',
+                'region'                  => 'us-east-1',
+                'endpoint'                => rtrim(getenv('MINIO_PUBLIC_URL') ?: 'http://localhost:9000', '/'),
+                'use_path_style_endpoint' => true,
+                'credentials'             => self::credentials(),
+            ]);
+        }
+        return self::$signingClient;
+    }
+
+    // ── Временная подписанная ссылка на приватный объект ─────────────────────
+    public static function presignedUrl(string $bucket, string $key, string $expires = '+30 minutes'): string {
+        $cmd = self::signingClient()->getCommand('GetObject', [
+            'Bucket' => $bucket,
+            'Key'    => $key,
+        ]);
+        return (string)self::signingClient()->createPresignedRequest($cmd, $expires)->getUri();
+    }
+
+    // ── Ссылка для показа в браузере ─────────────────────────────────────────
+    // Публичные бакеты — прямой URL, приватные — подписанная временная ссылка.
+    public static function viewUrl(string $bucket, string $key): string {
+        return in_array($bucket, self::PUBLIC_BUCKETS, true)
+            ? self::publicUrl($bucket, $key)
+            : self::presignedUrl($bucket, $key);
+    }
+
+    // Пересобрать ссылку из сохранённого в БД URL (там лежит прямой публичный URL).
+    // Для приватного бакета вернёт свежую подписанную ссылку.
+    public static function refreshUrl(?string $storedUrl): ?string {
+        if (!$storedUrl) return $storedUrl;
+        $parsed = self::parseUrl($storedUrl);
+        if (!$parsed) return $storedUrl;   // не из MinIO — отдаём как есть
+        return self::viewUrl($parsed['bucket'], $parsed['key']);
     }
 
     // ── Создать бакет если не существует ─────────────────────────────────────
@@ -68,9 +122,18 @@ class MinioHelper {
     }
 
     // ── Загрузить файл из временного пути ─────────────────────────────────────
-    // Возвращает публичный URL файла (доступен из браузера).
+    // Возвращает URL файла. В БД сохраняется прямой (непубличный для приватных
+    // бакетов) URL — он служит адресом объекта; на чтении из него собирается
+    // подписанная ссылка через refreshUrl().
     public static function upload(string $bucket, string $key, string $tmpPath, string $mimeType): string {
-        self::ensurePublicRead($bucket);
+        // Публичную политику вешаем только на публичные бакеты. Раньше это
+        // делалось безусловно, из-за чего order-photos с фото чужих машин
+        // становился доступен анониму по прямой ссылке.
+        if (in_array($bucket, self::PUBLIC_BUCKETS, true)) {
+            self::ensurePublicRead($bucket);
+        } else {
+            self::ensureBucketExists($bucket);
+        }
         self::client()->putObject([
             'Bucket'      => $bucket,
             'Key'         => $key,

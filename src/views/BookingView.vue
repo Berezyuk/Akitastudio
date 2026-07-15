@@ -17,7 +17,7 @@
 
     <section class="py-16">
       <div class="container mx-auto px-4 max-w-6xl">
-        <div class="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-800 p-8">
+        <div class="bg-gray-900/50 backdrop-blur-sm rounded-2xl border border-gray-800 p-5 md:p-8">
           <form @submit.prevent="handleSubmit" class="space-y-8">
             <!-- Выбор услуг по категориям -->
             <div class="flex flex-col lg:flex-row gap-8">
@@ -43,10 +43,10 @@
                 <h3 class="text-xl font-semibold mb-4 border-l-2 border-[#fc9303] pl-3">
                   {{ currentCategoryName || 'Выберите категорию' }}
                 </h3>
-                <div v-if="!selectedCategoryId" class="text-center py-12 text-gray-500">
+                <div v-if="!selectedCategoryId" class="text-center py-12 text-gray-400">
                   Выберите категорию, чтобы увидеть услуги
                 </div>
-                <div v-else-if="currentServices.length === 0" class="text-center py-12 text-gray-500">
+                <div v-else-if="currentServices.length === 0" class="text-center py-12 text-gray-400">
                   В этой категории пока нет услуг
                 </div>
                 <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -101,16 +101,27 @@
                     v-model="carBrandQuery"
                     @input="fetchBrandSuggestions"
                     @focus="fetchBrandSuggestions"
+                    @keydown="onBrandKeydown"
                     type="text"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="booking-brand-list"
+                    :aria-expanded="brandSuggestions.length > 0"
+                    :aria-activedescendant="brandActive >= 0 ? `brand-opt-${brandActive}` : undefined"
+                    autocomplete="off"
                     class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
                     placeholder="Начните вводить или выберите из списка"
                   />
-                  <ul v-if="brandSuggestions.length" class="absolute z-20 w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-60 overflow-y-auto custom-scroll">
-                    <li 
-                      v-for="brand in brandSuggestions" 
+                  <ul v-if="brandSuggestions.length" id="booking-brand-list" role="listbox" class="absolute z-20 w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-60 overflow-y-auto custom-scroll">
+                    <li
+                      v-for="(brand, i) in brandSuggestions"
                       :key="brand.data.id"
+                      :id="`brand-opt-${i}`"
+                      role="option"
+                      :aria-selected="i === brandActive"
                       @click="selectBrand(brand)"
-                      class="px-5 py-3 hover:bg-gray-700 cursor-pointer text-white transition-colors"
+                      @mouseenter="brandActive = i"
+                      :class="['px-5 py-3 cursor-pointer text-white transition-colors', i === brandActive ? 'bg-gray-700' : 'hover:bg-gray-700']"
                     >
                       {{ brand.value }}
                     </li>
@@ -125,15 +136,26 @@
                     @input="onModelInput"
                     @focus="onModelFocus"
                     @blur="onModelBlur"
+                    @keydown="onModelKeydown"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-controls="booking-model-list"
+                    :aria-expanded="modelSuggestions.length > 0"
+                    :aria-activedescendant="modelActive >= 0 ? `model-opt-${modelActive}` : undefined"
+                    autocomplete="off"
                     class="w-full px-5 py-4 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-[#fc9303]"
                     :placeholder="allModelsForBrand.length ? 'Начните вводить или выберите из списка' : 'Например: Camry'"
                   />
-                  <ul v-if="modelSuggestions.length" class="absolute z-20 w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-60 overflow-y-auto custom-scroll">
+                  <ul v-if="modelSuggestions.length" id="booking-model-list" role="listbox" class="absolute z-20 w-full bg-gray-800 border border-gray-700 rounded-xl mt-1 max-h-60 overflow-y-auto custom-scroll">
                     <li
-                      v-for="model in modelSuggestions"
+                      v-for="(model, i) in modelSuggestions"
                       :key="model.model_id"
+                      :id="`model-opt-${i}`"
+                      role="option"
+                      :aria-selected="i === modelActive"
                       @mousedown.prevent="selectModel(model)"
-                      class="px-5 py-3 hover:bg-gray-700 cursor-pointer text-white transition-colors"
+                      @mouseenter="modelActive = i"
+                      :class="['px-5 py-3 cursor-pointer text-white transition-colors', i === modelActive ? 'bg-gray-700' : 'hover:bg-gray-700']"
                     >
                       {{ model.name }}
                     </li>
@@ -185,7 +207,7 @@
               </label>
             </div>
 
-            <button type="submit" :disabled="loading || !isFormValid" class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-white font-semibold py-5 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed">
+            <button type="submit" :disabled="loading || !isFormValid" class="w-full bg-gradient-to-r from-[#fc9303] to-[#ff6b00] text-black font-semibold py-5 rounded-xl transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed">
               {{ loading ? 'Отправка...' : 'Отправить заявку' }}
             </button>
           </form>
@@ -196,7 +218,7 @@
     <!-- Модальное окно успеха -->
     <Transition name="modal">
       <div v-if="successMessage" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="successMessage = null">
-        <div role="dialog" aria-modal="true" aria-labelledby="modal-success-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6 text-center">
+        <div ref="successPanel" role="dialog" aria-modal="true" aria-labelledby="modal-success-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6 text-center">
           <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
             <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -212,7 +234,7 @@
     <!-- Модальное окно для подтверждения исправления модели -->
     <Transition name="modal">
       <div v-if="showModelConfirm" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="closeModelConfirm">
-        <div role="dialog" aria-modal="true" aria-labelledby="modal-model-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
+        <div ref="modelPanel" role="dialog" aria-modal="true" aria-labelledby="modal-model-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
           <h3 id="modal-model-title" class="text-xl font-bold mb-4">Уточните модель</h3>
           <p class="text-gray-300 mb-4">Возможно, вы имели в виду:</p>
           <p class="text-lg font-semibold text-[#fc9303] mb-6">{{ suggestedModel }}</p>
@@ -227,7 +249,7 @@
     <!-- Модальное окно ошибок -->
     <Transition name="modal">
       <div v-if="errorMessage" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" @click.self="errorMessage = null">
-        <div role="dialog" aria-modal="true" aria-labelledby="modal-error-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
+        <div ref="errorPanel" role="dialog" aria-modal="true" aria-labelledby="modal-error-title" class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-md p-6">
           <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/20 flex items-center justify-center">
             <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -243,7 +265,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { API_BASE } from '@/config/api.js'
@@ -424,6 +447,56 @@ const selectModel = (model) => {
   form.value.carModel = model.name
   modelSuggestions.value = []
 }
+
+// ── Клавиатура для выпадающих списков марки и модели ──────────────────────
+// Списки были на <li @click> без tabindex/role: стрелками до них было не дойти,
+// Enter не выбирал. Марка — обязательное поле, так что вся форма записи была
+// недоступна с клавиатуры. Индекс активного пункта + ARIA-combobox.
+const brandActive = ref(-1)
+const modelActive = ref(-1)
+
+const navigate = (e, list, activeRef, onPick, onClose) => {
+  if (!list.length) return
+  if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    activeRef.value = (activeRef.value + 1) % list.length
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    activeRef.value = activeRef.value <= 0 ? list.length - 1 : activeRef.value - 1
+  } else if (e.key === 'Enter' && activeRef.value >= 0) {
+    e.preventDefault()          // не отправляем форму — выбираем пункт
+    onPick(list[activeRef.value])
+    activeRef.value = -1
+  } else if (e.key === 'Escape') {
+    onClose()
+    activeRef.value = -1
+  }
+}
+
+const onBrandKeydown = (e) =>
+  navigate(e, brandSuggestions.value, brandActive, selectBrand, () => { brandSuggestions.value = [] })
+
+const onModelKeydown = (e) =>
+  navigate(e, modelSuggestions.value, modelActive, selectModel, () => { modelSuggestions.value = [] })
+
+// Три модалки объявлены как aria-modal, но Esc их не закрывал. Паттерн из ServicesView.
+const handleModalKeydown = (e) => {
+  if (e.key !== 'Escape') return
+  if (showModelConfirm.value) showModelConfirm.value = false
+  else if (errorMessage.value) errorMessage.value = null
+  else if (successMessage.value) successMessage.value = null
+}
+onMounted(() => window.addEventListener('keydown', handleModalKeydown))
+onUnmounted(() => window.removeEventListener('keydown', handleModalKeydown))
+
+// Ловушки фокуса: Tab уводил из модалки в форму записи под ней.
+// Модалки взаимоисключающие, поэтому каждая со своей ловушкой.
+const successPanel = ref(null)
+const modelPanel = ref(null)
+const errorPanel = ref(null)
+useFocusTrap(computed(() => !!successMessage.value), successPanel)
+useFocusTrap(computed(() => showModelConfirm.value), modelPanel)
+useFocusTrap(computed(() => !!errorMessage.value), errorPanel)
 
 const onModelBlur = () => {
   // Даём time для mousedown на элементе списка
