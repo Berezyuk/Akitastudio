@@ -11,7 +11,7 @@
         class="flex-1 px-4 py-2 bg-gray-700 rounded-lg text-white"
         @input="debouncedFetch"
       />
-      <select v-model="statusFilter" class="px-4 py-2 bg-gray-700 rounded-lg text-white" @change="fetchFeedbacks">
+      <select v-model="statusFilter" class="px-4 py-2 bg-gray-700 rounded-lg text-white" @change="applyFilters">
         <option value="all">Все статусы</option>
         <option value="new">Новые</option>
         <option value="read">Прочитанные</option>
@@ -180,9 +180,16 @@ const onPageChange = (p) => {
   fetchFeedbacks()
 }
 
+// Новый поиск/фильтр — новый набор: без сброса страницы запрос уходил со старой
+// (фильтр с 3-й страницы просил строки 61-90 из двух найденных = пустая таблица).
+const applyFilters = () => {
+  pagination.value.page = 1
+  fetchFeedbacks()
+}
+
 const debouncedFetch = () => {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => fetchFeedbacks(), 300)
+  debounceTimer = setTimeout(() => applyFilters(), 300)
 }
 
 const openViewModal = (feedback) => {

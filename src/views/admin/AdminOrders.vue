@@ -156,7 +156,7 @@
         </thead>
         <tbody>
           <tr 
-            v-for="order in sortedAndFilteredOrders" 
+            v-for="order in pagedOrders"
             :key="order.order_id" 
             class="border-b border-gray-800 hover:bg-gray-800/30 transition cursor-pointer group"
             @click="openOrderModal(order)"
@@ -198,7 +198,7 @@
     <ThePagination
       :page="pagination.page"
       :limit="pagination.limit"
-      :total="pagination.total"
+      :total="sortedAndFilteredOrders.length"
       @update:page="onPageChange"
       class="mt-2"
     />
@@ -221,7 +221,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AdminOrderModal from '@/components/AdminOrderModal.vue'
 import { API_BASE } from '@/config/api.js'
 import ThePagination from '@/components/ThePagination.vue'
@@ -230,7 +230,7 @@ import AlertModal from '@/components/admin/AlertModal.vue'
 const orders = ref([])
 const statuses = ref([])
 const loading = ref(false)
-const pagination = ref({ page: 1, limit: 50, total: 0 })
+const pagination = ref({ page: 1, limit: 50 })
 const sortField = ref('order_date')
 const sortOrder = ref('desc')
 const modalVisible = ref(false)
@@ -357,6 +357,16 @@ const sortedAndFilteredOrders = computed(() => {
   return result
 })
 
+// Пагинация поверх отфильтрованного списка, а не поверх серверной страницы:
+// фильтры выше видят все заказы, поэтому и считать страницы надо от их результата.
+const pagedOrders = computed(() => {
+  const start = (pagination.value.page - 1) * pagination.value.limit
+  return sortedAndFilteredOrders.value.slice(start, start + pagination.value.limit)
+})
+
+// Смена фильтров/сортировки меняет набор — оставаться на 5-й странице бессмысленно.
+watch([filters, sortField, sortOrder], () => { pagination.value.page = 1 }, { deep: true })
+
 const statusCounts = computed(() => {
   const counts = {}
   filteredOrders.value.forEach(order => {
@@ -411,16 +421,9 @@ const fetchStatuses = async () => {
 const fetchOrders = async () => {
   loading.value = true
   try {
-    const params = new URLSearchParams({
-      page:  pagination.value.page,
-      limit: pagination.value.limit,
-    })
-    const res  = await fetch(`${API_BASE}/admin/orders?${params}`, { credentials: 'include' })
+    const res  = await fetch(`${API_BASE}/admin/orders`, { credentials: 'include' })
     const data = await res.json()
-    if (data.success) {
-      orders.value = data.orders
-      pagination.value.total = data.total ?? orders.value.length
-    }
+    if (data.success) orders.value = data.orders
   } catch {} finally {
     loading.value = false
   }
@@ -428,7 +431,6 @@ const fetchOrders = async () => {
 
 const onPageChange = (p) => {
   pagination.value.page = p
-  fetchOrders()
 }
 
 const updateStatus = async (orderId, newStatusId) => {

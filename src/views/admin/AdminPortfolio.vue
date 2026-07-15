@@ -167,13 +167,17 @@ const saveItem = async () => {
 
 const deleteItem = async (id, title) => {
   if (!await askConfirm('Удалить из портфолио?', `«${title || 'элемент'}» будет удалён без возможности восстановления.`)) return
-  const res = await fetch(`${API_BASE}/admin/portfolio/${id}`, {
-    method: 'DELETE',
-    credentials: 'include'
-  })
-  const data = await res.json()
-  if (data.success) await fetchPortfolio()
-  else showAlert('Ошибка удаления')
+  try {
+    const res = await fetch(`${API_BASE}/admin/portfolio/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    const data = await res.json()
+    if (data.success) await fetchPortfolio()
+    else showAlert('Ошибка удаления', data.error || '')
+  } catch {
+    showAlert('Ошибка соединения')
+  }
 }
 
 // Определяем тип медиа по URL для предпросмотра

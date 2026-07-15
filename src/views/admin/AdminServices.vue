@@ -103,32 +103,40 @@ const saveService = async () => {
     : `${API_BASE}/admin/services`
   const method = editingService.value ? 'PUT' : 'POST'
 
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(form.value)
-  })
-  const data = await res.json()
-  if (data.success) {
-    await fetchServices()
-    showModal.value = false
-  } else {
-    showAlert('Ошибка', data.error || 'Не удалось сохранить')
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(form.value)
+    })
+    const data = await res.json()
+    if (data.success) {
+      await fetchServices()
+      showModal.value = false
+    } else {
+      showAlert('Ошибка', data.error || 'Не удалось сохранить')
+    }
+  } catch {
+    showAlert('Ошибка соединения')
   }
 }
 
 const deleteService = async (id, name) => {
   if (!await askConfirm('Удалить услугу?', `«${name}» будет удалена без возможности восстановления.`)) return
-  const res = await fetch(`${API_BASE}/admin/services/${id}`, {
-    method: 'DELETE',
-    credentials: 'include'
-  })
-  const data = await res.json()
-  if (data.success) {
-    await fetchServices()
-  } else {
-    showAlert('Ошибка удаления')
+  try {
+    const res = await fetch(`${API_BASE}/admin/services/${id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    const data = await res.json()
+    if (data.success) {
+      await fetchServices()
+    } else {
+      showAlert('Ошибка удаления')
+    }
+  } catch {
+    showAlert('Ошибка соединения')
   }
 }
 
@@ -169,20 +177,24 @@ const saveCat = async () => {
     : `${API_BASE}/admin/service-categories`
   const method = editingCat.value ? 'PUT' : 'POST'
 
-  const res = await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify(catForm.value)
-  })
-  const data = await res.json()
-  if (data.success || data.category_id) {
-    await fetchCategories()
-    showCatModal.value = false
-  } else if (data.home_limit_exceeded) {
-    showCatLimitModal.value = true
-  } else {
-    catError.value = data.error || 'Не удалось сохранить'
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(catForm.value)
+    })
+    const data = await res.json()
+    if (data.success || data.category_id) {
+      await fetchCategories()
+      showCatModal.value = false
+    } else if (data.home_limit_exceeded) {
+      showCatLimitModal.value = true
+    } else {
+      catError.value = data.error || 'Не удалось сохранить'
+    }
+  } catch {
+    catError.value = 'Ошибка соединения'
   }
 }
 
@@ -215,14 +227,20 @@ const uploadCatMedia = async (event) => {
 
 const removeCatMedia = async () => {
   if (!editingCat.value) return
-  const res = await fetch(`${API_BASE}/admin/service-categories/${editingCat.value.category_id}/media`, {
-    method: 'DELETE',
-    credentials: 'include'
-  })
-  const data = await res.json()
-  if (data.success) {
-    catMediaPreview.value = null
-    await fetchCategories()
+  try {
+    const res = await fetch(`${API_BASE}/admin/service-categories/${editingCat.value.category_id}/media`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    const data = await res.json()
+    if (data.success) {
+      catMediaPreview.value = null
+      await fetchCategories()
+    } else {
+      catError.value = data.error || 'Не удалось удалить медиа'
+    }
+  } catch {
+    catError.value = 'Ошибка соединения'
   }
 }
 
@@ -232,16 +250,20 @@ const deleteCat = async (cat) => {
     ? `В категории ${count} усл. — они тоже будут удалены. Это действие нельзя отменить.`
     : `«${cat.name}» будет удалена без возможности восстановления.`
   if (!await askConfirm(`Удалить категорию «${cat.name}»?`, message)) return
-  const res = await fetch(`${API_BASE}/admin/service-categories/${cat.category_id}`, {
-    method: 'DELETE',
-    credentials: 'include'
-  })
-  const data = await res.json()
-  if (data.success) {
-    await fetchCategories()
-    await fetchServices()
-  } else {
-    showAlert('Ошибка удаления', data.error || '')
+  try {
+    const res = await fetch(`${API_BASE}/admin/service-categories/${cat.category_id}`, {
+      method: 'DELETE',
+      credentials: 'include'
+    })
+    const data = await res.json()
+    if (data.success) {
+      await fetchCategories()
+      await fetchServices()
+    } else {
+      showAlert('Ошибка удаления', data.error || '')
+    }
+  } catch {
+    showAlert('Ошибка соединения')
   }
 }
 

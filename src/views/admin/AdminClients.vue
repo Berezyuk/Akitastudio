@@ -398,7 +398,12 @@ const fetchServices = async () => {
 
 const debouncedFetch = () => {
   clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(() => fetchClients(), 300)
+  debounceTimer = setTimeout(() => {
+    // Новый поиск — новый набор: без сброса запрос уходил со старой страницей
+    // (поиск с 3-й страницы просил строки 61-90 из двух найденных = пустая таблица).
+    pagination.value.page = 1
+    fetchClients()
+  }, 300)
 }
 
 const openEditModal = (client) => {
