@@ -233,24 +233,51 @@ git commit -m "feat: таблица visits и соль для хеша посе�
 ### Task 3: GET /api/admin/analytics
 
 **Files:**
-- Modify: `api/controllers/AdminSystemController.php` (новый метод после `getDashboardStats()`)
+- Modify: `api/controllers/AdminSystemController.php` (хелпер `fillDays()`, правка `getDashboardStats()`, новый `getAnalytics()`)
 - Modify: `api/index.php` (секция «Админ: дашборд/пароль»)
 - Test: `tests/api.test.js`
 
 **Interfaces:**
 - Consumes: таблица `visits` (Task 2)
-- Produces: `GET /api/admin/analytics?days=7|30` →
-  ```json
-  { "success": true,
-    "today": { "visits": 42, "uniques": 31 },
-    "chart_data": { "labels": ["10.07"], "visits": [42], "uniques": [31] },
-    "sources": [{ "source": "search", "count": 120 }],
-    "devices": [{ "device": "mobile", "count": 200 }] }
-  ```
+- Produces:
+  - `private static function fillDays(array $rows, int $days, array $fields): array` — добивает пустые дни нулями. `$fields`: `['ключ_ответа' => ['sql_колонка', 'int'|'float']]`. Возвращает `['labels' => [...], 'ключ_ответа' => [...], ...]`
+  - `GET /api/admin/analytics?days=7|30` →
+    ```json
+    { "success": true,
+      "today": { "visits": 42, "uniques": 31 },
+      "chart_data": { "labels": ["10.07"], "visits": [42], "uniques": [31] },
+      "sources": [{ "source": "search", "count": 120 }],
+      "devices": [{ "device": "mobile", "count": 200 }],
+      "top_hosts": [{ "referer_host": "yandex.ru", "count": 90 }] }
+    ```
 
-- [ ] **Step 1: Написать падающие тесты**
+`getDashboardStats()` переводится на тот же `fillDays()` — цикл добивки в нём дословно тот же. Это работающий код, поэтому перед правкой он накрывается характеризующим тестом: сейчас его график не покрыт ничем, тест `today_orders > 0` о `chart_data` не знает.
 
-В `tests/api.test.js`, в существующий массив `adminRoutes` (describe «guard: админские роуты без сессии») добавить строку:
+- [ ] **Step 1: Характеризующий тест на график дашборда**
+
+Пишется ДО рефакторинга и обязан пройти на текущем коде — он фиксирует поведение, которое правка не должна изменить. В `tests/api.test.js`, в существующий describe про дашборд (рядом с проверкой `today_orders`):
+
+```js
+  test('chart_data: 7 точек, числа, а не строки из PDO', async () => {
+    const cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+    const data = await (await fetch(API + '/admin/dashboard', { headers: { Cookie: cookie } })).json()
+
+    assert.equal(data.chart_data.labels.length, 7)
+    assert.equal(data.chart_data.values.length, 7)
+    assert.equal(data.chart_data.revenue.length, 7)
+    // PDO отдаёт COUNT/SUM строками. Контроллер их приводит — если рефакторинг
+    // приведение потеряет, JSON поедет со строками и тест поймает это здесь.
+    for (const v of data.chart_data.values) assert.equal(typeof v, 'number')
+    for (const r of data.chart_data.revenue) assert.equal(typeof r, 'number')
+  })
+```
+
+Run: `npm test 2>&1 | grep -A3 "chart_data: 7 точек"`
+Expected: PASS на нетронутом коде. Если падает — остановиться и разобраться: значит поведение не то, что мы собираемся сохранять.
+
+- [ ] **Step 2: Написать падающие тесты на новый эндпоинт**
+
+В `tests/api.test.js`, в массив `adminRoutes` (describe «guard: админские роуты без сессии») добавить:
 
 ```js
     '/admin/analytics',
@@ -275,6 +302,14 @@ describe('GET /admin/analytics', () => {
     assert.equal(data.chart_data.uniques.length, 7)
   })
 
+  test('ряд отдаётся числами, а не строками из PDO', async () => {
+    const data = await (await get('?days=7')).json()
+    for (const v of data.chart_data.visits) assert.equal(typeof v, 'number')
+    for (const u of data.chart_data.uniques) assert.equal(typeof u, 'number')
+    assert.equal(typeof data.today.visits, 'number')
+    assert.equal(typeof data.today.uniques, 'number')
+  })
+
   test('days=30 отдаёт ряд ровно на 30 точек', async () => {
     const data = await (await get('?days=30')).json()
     assert.equal(data.chart_data.labels.length, 30)
@@ -289,15 +324,66 @@ describe('GET /admin/analytics', () => {
     const data = await (await get('')).json()
     assert.equal(data.chart_data.labels.length, 7)
   })
+
+  test('top_hosts отдаётся массивом и не содержит прямых заходов', async () => {
+    const data = await (await get('?days=7')).json()
+    assert.ok(Array.isArray(data.top_hosts))
+    // У direct нет хоста (referer_host IS NULL) — в топ сайтов ему попадать нечем.
+    for (const row of data.top_hosts) assert.ok(row.referer_host)
+  })
 })
 ```
 
-- [ ] **Step 2: Прогнать — убедиться, что падают**
-
 Run: `npm test 2>&1 | grep -A3 "admin/analytics"`
-Expected: FAIL — 404 на роуте, и guard-тест тоже красный.
+Expected: FAIL — 404 на роуте, guard-тест тоже красный.
 
-- [ ] **Step 3: Написать метод**
+- [ ] **Step 3: Вынести хелпер и перевести на него getDashboardStats**
+
+`api/controllers/AdminSystemController.php` — добавить private-метод (место: над `getDashboardStats()`):
+
+```php
+    // Дни без строк БД не возвращает, а график обязан иметь точку на каждый день —
+    // иначе он врёт формой. Общий добивщик для дашборда и аналитики.
+    // $fields: ['ключ_ответа' => ['колонка_в_выборке', 'int'|'float']].
+    // Тип обязателен: PDO отдаёт COUNT/SUM строками, а в JSON нужны числа.
+    private static function fillDays(array $rows, int $days, array $fields): array {
+        $byDate = array_column($rows, null, 'day');
+        $out = ['labels' => []];
+        foreach ($fields as $key => $_) {
+            $out[$key] = [];
+        }
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = date('Y-m-d', strtotime("-{$i} days"));
+            $out['labels'][] = date('d.m', strtotime($date));
+            foreach ($fields as $key => [$col, $type]) {
+                $raw = $byDate[$date][$col] ?? 0;
+                $out[$key][] = $type === 'int' ? (int)$raw : (float)$raw;
+            }
+        }
+        return $out;
+    }
+```
+
+Затем в `getDashboardStats()` заменить блок от `$chartData = ['labels' => [], 'values' => [], 'revenue' => []];` и весь цикл `for ($i = 6; $i >= 0; $i--) {...}` на:
+
+```php
+        $chartData = self::fillDays(
+            $stmt->fetchAll(PDO::FETCH_ASSOC),
+            7,
+            ['values' => ['cnt', 'int'], 'revenue' => ['revenue', 'float']]
+        );
+```
+
+Строки `$rows = $stmt->fetchAll(...)` и `$byDate = array_column($rows, null, 'day');` там же удаляются — их работу делает хелпер. Переменная `$fromDate` и сам запрос остаются как есть.
+
+Run:
+```bash
+sleep 3
+npm test 2>&1 | grep -A3 "chart_data: 7 точек"
+```
+Expected: PASS — рефакторинг поведение не изменил.
+
+- [ ] **Step 4: Написать getAnalytics()**
 
 `api/controllers/AdminSystemController.php`, сразу после `getDashboardStats()`:
 
@@ -306,7 +392,7 @@ Expected: FAIL — 404 на роуте, и guard-тест тоже красны�
     public static function getAnalytics() {
         self::checkAdmin();
 
-        // Whitelist, а не подстановка: $_GET уходит в SQL-запрос ниже.
+        // Whitelist, а не подстановка: $_GET уходит в SQL-запросы ниже.
         $days = (int)($_GET['days'] ?? 7);
         if (!in_array($days, [7, 30], true)) {
             echo json_encode(['error' => 'Недопустимый период']);
@@ -333,17 +419,11 @@ Expected: FAIL — 404 на роуте, и guard-тест тоже красны�
              GROUP BY visited_at::date ORDER BY visited_at::date ASC"
         );
         $stmt->execute([':from' => $fromDate]);
-        $byDate = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), null, 'day');
-
-        // Дни без визитов БД не вернёт — добиваем нулями, иначе график врёт
-        // формой. Тот же приём, что в getDashboardStats() выше.
-        $chartData = ['labels' => [], 'visits' => [], 'uniques' => []];
-        for ($i = $days - 1; $i >= 0; $i--) {
-            $date = date('Y-m-d', strtotime("-{$i} days"));
-            $chartData['labels'][]  = date('d.m', strtotime($date));
-            $chartData['visits'][]  = (int)($byDate[$date]['visits'] ?? 0);
-            $chartData['uniques'][] = (int)($byDate[$date]['uniques'] ?? 0);
-        }
+        $chartData = self::fillDays(
+            $stmt->fetchAll(PDO::FETCH_ASSOC),
+            $days,
+            ['visits' => ['visits', 'int'], 'uniques' => ['uniques', 'int']]
+        );
 
         $stmt = $conn->prepare(
             "SELECT source, COUNT(*) AS count FROM visits
@@ -359,19 +439,30 @@ Expected: FAIL — 404 на роуте, и guard-тест тоже красны�
         $stmt->execute([':from' => $fromDate]);
         $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        // Топ сайтов-источников. Прямые заходы отсеиваются сами: у них
+        // referer_host IS NULL. Лимит 5 — список для беглого взгляда, не отчёт.
+        $stmt = $conn->prepare(
+            "SELECT referer_host, COUNT(*) AS count FROM visits
+             WHERE visited_at::date >= :from AND referer_host IS NOT NULL
+             GROUP BY referer_host ORDER BY count DESC LIMIT 5"
+        );
+        $stmt->execute([':from' => $fromDate]);
+        $topHosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
         echo json_encode([
             'success'    => true,
             'today'      => ['visits' => (int)$today['visits'], 'uniques' => (int)$today['uniques']],
             'chart_data' => $chartData,
             'sources'    => $sources,
             'devices'    => $devices,
+            'top_hosts'  => $topHosts,
         ]);
     }
 ```
 
-`echo json_encode(['error' => ...])` без `success` роутер сам превратит в HTTP 400 — так устроен `api/index.php`, руками статус не трогаем.
+`echo json_encode(['error' => ...])` без `success` роутер сам превратит в HTTP 400 — так устроен `api/index.php`, статус руками не трогаем.
 
-- [ ] **Step 4: Добавить роут**
+- [ ] **Step 5: Добавить роут**
 
 `api/index.php`, секция «Админ: дашборд/пароль», после строки `admin/dashboard`:
 
@@ -379,15 +470,15 @@ Expected: FAIL — 404 на роуте, и guard-тест тоже красны�
     ['GET',    'admin/analytics',                   fn($m) => AdminSystemController::getAnalytics()],
 ```
 
-- [ ] **Step 5: Прогнать тесты**
+- [ ] **Step 6: Прогнать тесты**
 
 ```bash
 sleep 3
 npm test
 ```
-Expected: PASS — и новый describe, и guard-тест на `/admin/analytics`.
+Expected: PASS — новый describe, guard-тест на `/admin/analytics`, характеризующий тест дашборда.
 
-- [ ] **Step 6: Проверить guard обратной проверкой**
+- [ ] **Step 7: Проверить guard обратной проверкой**
 
 Временно закомментировать `self::checkAdmin();` в `getAnalytics()`, затем:
 
@@ -399,11 +490,11 @@ Expected: FAIL — `/admin/analytics доступен без авторизац�
 
 Вернуть строку, прогнать снова, убедиться в PASS.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add api/controllers/AdminSystemController.php api/index.php tests/api.test.js
-git commit -m "feat: GET /api/admin/analytics — визиты, уники, источники, устройства"
+git commit -m "feat: GET /api/admin/analytics — визиты, уники, источники, устройства, топ сайтов"
 ```
 
 ---
@@ -834,7 +925,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import Chart from 'chart.js/auto'
 import { API_BASE } from '@/config/api'
 
-const stats = ref({ today: { visits: 0, uniques: 0 }, sources: [], devices: [] })
+const stats = ref({ today: { visits: 0, uniques: 0 }, sources: [], devices: [], top_hosts: [] })
 const days = ref(7)
 const loading = ref(false)
 const error = ref('')
@@ -974,6 +1065,16 @@ onUnmounted(() => {
           <span class="text-gray-500">{{ row.count }} · {{ percent(stats.devices, row.count) }}%</span>
         </div>
       </div>
+
+      <div class="rounded-xl bg-gray-900 p-5 md:col-span-2">
+        <h3 class="text-white font-semibold mb-1">Топ сайтов</h3>
+        <p class="text-xs text-gray-500 mb-4">Откуда именно переходили. Прямых заходов тут нет — у них источника нет.</p>
+        <p v-if="!stats.top_hosts.length" class="text-sm text-gray-500">Пока нет данных</p>
+        <div v-for="row in stats.top_hosts" :key="row.referer_host" class="flex justify-between py-2 text-sm">
+          <span class="text-gray-300 truncate">{{ row.referer_host }}</span>
+          <span class="text-gray-500 shrink-0 ml-4">{{ row.count }}</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -1015,6 +1116,7 @@ const validTabs = ['dashboard', 'analytics', 'services', 'portfolio', 'orders', 
 - плитки показывают числа (не `undefined`), визиты ≥ уников
 - график рисует ровно 7 точек; переключение на «30 дней» перерисовывает в 30
 - разделы «Откуда приходят» и «Устройства» заполнены, проценты в сумме дают ~100
+- «Топ сайтов» показывает хосты (`yandex.ru`), прямых заходов среди них нет
 - на пустой таблице (`DELETE FROM visits;`) — «Пока нет данных», без падений в консоли
 - окно браузера в 375px: плитки в одну колонку, горизонтального скролла нет
 
