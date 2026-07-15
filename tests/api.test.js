@@ -378,3 +378,31 @@ describe('удалённые мёртвые роуты не воскресли',
     })
   }
 })
+
+// Троттлинг логина считает попытки по IP (RateLimiter::ip() -> HTTP_X_REAL_IP).
+// Контейнерный nginx затирал этот заголовок адресом докер-шлюза, и корзина
+// становилась общей на всех: 10 неудачных попыток кого угодно блокировали вход
+// остальным. Тест ловит именно это — на откаченном фиксе IP-2 получает 429.
+//
+// ⚠️  Если тест падает, корзина докер-шлюза засорена на 15 минут и остальные
+//     тесты с логином админа получат 429. Очистка:
+//     docker compose exec -T postgres sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB -c "DELETE FROM login_attempts;"'
+describe('троттлинг логина: корзины по IP не общие', () => {
+  const badLogin = (ip) =>
+    fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Real-IP': ip },
+      body: JSON.stringify({ login: 'nosuchuser', password: 'wrongpassword' }),
+    })
+
+  test('исчерпание лимита одним IP не блокирует другой', async () => {
+    // RateLimiter::MAX_ATTEMPTS = 10 за 15 минут
+    for (let i = 0; i < 11; i++) await badLogin('198.51.100.1')
+
+    const throttled = await badLogin('198.51.100.1')
+    assert.equal(throttled.status, 429, 'лимит по своему же IP не сработал')
+
+    const other = await badLogin('198.51.100.2')
+    assert.notEqual(other.status, 429, 'чужой IP получил 429 — корзина общая на всех')
+  })
+})
