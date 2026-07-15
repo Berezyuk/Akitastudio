@@ -320,6 +320,34 @@ describe('HTTP-статусы: ошибка не должна приходить
   })
 })
 
+describe('session-cookie: Secure по HTTPS без настройки в .env', () => {
+  // На проде SESSION_COOKIE_SECURE в .env просто не оказалось, и кука на
+  // HTTPS-сайте уходила без Secure — настройка проваливалась в небезопасную
+  // сторону. Теперь схему определяет api/index.php сам; тест держит это.
+  const cookieOf = (res) => (res.headers.getSetCookie?.() || []).join('; ')
+
+  test('X-Forwarded-Proto: https -> Secure выставлен', async () => {
+    const res = await fetch(API + '/services', { headers: { 'X-Forwarded-Proto': 'https' } })
+    assert.match(cookieOf(res), /;\s*secure/i, 'кука по HTTPS ушла без Secure')
+  })
+
+  test('обычный HTTP -> Secure не выставлен (иначе dev-стенд не залогинится)', async () => {
+    const res = await fetch(API + '/services')
+    assert.doesNotMatch(cookieOf(res), /;\s*secure/i, 'Secure по HTTP сломает вход в dev')
+  })
+
+  test('X-Forwarded-Proto: http -> Secure не выставлен', async () => {
+    const res = await fetch(API + '/services', { headers: { 'X-Forwarded-Proto': 'http' } })
+    assert.doesNotMatch(cookieOf(res), /;\s*secure/i)
+  })
+
+  test('кука в любом случае HttpOnly и SameSite', async () => {
+    const c = cookieOf(await fetch(API + '/services'))
+    assert.match(c, /HttpOnly/i)
+    assert.match(c, /SameSite/i)
+  })
+})
+
 describe('order/create: отказ не оставляет клиента-сироту', () => {
   // Модель создавала клиента до проверки услуг: любой отказ ниже оставлял в БД
   // карточку без единого заказа, и аноним мог так засорять таблицу clients.
