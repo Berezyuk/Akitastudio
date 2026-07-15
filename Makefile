@@ -26,8 +26,16 @@ prerender:
 # Полный продакшен-деплой: пре-рендер (SEO) + запуск всех сервисов.
 # TLS терминирует ХОСТОВОЙ nginx (см. docs/nginx-host.conf) — этот стек слушает
 # только localhost: 8000 (API) и 3001 (статика).
+#
+# --build обязателен. docker/php/php.ini не монтируется, а КОПИРУЕТСЯ в образ
+# (docker/php/Dockerfile: COPY docker/php/php.ini ...). Без --build `up -d` берёт
+# существующий образ, и правки php.ini не доезжают вообще — молча, без единого
+# следа в выводе. На проде так и вышло: включённый session.cookie_secure пролежал
+# в git месяц, а кука на HTTPS всё это время уходила без Secure. Здесь же живут
+# display_errors=Off и log_errors — без пересборки фаталы продолжат утекать
+# клиенту со стек-трейсом. Сборка с кешем почти бесплатна, стухший образ — нет.
 prod: prerender
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 	@echo "Прод обновлён. Снаружи отдаёт хостовой nginx: https://akita-studio.ru"
 
 init:
