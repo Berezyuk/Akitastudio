@@ -15,9 +15,24 @@ set_exception_handler(function (Throwable $e) {
     exit;
 });
 
-// Secure-cookie управляется через env: в проде за TLS ставить SESSION_COOKIE_SECURE=true.
-// В dev (HTTP) оставлять пустым/false, иначе браузер не отдаст cookie.
-if (filter_var(getenv('SESSION_COOKIE_SECURE'), FILTER_VALIDATE_BOOLEAN)) {
+// Secure-флаг на session-cookie.
+//
+// Раньше это зависело только от SESSION_COOKIE_SECURE, и настройка проваливалась
+// в небезопасную сторону: на проде переменной в .env не оказалось -> дефолт false
+// -> кука на HTTPS-сайте уходила без Secure. Забыть одну строку в .env не должно
+// стоить защиты сессии, поэтому HTTPS определяется сам.
+//
+// $_SERVER['HTTPS'] — прямой TLS на веб-сервере; X-Forwarded-Proto — терминация
+// выше (у нас это хостовой nginx, см. docs/nginx-host.conf). Заголовок приходит
+// от клиента и подделывается, но худшее, что даст подделка, — Secure-кука на
+// HTTP: браузер просто не пришлёт её обратно. Своя же сессия и сломается, чужая
+// не пострадает. Ошибиться в эту сторону безопасно.
+$isHttps = (($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off')
+    || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+
+// Явный SESSION_COOKIE_SECURE остаётся: им можно включить Secure там, где схему
+// не определить. Выключить автоопределение он не может — это и есть цель.
+if ($isHttps || filter_var(getenv('SESSION_COOKIE_SECURE'), FILTER_VALIDATE_BOOLEAN)) {
     ini_set('session.cookie_secure', '1');
 }
 session_start();

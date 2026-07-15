@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: up down init build-frontend prerender prod tls-init
+.PHONY: up down init build-frontend prerender prod
 
 up:
 	docker compose up -d
@@ -23,38 +23,12 @@ prerender:
 	npm run build:prerender
 	@echo "Готово: dist/ содержит HTML с контентом для поисковых ботов"
 
-# Одноразовый бутстрап TLS. Запускать ОДИН раз перед первым `make prod`:
-# nginx не стартует без файлов сертификата, поэтому первый серт берём в режиме
-# --standalone (certbot сам поднимает веб-сервер на 80). Продление потом делает
-# certbot-контейнер через webroot — см. docker-compose.prod.yml.
-#
-# Требуется: DOMAIN и CERTBOT_EMAIL в .env, домен уже указывает на этот сервер,
-# порт 80 снаружи открыт и никем не занят.
-# Сначала прогони с DRY_RUN=1: у Let's Encrypt жёсткие лимиты (5 неудач на домен
-# в час), и пара кривых попыток блокирует выпуск на неделю.
-#   make tls-init DRY_RUN=1   -> проверка без выпуска
-#   make tls-init             -> боевой выпуск
-tls-init:
-	@test -n "$(DOMAIN)" || { echo "ОШИБКА: не задан DOMAIN (положи в .env)"; exit 1; }
-	@test -n "$(MEDIA_DOMAIN)" || { echo "ОШИБКА: не задан MEDIA_DOMAIN (положи в .env)"; exit 1; }
-	@test -n "$(CERTBOT_EMAIL)" || { echo "ОШИБКА: не задан CERTBOT_EMAIL (положи в .env)"; exit 1; }
-	@echo "Останавливаю стек: certbot --standalone займёт порт 80..."
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml down
-	docker volume create akitastudio_certbot_certs
-	@echo "Домены: $(DOMAIN), $(MEDIA_DOMAIN)$(if $(DRY_RUN), (ПРОБНЫЙ ПРОГОН — сертификат не выпустится),)"
-	docker run --rm -p 80:80 \
-	  -v akitastudio_certbot_certs:/etc/letsencrypt \
-	  certbot/certbot certonly --standalone $(if $(DRY_RUN),--dry-run,) \
-	  -d $(DOMAIN) -d $(MEDIA_DOMAIN) \
-	  --email $(CERTBOT_EMAIL) --agree-tos --no-eff-email
-	@echo "Готово.$(if $(DRY_RUN), Пробный прогон прошёл — теперь без DRY_RUN=1., Дальше: make prod)"
-
 # Полный продакшен-деплой: пре-рендер (SEO) + запуск всех сервисов.
-# Перед ПЕРВЫМ запуском нужен `make tls-init` — иначе nginx упадёт на
-# отсутствующем сертификате.
+# TLS терминирует ХОСТОВОЙ nginx (см. docs/nginx-host.conf) — этот стек слушает
+# только localhost: 8000 (API) и 3001 (статика).
 prod: prerender
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-	@echo "Продакшен запущен: https://$(DOMAIN) | API: https://$(DOMAIN)/api"
+	@echo "Прод обновлён. Снаружи отдаёт хостовой nginx: https://akita-studio.ru"
 
 init:
 	@echo "Установка npm-зависимостей..."

@@ -1,34 +1,22 @@
+# Прод-оверлей. TLS здесь НЕ терминируется.
+#
+# Схема на сервере: хостовой nginx (вне докера) держит 80/443 и сертификаты
+# Let's Encrypt, а этот стек живёт за ним:
+#     хостовой nginx ──┬─ /api/ ──────────► 127.0.0.1:8000  (nginx-контейнер → php)
+#                      ├─ /       ────────► 127.0.0.1:3001  (статика dist)
+#                      └─ media.<домен> ──► 127.0.0.1:9000  (MinIO, см. docs/nginx-host.conf)
+#
+# Поэтому compose не должен занимать 80/443 и не должен выпускать сертификаты —
+# этим уже занят хостовой nginx с certbot.
 services:
-  # ── Точка входа: TLS терминируется здесь ────────────────────────────────────
+  # API наружу не публикуем: с ним говорит только хостовой nginx через петлю.
+  # Базовый "8000:80" слушает все интерфейсы, и на сервере это открывало
+  # http://<ip>:8000/api/ по голому HTTP — мимо TLS и мимо хостового nginx.
+  # postgres и minio в базовом compose уже закрыты на 127.0.0.1, здесь то же самое.
   nginx:
-    # Базовый конфиг (dev, HTTP на 8000) заменяем шаблоном: nginx:alpine сам
-    # прогоняет /etc/nginx/templates/*.template через envsubst при старте.
-    volumes: !override
-      # ./api сюда не монтируем — nginx исходники не читает (см. docker-compose.yml).
-      - ./docker/nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
-      # Подхват продлённого сертификата. Именно скриптом энтрипойнта, а не через
-      # command: подмена команды отключила бы envsubst и шаблон выше не применился.
-      - ./docker/nginx/reload-certs.sh:/docker-entrypoint.d/99-reload-certs.sh:ro
-      - certbot_certs:/etc/letsencrypt:ro
-      - certbot_www:/var/www/certbot:ro
     ports: !override
-      - "80:80"
-      - "443:443"
-    environment:
-      # Домены подставляются в шаблон и в пути к сертификатам.
-      DOMAIN: ${DOMAIN:?укажи DOMAIN в .env — без него nginx не найдёт сертификат}
-      # Поддомен для медиа из MinIO. Нужен отдельный, а не префикс на основном:
-      # подпись SigV4 привязана к хосту и пути (подробности в prod.conf.template).
-      MEDIA_DOMAIN: ${MEDIA_DOMAIN:?укажи MEDIA_DOMAIN в .env — иначе медиа не откроется}
-      # envsubst иначе съел бы и $host/$uri самого nginx. Фильтр — это регэксп по
-      # ИМЕНАМ переменных, поэтому «DOMAIN» покрывает и DOMAIN, и MEDIA_DOMAIN.
-      NGINX_ENVSUBST_FILTER: DOMAIN
-    depends_on:
-      - php
-      - frontend
-      - minio
+      - "127.0.0.1:8000:80"
 
-  # ── Статика SPA: наружу не торчит, ходит только через nginx ─────────────────
   frontend:
     image: nginx:1.27-alpine
     container_name: akita_frontend
@@ -45,28 +33,7 @@ services:
     volumes: !override
       - ./dist:/usr/share/nginx/html:ro
       - ./docker/nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
-    # Порт наружу не публикуем: раньше статика висела на 3001 в обход TLS.
-    ports: !override []
-    depends_on: !reset []
-
-  # ── Продление сертификата ───────────────────────────────────────────────────
-  # Первый сертификат выдаёт `make tls-init` (certbot --standalone, до старта
-  # nginx). Здесь — только renew: LE отдаёт серты на 90 дней, обновлять начинает
-  # за 30. Проверка каждые 12ч; если продлевать нечего, certbot просто выходит.
-  certbot:
-    image: certbot/certbot
-    container_name: akita_certbot
-    restart: unless-stopped
-    volumes:
-      - certbot_certs:/etc/letsencrypt
-      - certbot_www:/var/www/certbot
-    entrypoint: >
-      sh -c 'trap exit TERM;
-             while :; do
-               certbot renew --webroot -w /var/www/certbot --quiet;
-               sleep 12h & wait $${!};
-             done'
-
-volumes:
-  certbot_certs:
-  certbot_www:
+    # Тоже только петля: статику снаружи отдаёт хостовой nginx по HTTPS.
+    # Базовый "5173:5173" (dev-сервер Vite) этим !override заодно снимается.
+    ports: !override
+      - "127.0.0.1:3001:80"
