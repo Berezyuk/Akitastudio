@@ -17,7 +17,7 @@
 | Разрезы | Источник + устройство | Отвечают на «работает ли реклама» и «нужна ли мобилка». Landing page для SPA бесполезен: 80% будет `/` |
 | Сбор | Beacon из SPA | Парс access-лога nginx втрое дороже и считает ботов за людей |
 | Граница визита | Окно 30 минут, `localStorage` | Одна вкладка = визит пухнет от перезагрузок; PHP-сессия тащит куки в статистику |
-| Админка | Новая страница `/admin/analytics` | Разрезы на дашборд не влезают; дубль «плитки + страница» — двойная работа |
+| Админка | Новая вкладка «Аналитика» | Разрезы на дашборд не влезают; дубль «плитки + страница» — двойная работа |
 | Хранение | Сырые строки, без чистки | ~180к строк/год ≈ 20 МБ. Агрегаты — решение проблемы, которой нет |
 
 ## Ключевое ограничение: `Referer` бесполезен
@@ -161,11 +161,13 @@ IP по 152-ФЗ — персональные данные. Соль (`VISIT_SAL
 {
   "success": true,
   "today": { "visits": 42, "uniques": 31 },
-  "chart": { "labels": ["10.07"], "visits": [42], "uniques": [31] },
+  "chart_data": { "labels": ["10.07"], "visits": [42], "uniques": [31] },
   "sources": [{ "source": "search", "count": 120 }],
   "devices": [{ "device": "mobile", "count": 200 }]
 }
 ```
+
+`chart_data` — snake_case, как у `getDashboardStats()`; фронт уже умеет такой ключ.
 
 Уники — `COUNT(DISTINCT visitor_hash)` с группировкой по `visited_at::date`.
 Дни без визитов заполняются нулями в PHP — как уже сделано в `getDashboardStats()`
@@ -175,10 +177,15 @@ IP по 152-ФЗ — персональные данные. Соль (`VISIT_SAL
 
 ### Beacon
 
+Логика окна — чистая функция в новом `src/config/visit.js` (рядом с `api.js`):
+`shouldTrackVisit(now, last)` → `boolean`. Отдельный файл не ради красоты: внутри
+`main.js` её не позвать из теста, а это единственная тут арифметика, способная
+тихо соврать.
+
 В `src/main.js`, после `app.mount('#app')`:
 
 ```
-если localStorage.lastVisit пуст или старше 30 минут:
+если shouldTrackVisit(Date.now(), localStorage.lastVisit):
     apiFetch('/visit', { method: 'POST', body: JSON.stringify({ referrer: document.referrer }) })
         .catch(() => {})          // статистика не роняет сайт
     localStorage.lastVisit = Date.now()
@@ -190,27 +197,47 @@ IP по 152-ФЗ — персональные данные. Соль (`VISIT_SAL
 Метка времени обновляется независимо от исхода запроса: иначе при лежащем API
 beacon уйдёт на каждой навигации.
 
-### Страница
+### Вкладка (не роут — так устроена админка)
 
-`src/views/admin/AnalyticsView.vue` + роут `/admin/analytics` + пункт меню.
+Админ-панель не на маршрутах: `src/views/ProfileView.vue` держит вкладки через
+`activeAdminTab`, а все восемь `src/views/admin/AdminXxx.vue` — вложенные
+компоненты под `v-if`. Роута `/admin/analytics` в этой архитектуре не существует.
+
+Поэтому: `src/views/admin/AdminAnalytics.vue` + в `ProfileView.vue` импорт,
+запись в `validTabs`, пункт в `adminTabs`, блок `v-if`. Ровно как у остальных
+восьми — новых механизмов не заводим.
+
 Прямой `fetch`, как в остальных админ-вью — стор не заводим, прецедента в проекте нет.
 Верстка mobile-first утилитами Tailwind, без scoped-`@media`.
 
-График — тем же способом, что уже используется в `AdminDashboard`.
+График — `chart.js/auto`, как в `AdminDashboard.vue:278`. Библиотека уже в зависимостях.
 
 ## Тесты
 
 Проверять то, что реально может сломаться.
 
-`tests/api.test.js`:
+**Классификация источника и устройства живёт в PHP, а `tests/unit/` — это vitest.**
+Достать её оттуда нельзя, а PHP-фреймворка тестов в проекте нет (`api/composer.json`
+— только `aws/aws-sdk-php`). Тянуть phpunit ради двух regex не будем. Поэтому
+классификация проверяется через API-смоук: шлём `POST /api/visit` с нужным
+`User-Agent` и `referrer`, читаем результат через `GET /api/admin/analytics`.
+
+`tests/api.test.js` (node:test, живой стенд):
 - `GET /api/admin/analytics` без админа → 401/403 (забытый guard — известный класс багов в проекте)
-- `POST /api/visit` создаёт строку и отвечает 204
-- лимит накрутки: 31-й запрос с тем же хешем за час не пишет строку
+- `POST /api/visit` отвечает 204 и увеличивает счётчик визитов
+- источник: `referrer: 'https://yandex.ru/search'` → `search`; пусто → `direct`; свой хост → `direct`
+- устройство: iPhone-`User-Agent` → `mobile`; десктопный → `desktop`
+- лимит накрутки: 31-й запрос с тем же хешем за час не увеличивает счётчик
 - `?days=99` не проходит whitelist
 
-`tests/unit/`:
-- классификация источника: пусто → `direct`, свой хост → `direct`, `yandex.ru` → `search`, мусор → `other`
-- классификация устройства по нескольким реальным `User-Agent`
+`tests/unit/` (vitest) — только то, что действительно JS:
+- окно визита: `shouldTrackVisit(now, last)` — пусто → true, 29 минут → false,
+  31 минута → true. Чистая функция в `src/config/visit.js`, чтобы её вообще
+  можно было позвать из теста (в `main.js` она недостижима).
+
+⚠️  Тесты пишут в `visits` на dev-стенде и не убирают за собой — как и остальной
+`api.test.js`. Команда очистки добавляется в шапку файла:
+`DELETE FROM visits;`
 
 Каждый тест проверяется откатом фикса — иначе не считается.
 Между правкой PHP и прогоном ждать >2 секунд: `opcache.revalidate_freq=2`.
