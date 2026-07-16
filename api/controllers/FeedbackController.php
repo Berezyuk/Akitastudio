@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/RateLimiter.php';
 
 class FeedbackController {
     
@@ -15,7 +16,16 @@ class FeedbackController {
             echo json_encode(['error' => 'Заполните обязательные поля']);
             return;
         }
-        
+
+        // Троттл: публичный эндпоинт пишет в БД, без лимита — флуд inbox.
+        $conn = (new Database())->getConnection();
+        if (RateLimiter::tooManyAttempts($conn, 'feedback', 20, 900)) {
+            http_response_code(429);
+            echo json_encode(['error' => 'Слишком много сообщений. Попробуйте позже.']);
+            return;
+        }
+        RateLimiter::hit($conn, 'feedback');
+
         // Очистка телефона (только цифры)
         $phone = preg_replace('/[^0-9]/', '', $data['phone']);
         

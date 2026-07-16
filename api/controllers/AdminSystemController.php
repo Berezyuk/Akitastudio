@@ -206,8 +206,8 @@ class AdminSystemController {
             return;
         }
 
-        if (strlen($newPassword) < 6) {
-            echo json_encode(['error' => 'Новый пароль должен быть не менее 6 символов']);
+        if (strlen($newPassword) < 8) {
+            echo json_encode(['error' => 'Новый пароль должен быть не менее 8 символов']);
             return;
         }
 

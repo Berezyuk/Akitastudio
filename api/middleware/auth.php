@@ -16,19 +16,14 @@ function authenticate() {
     ];
 }
 
-function requireRole($role) {
-    $user = authenticate();
-    
-    if($user['role'] !== $role && $user['role'] !== 'admin') {
-        http_response_code(403);
-        echo json_encode(['error' => 'Доступ запрещен']);
-        exit;
-    }
-
-    return $user;
-}
-
-// Единый guard для админских эндпоинтов
+// Единый guard для админских эндпоинтов. Возвращает данные пользователя,
+// чтобы вызыватели могли взять name/user_id без повторного чтения сессии.
+//
+// Раньше рядом жил requireRole($role) с условием `role !== $role &&
+// role !== 'admin'` — админ проходил ЛЮБУЮ проверку роли. Пока звался только
+// с 'admin' это ничего не давало, но был латентный капкан: requireRole('client')
+// для ресурса, куда админу нельзя, молча пропустил бы админа. Удалён —
+// весь админский guard теперь один, без обхода.
 function requireAdmin() {
     if (!isset($_SESSION['user_id'])) {
         http_response_code(401);
@@ -40,4 +35,5 @@ function requireAdmin() {
         echo json_encode(['error' => 'Доступ запрещён']);
         exit;
     }
+    return authenticate();
 }

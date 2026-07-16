@@ -1,5 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/RateLimiter.php';
 
 class CarValidationController {
 
@@ -14,6 +16,17 @@ class CarValidationController {
             echo json_encode(['suggestions' => []]);
             return;
         }
+
+        // Троттл: публичный прокси к платному DaData. Без лимита аноним жжёт
+        // квоту и вешает FPM-воркеров. Лимит щедрый — это автокомплит (много
+        // легитимных запросов по мере ввода).
+        $db = (new Database())->getConnection();
+        if (RateLimiter::tooManyAttempts($db, 'carsuggest', 120, 900)) {
+            http_response_code(429);
+            echo json_encode(['suggestions' => []]);
+            return;
+        }
+        RateLimiter::hit($db, 'carsuggest');
 
         // Публичный прокси, но session_start() в index.php всё равно взял lock.
         // curl к DaData (до 5с) не должен держать его и сериализовать другие
@@ -53,6 +66,15 @@ class CarValidationController {
             echo json_encode(['success' => false, 'error' => 'Не указана марка или модель']);
             return;
         }
+
+        // Троттл: платный DaData, публичный эндпоинт (см. suggestBrand).
+        $db = (new Database())->getConnection();
+        if (RateLimiter::tooManyAttempts($db, 'carval', 60, 900)) {
+            http_response_code(429);
+            echo json_encode(['success' => false, 'error' => 'Слишком много запросов. Попробуйте позже.']);
+            return;
+        }
+        RateLimiter::hit($db, 'carval');
 
         session_write_close(); // отпускаем session-lock до curl к DaData (до 5с)
 
