@@ -1,7 +1,7 @@
 -include .env
 export
 
-.PHONY: up down init build-frontend prerender prod
+.PHONY: up down init build-frontend prerender prod migrate
 
 up:
 	docker compose up -d
@@ -36,7 +36,25 @@ prerender:
 # клиенту со стек-трейсом. Сборка с кешем почти бесплатна, стухший образ — нет.
 prod: prerender
 	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+	@echo "Ожидание готовности PostgreSQL..."
+	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' akita_postgres)" = "healthy" ]; do sleep 1; done
+	@$(MAKE) migrate
 	@echo "Прод обновлён. Снаружи отдаёт хостовой nginx: https://akita-studio.ru"
+
+# Прогон всех SQL-миграций из docker/postgres/migrations по порядку имён.
+# init.sql применяется ТОЛЬКО на свежий volume (CREATE TABLE IF NOT EXISTS
+# пропускает изменения на существующей БД), поэтому правки схемы доезжают до
+# живого прода лишь миграциями. Все миграции идемпотентны (IF NOT EXISTS /
+# guard'ы), повторный прогон безопасен — потому `prod` вызывает migrate на
+# КАЖДОМ деплое, а не вручную. ON_ERROR_STOP=1: первая же ошибка валит деплой,
+# а не проглатывается.
+migrate:
+	@echo "Применение миграций..."
+	@for f in $$(ls docker/postgres/migrations/*.sql 2>/dev/null | sort); do \
+		echo "  → $$f"; \
+		docker compose exec -T postgres sh -c 'psql -U $$POSTGRES_USER -d $$POSTGRES_DB -v ON_ERROR_STOP=1' < "$$f" || exit 1; \
+	done
+	@echo "Миграции применены."
 
 init:
 	@echo "Установка npm-зависимостей..."
