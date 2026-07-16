@@ -205,8 +205,8 @@ onMounted(() => {
     <div v-else class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       <div v-for="item in portfolio" :key="item.id" class="relative group bg-gray-800 rounded-lg overflow-hidden">
         <!-- Превью: видео или изображение -->
-        <video v-if="isVideo(item.video_url)" :src="item.video_url" class="w-full h-40 object-cover" muted></video>
-        <img v-else :src="item.video_url" class="w-full h-40 object-cover" :alt="item.category_name" @error="$event.target.style.display='none'" />
+        <video v-if="isVideo(item.video_url)" :src="item.video_url" class="w-full h-40 object-cover" muted preload="none"></video>
+        <img v-else :src="item.video_url" class="w-full h-40 object-cover" loading="lazy" :alt="item.category_name" @error="$event.target.style.display='none'" />
 
         <!-- Бейдж «На главной» -->
         <div v-if="item.show_on_home" class="absolute top-2 left-2 flex items-center gap-1 bg-[#fc9303] text-black text-xs font-bold px-2 py-0.5 rounded-full shadow">

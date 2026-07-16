@@ -263,6 +263,10 @@ CREATE TABLE IF NOT EXISTS visits (
     device       VARCHAR(10) NOT NULL    -- mobile | desktop
 );
 CREATE INDEX IF NOT EXISTS idx_visits_date ON visits (visited_at);
+-- Аналитика фильтрует и группирует по visited_at::date. Индекс на сырой столбце
+-- каст не использует → seq scan (visits — самая растущая таблица). Expression-индекс
+-- по (visited_at::date) обслуживает эти запросы напрямую.
+CREATE INDEX IF NOT EXISTS idx_visits_date_day ON visits ((visited_at::date));
 -- Второй индекс — под проверку накрутки: она бьёт по ip_hash на каждом визите.
 -- По visitor_hash точечных выборок нет — уники считаются агрегатом
 -- COUNT(DISTINCT visitor_hash) за диапазон дат, такой индекс не ускоряет.
@@ -279,6 +283,9 @@ CREATE INDEX IF NOT EXISTS idx_visits_hash ON visits (ip_hash, visited_at);
 CREATE INDEX IF NOT EXISTS idx_orders_client_id  ON orders (client_id);
 CREATE INDEX IF NOT EXISTS idx_orders_status_id  ON orders (status_id);
 CREATE INDEX IF NOT EXISTS idx_orders_order_date ON orders (order_date DESC);
+-- Дашборд считает заказы по order_date::date (= сегодня, >= from). Как и для
+-- visits, каст не берёт индекс на сыром столбце — expression-индекс по дню.
+CREATE INDEX IF NOT EXISTS idx_orders_order_date_day ON orders ((order_date::date));
 
 -- Состав заказа и фото: JOIN по order_id + ON DELETE CASCADE
 CREATE INDEX IF NOT EXISTS idx_order_services_order_id ON order_services (order_id);
