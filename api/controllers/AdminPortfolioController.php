@@ -73,6 +73,12 @@ class AdminPortfolioController {
             return;
         }
 
+        // PHP держит эксклюзивный lock на файле сессии весь запрос. Транскод +
+        // заливка в MinIO — десятки секунд; без этого любой параллельный запрос
+        // того же браузера (SPA шлёт их пачкой) висит в очереди за локом. Дальше
+        // сессия только читалась — закрываем, лок отпускаем.
+        session_write_close();
+
         $uploadPath = $file['tmp_name'];
         $uploadMime = $realMime;
         $transcodedPath = null;

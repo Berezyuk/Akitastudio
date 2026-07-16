@@ -293,6 +293,7 @@ onUnmounted(() => {
     top: 12px;
     right: 12px;
     background: rgba(0, 0, 0, 0.6);
+    -webkit-backdrop-filter: blur(4px); /* iOS Safari <15 игнорит беспрефиксный */
     backdrop-filter: blur(4px);
     border-radius: 30px;
     padding: 6px 12px;

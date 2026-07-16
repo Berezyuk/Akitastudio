@@ -24,7 +24,9 @@ const LAST_VISIT_KEY = 'last_visit_at'
 if (shouldTrackVisit(Date.now(), localStorage.getItem(LAST_VISIT_KEY), navigator.webdriver === true)) {
     // Метку ставим до запроса и независимо от исхода: иначе при лежащем API
     // beacon уходил бы на каждой навигации.
-    localStorage.setItem(LAST_VISIT_KEY, String(Date.now()))
+    // iOS Safari Private Mode кидает QuotaExceededError на setItem — не должен
+    // ронять бутстрап приложения. Не записалась метка — в худшем случае лишний beacon.
+    try { localStorage.setItem(LAST_VISIT_KEY, String(Date.now())) } catch {}
     apiFetch('/visit', {
         method: 'POST',
         body: JSON.stringify({ referrer: document.referrer }),

@@ -15,6 +15,11 @@ class CarValidationController {
             return;
         }
 
+        // Публичный прокси, но session_start() в index.php всё равно взял lock.
+        // curl к DaData (до 5с) не должен держать его и сериализовать другие
+        // запросы того же браузера.
+        session_write_close();
+
         $token = getenv('DADATA_TOKEN');
         $ch = curl_init('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/car_brand');
         curl_setopt_array($ch, [
@@ -48,6 +53,8 @@ class CarValidationController {
             echo json_encode(['success' => false, 'error' => 'Не указана марка или модель']);
             return;
         }
+
+        session_write_close(); // отпускаем session-lock до curl к DaData (до 5с)
 
         $token  = getenv('DADATA_TOKEN');
         $secret = getenv('DADATA_SECRET');

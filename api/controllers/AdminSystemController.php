@@ -271,6 +271,11 @@ class AdminSystemController {
             return;
         }
 
+        // Отпускаем session-lock до транскода + заливки (десятки секунд), иначе
+        // параллельные запросы того же браузера висят за локом. Дальше сессия
+        // не пишется. См. AdminPortfolioController::uploadPortfolioMedia.
+        session_write_close();
+
         $uploadPath = $file['tmp_name'];
         $uploadMime = $realMime;
         $transcodedPath = FfmpegHelper::transcodeToH264($file['tmp_name'], $realMime);
@@ -331,6 +336,8 @@ class AdminSystemController {
             return;
         }
 
+        session_write_close(); // отпускаем session-lock до заливки в MinIO
+
         $key = 'privacy-policy_' . time() . '.pdf';
 
         try {
@@ -356,6 +363,8 @@ class AdminSystemController {
 
     public static function deletePrivacyPdf() {
         self::checkAdmin();
+
+        session_write_close(); // отпускаем session-lock до MinIO delete
 
         $settings = new SiteSettings();
         $all = $settings->getAll();

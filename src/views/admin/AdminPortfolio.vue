@@ -252,7 +252,7 @@ onMounted(() => {
                 ref="mediaFileInput"
                 type="file"
                 class="hidden"
-                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/ogg"
+                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
                 @change="onMediaFileSelect"
               />
               <div

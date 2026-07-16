@@ -241,6 +241,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE } from '@/config/api.js'
+import { parseApiDate } from '@/config/date.js'
 import AlertModal from '@/components/admin/AlertModal.vue'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
@@ -489,7 +490,7 @@ const canReschedule = (order) => order.status_id < 3
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ru-RU')
+  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
 }
 
 const formatPrice = (price) => {

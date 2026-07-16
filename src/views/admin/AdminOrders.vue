@@ -224,6 +224,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminOrderModal from '@/components/AdminOrderModal.vue'
 import { API_BASE } from '@/config/api.js'
+import { parseApiDate } from '@/config/date.js'
 import ThePagination from '@/components/ThePagination.vue'
 import AlertModal from '@/components/admin/AlertModal.vue'
 
@@ -307,7 +308,7 @@ const filteredOrders = computed(() => {
     const fromDate = new Date(filters.value.dateFrom)
     fromDate.setHours(0, 0, 0, 0)
     result = result.filter(order => {
-      const orderDate = new Date(order.order_date)
+      const orderDate = parseApiDate(order.order_date)
       return orderDate >= fromDate
     })
   }
@@ -316,7 +317,7 @@ const filteredOrders = computed(() => {
     const toDate = new Date(filters.value.dateTo)
     toDate.setHours(23, 59, 59, 999)
     result = result.filter(order => {
-      const orderDate = new Date(order.order_date)
+      const orderDate = parseApiDate(order.order_date)
       return orderDate <= toDate
     })
   }
@@ -335,8 +336,8 @@ const sortedAndFilteredOrders = computed(() => {
         bVal = `${b.first_name || ''} ${b.last_name || ''}`
         break
       case 'order_date':
-        aVal = new Date(a.order_date)
-        bVal = new Date(b.order_date)
+        aVal = parseApiDate(a.order_date)
+        bVal = parseApiDate(b.order_date)
         break
       case 'total_price':
         aVal = parseFloat(a.total_price) || 0
@@ -495,17 +496,17 @@ const formatPriceForCSV = (price) => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ru-RU')
+  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
 }
 
 const formatDateSimple = (dateStr) => {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('ru-RU')
+  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
 }
 
 const formatDateForCSV = (dateStr) => {
   if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('ru-RU')
+  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
 }
 
 const getStatusColor = (statusId) => {
