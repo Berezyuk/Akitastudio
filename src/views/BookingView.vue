@@ -297,6 +297,10 @@ const categories = ref([])
 const selectedCategoryId = ref(null)
 const selectedServices = ref([])
 const loading = ref(false)
+// Ключ идемпотентности: один UUID на попытку заявки. Double-submit / ретрай сети
+// уходят с тем же ключом — бэкенд дедупит и не создаёт второй заказ. Сбрасываем
+// после успеха, чтобы следующая заявка получила новый.
+const idempotencyKey = ref('')
 const successMessage = ref(null)
 const errorMessage = ref(null)
 
@@ -585,6 +589,7 @@ const handleSubmit = async () => {
 
   // Отправка
   loading.value = true
+  if (!idempotencyKey.value) idempotencyKey.value = crypto.randomUUID()
   try {
     const payload = {
       service_ids: selectedServices.value,
@@ -594,7 +599,8 @@ const handleSubmit = async () => {
       car_model: form.value.carModel,
       desired_date: form.value.desiredDate,
       desired_time: form.value.desiredTime,
-      comment: form.value.comment
+      comment: form.value.comment,
+      idempotency_key: idempotencyKey.value
     }
 
     if (authStore.isAuthenticated && authStore.user?.client_id) {
@@ -627,6 +633,7 @@ const handleSubmit = async () => {
       selectedBrandName.value = ''
       brandSuggestions.value = []
       agreed.value = false
+      idempotencyKey.value = '' // следующая заявка — новый ключ
     } else {
       errorMessage.value = data.error || 'Ошибка отправки'
     }

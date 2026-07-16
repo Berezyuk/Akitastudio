@@ -16,34 +16,21 @@ class Order {
     }
     
     public function createFromRequest($data) {
-    // Услуги проверяем ПЕРВЫМ делом, до findOrCreate клиента: иначе отказ ниже
-    // оставлял в БД клиента без единого заказа (аноним мог так засорять таблицу).
+    // ── Валидация только на чтение — до любых записей, можно свободно return ──
     // is_array обязателен: скаляр проходит empty(), а foreach по нему — warning,
-    // а не ошибка. Тело цикла не выполнялось, и заказ уходил в БД на 0 ₽ без услуг,
-    // мимо проверок is_active и цен ниже.
+    // а не ошибка (заказ уходил бы на 0 ₽ без услуг, мимо проверок ниже).
     $serviceIds = $data['service_ids'] ?? [];
     if (!is_array($serviceIds) || empty($serviceIds)) {
         return ['error' => 'Выберите хотя бы одну услугу'];
     }
 
-    // Марка и модель — ДО создания клиента. Раньше findOrCreate клиента шёл
-    // выше этих проверок: новый телефон + пустая марка/битый service_id →
-    // клиент вставлен, заказ нет → сирота в БД. Всё, что может дать отказ
-    // (авто, услуги), считаем первым; клиента создаём последним.
-    $carBrandModel = new CarBrand();
-    $brandResult = $carBrandModel->findOrCreateByName($data['car_brand'] ?? '');
-    if (!$brandResult['success']) return ['error' => 'Ошибка с маркой'];
-    $brandId = $brandResult['brand_id'];
+    $carBrand = trim($data['car_brand'] ?? '');
+    $carModel = trim($data['car_model'] ?? '');
+    if ($carBrand === '') return ['error' => 'Ошибка с маркой'];
+    if ($carModel === '') return ['error' => 'Ошибка с моделью'];
 
-    $carModelModel = new CarModel();
-    $modelResult = $carModelModel->findOrCreateByName($brandId, $data['car_model'] ?? '');
-    if (!$modelResult['success']) return ['error' => 'Ошибка с моделью'];
-    $modelId = $modelResult['model_id'];
-
-    // Расчёт общей суммы (тоже до клиента).
-    // Раньше цикл молча пропускал всё, что не нашлось (`if ($service)` без else):
-    // несуществующий id давал заказ на 0 ₽ без единой услуги, а частичный список
-    // тихо занижал сумму. Любой нерезолвнутый id — теперь отказ.
+    // Резолв услуг + сумма. Раньше цикл молча пропускал ненайденное — заказ на
+    // 0 ₽ без услуг или заниженная сумма. Любой нерезолвнутый id — отказ.
     $serviceModel = new Service();
     $totalPrice = 0;
     $servicesData = [];
@@ -64,69 +51,103 @@ class Order {
         $servicesData[] = ['id' => $serviceId, 'price' => $price];
     }
 
-    // Клиент — ПОСЛЕДНИМ, когда марка/модель/услуги уже проверены (нет сирот).
+    // Существование клиента (если пришёл id) — тоже чтение.
+    $clientId = null;
     if (!empty($data['client_id'])) {
-        $clientId = $data['client_id'];
-        // Проверка существования клиента
         $stmt = $this->conn->prepare("SELECT client_id FROM clients WHERE client_id = :id");
-        $stmt->bindParam(':id', $clientId);
+        $stmt->bindValue(':id', $data['client_id']);
         $stmt->execute();
-        if (!$stmt->fetch()) {
-            return ['error' => 'Клиент не найден'];
-        }
-    } else {
-        // Создание нового клиента
-        $clientModel = new Client();
-        $client = $clientModel->findOrCreate([
-            'first_name' => $data['client_name'],
-            'last_name' => $data['client_lastname'] ?? '',
-            'phone_number' => preg_replace('/[^0-9]/', '', $data['client_phone']),
-            'email' => $data['client_email'] ?? null
-        ]);
-        if (!$client['success']) return ['error' => 'Ошибка создания клиента'];
-        $clientId = $client['client_id'];
+        if (!$stmt->fetch()) return ['error' => 'Клиент не найден'];
+        $clientId = $data['client_id'];
     }
 
-    // 5. Создаём ОДИН заказ
-    // Заказ и его услуги — одной транзакцией: иначе сбой на вставке услуг
-    // оставлял заказ без единой услуги.
-    $this->conn->beginTransaction();
+    // Идемпотентность: повтор отправки (double-submit / ретрай / resubmit) с тем
+    // же ключом не создаёт второй заказ. Ключ — UUID от клиента; кривой игнорим,
+    // иначе UUID-колонка бросит 22P02 → 500.
+    $idemKey = $data['idempotency_key'] ?? null;
+    if ($idemKey !== null && !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $idemKey)) {
+        $idemKey = null;
+    }
+
+    // ── Всё, что ПИШЕТ — одной транзакцией: марка, модель, клиент, заказ, услуги.
+    //    Раньше марка/модель/клиент создавались автокоммитом ДО транзакции заказа
+    //    → откат INSERT заказа оставлял их сиротами. Теперь rollBack чистит всё. ──
     try {
-        $query = "INSERT INTO orders
-                  (client_id, brand_id, model_id, status_id, order_date, desired_date, desired_time, client_notes, total_price)
-                  VALUES
-                  (:client_id, :brand_id, :model_id, 1, NOW(), :desired_date, :desired_time, :notes, :total_price)
-                  RETURNING order_id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':client_id', $clientId);
-        $stmt->bindParam(':brand_id', $brandId);
-        $stmt->bindParam(':model_id', $modelId);
-        $stmt->bindParam(':desired_date', $data['desired_date']);
-        $stmt->bindParam(':desired_time', $data['desired_time']);
-        $stmt->bindParam(':notes', $data['comment']);
-        $stmt->bindParam(':total_price', $totalPrice);
+        $this->conn->beginTransaction();
+
+        $brandResult = (new CarBrand())->findOrCreateByName($carBrand);
+        if (empty($brandResult['success'])) throw new RuntimeException('brand');
+        $brandId = $brandResult['brand_id'];
+
+        $modelResult = (new CarModel())->findOrCreateByName($brandId, $carModel);
+        if (empty($modelResult['success'])) throw new RuntimeException('model');
+        $modelId = $modelResult['model_id'];
+
+        if ($clientId === null) {
+            $client = (new Client())->findOrCreate([
+                'first_name' => $data['client_name'],
+                'last_name' => $data['client_lastname'] ?? '',
+                'phone_number' => preg_replace('/[^0-9]/', '', $data['client_phone']),
+                'email' => $data['client_email'] ?? null
+            ]);
+            if (empty($client['success'])) throw new RuntimeException('client');
+            $clientId = $client['client_id'];
+        }
+
+        $stmt = $this->conn->prepare(
+            "INSERT INTO orders
+               (idempotency_key, client_id, brand_id, model_id, status_id, order_date, desired_date, desired_time, client_notes, total_price)
+             VALUES
+               (:idem, :client_id, :brand_id, :model_id, 1, NOW(), :desired_date, :desired_time, :notes, :total_price)
+             RETURNING order_id"
+        );
+        $stmt->bindValue(':idem', $idemKey);
+        $stmt->bindValue(':client_id', $clientId);
+        $stmt->bindValue(':brand_id', $brandId);
+        $stmt->bindValue(':model_id', $modelId);
+        $stmt->bindValue(':desired_date', $data['desired_date'] ?? null);
+        $stmt->bindValue(':desired_time', $data['desired_time'] ?? null);
+        $stmt->bindValue(':notes', $data['comment'] ?? null);
+        $stmt->bindValue(':total_price', $totalPrice);
         $stmt->execute();
         $orderId = $stmt->fetchColumn();
 
-        // 6. Добавляем услуги в order_services (несколько записей)
-        $queryService = "INSERT INTO order_services (order_id, service_id, price_at_moment)
-                         VALUES (:order_id, :service_id, :price)";
-        $stmtService = $this->conn->prepare($queryService);
+        $stmtService = $this->conn->prepare(
+            "INSERT INTO order_services (order_id, service_id, price_at_moment)
+             VALUES (:order_id, :service_id, :price)"
+        );
         foreach ($servicesData as $srv) {
-            $stmtService->bindParam(':order_id', $orderId);
-            $stmtService->bindParam(':service_id', $srv['id']);
-            $stmtService->bindParam(':price', $srv['price']);
+            $stmtService->bindValue(':order_id', $orderId);
+            $stmtService->bindValue(':service_id', $srv['id']);
+            $stmtService->bindValue(':price', $srv['price']);
             $stmtService->execute();
         }
 
         $this->conn->commit();
-    } catch (Exception $e) {
-        $this->conn->rollBack();
+        return ['success' => true, 'order_id' => $orderId];
+    } catch (\Throwable $e) {
+        if ($this->conn->inTransaction()) $this->conn->rollBack();
+
+        // Повтор с тем же idempotency_key: заказ уже создан первой отправкой —
+        // возвращаем его, а не плодим дубль.
+        if ($idemKey !== null && $e instanceof \PDOException && $e->getCode() === '23505'
+            && str_contains($e->getMessage(), 'idempotency')) {
+            $stmt = $this->conn->prepare("SELECT order_id FROM orders WHERE idempotency_key = :k");
+            $stmt->bindValue(':k', $idemKey);
+            $stmt->execute();
+            $existing = $stmt->fetchColumn();
+            if ($existing) return ['success' => true, 'order_id' => $existing, 'duplicate' => true];
+        }
+
+        // Осмысленные ошибки марки/модели/клиента (пустое имя и т.п.).
+        if (in_array($e->getMessage(), ['brand', 'model', 'client'], true)) {
+            $map = ['brand' => 'Ошибка с маркой', 'model' => 'Ошибка с моделью', 'client' => 'Ошибка создания клиента'];
+            return ['error' => $map[$e->getMessage()]];
+        }
+
         error_log('Order create error: ' . $e->getMessage());
         return ['error' => 'Не удалось создать заказ. Попробуйте позже.'];
     }
-
-    return ['success' => true, 'order_id' => $orderId];
     }
     
     /**
