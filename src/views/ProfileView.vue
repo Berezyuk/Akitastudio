@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import AdminDashboard from './admin/AdminDashboard.vue'
+import AdminAnalytics from './admin/AdminAnalytics.vue'
 import AdminServices from './admin/AdminServices.vue'
 import AdminPortfolio from './admin/AdminPortfolio.vue'
 import AdminClients from './admin/AdminClients.vue'
@@ -14,7 +15,7 @@ import AdminGeneral from './admin/AdminGeneral.vue'
 const authStore = useAuthStore()
 const router = useRouter()
 const STORAGE_KEY = 'admin_active_tab'
-const validTabs = ['dashboard', 'services', 'portfolio', 'orders', 'clients', 'feedbacks', 'general', 'settings']
+const validTabs = ['dashboard', 'analytics', 'services', 'portfolio', 'orders', 'clients', 'feedbacks', 'general', 'settings']
 const savedTab = localStorage.getItem(STORAGE_KEY)
 const activeAdminTab = ref(validTabs.includes(savedTab) ? savedTab : 'services')
 watch(activeAdminTab, (val) => localStorage.setItem(STORAGE_KEY, val))
@@ -24,6 +25,7 @@ const isMobile = ref(false)
 
 const adminTabs = [
   { id: 'dashboard', name: 'Дашборд', icon: '📊' },
+  { id: 'analytics', name: 'Аналитика', icon: '📈' },
   { id: 'services', name: 'Услуги', icon: '🛠️' },
   { id: 'portfolio', name: 'Портфолио', icon: '🎬' },
   { id: 'orders', name: 'Заказы', icon: '📋' },
@@ -179,6 +181,7 @@ const handleLogout = async () => {
     >
       <div class="p-4 md:p-8">
         <div v-if="activeAdminTab === 'dashboard'"><AdminDashboard /></div>
+        <div v-if="activeAdminTab === 'analytics'"><AdminAnalytics /></div>
         <div v-if="activeAdminTab === 'services'"><AdminServices /></div>
         <div v-if="activeAdminTab === 'portfolio'"><AdminPortfolio /></div>
         <div v-if="activeAdminTab === 'clients'"><AdminClients /></div>

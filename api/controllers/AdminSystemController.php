@@ -8,6 +8,27 @@ class AdminSystemController {
         requireAdmin();
     }
 
+    // Дни без строк БД не возвращает, а график обязан иметь точку на каждый день —
+    // иначе он врёт формой. Общий добивщик для дашборда и аналитики.
+    // $fields: ['ключ_ответа' => ['колонка_в_выборке', 'int'|'float']].
+    // Тип обязателен: PDO отдаёт COUNT/SUM строками, а в JSON нужны числа.
+    private static function fillDays(array $rows, int $days, array $fields): array {
+        $byDate = array_column($rows, null, 'day');
+        $out = ['labels' => []];
+        foreach ($fields as $key => $_) {
+            $out[$key] = [];
+        }
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date = date('Y-m-d', strtotime("-{$i} days"));
+            $out['labels'][] = date('d.m', strtotime($date));
+            foreach ($fields as $key => [$col, $type]) {
+                $raw = $byDate[$date][$col] ?? 0;
+                $out[$key][] = $type === 'int' ? (int)$raw : (float)$raw;
+            }
+        }
+        return $out;
+    }
+
     // ========== ДАШБОРД ==========
     public static function getDashboardStats() {
         self::checkAdmin();
@@ -42,7 +63,6 @@ class AdminSystemController {
         $newOrdersToday = $todayOrders; // дублировался тот же запрос
 
         // Данные для графика — заказы и выручка за последние 7 дней
-        $chartData = ['labels' => [], 'values' => [], 'revenue' => []];
         $fromDate = date('Y-m-d', strtotime('-6 days'));
         // cnt — все заказы за день; revenue — только выданные (4), как в плитке
         // «Выручка за месяц», иначе график и плитка расходятся.
@@ -53,14 +73,11 @@ class AdminSystemController {
              GROUP BY order_date::date ORDER BY order_date::date ASC"
         );
         $stmt->execute([':from_date' => $fromDate]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $byDate = array_column($rows, null, 'day');
-        for ($i = 6; $i >= 0; $i--) {
-            $date = date('Y-m-d', strtotime("-{$i} days"));
-            $chartData['labels'][] = date('d.m', strtotime($date));
-            $chartData['values'][] = (int)($byDate[$date]['cnt'] ?? 0);
-            $chartData['revenue'][] = (float)($byDate[$date]['revenue'] ?? 0);
-        }
+        $chartData = self::fillDays(
+            $stmt->fetchAll(PDO::FETCH_ASSOC),
+            7,
+            ['values' => ['cnt', 'int'], 'revenue' => ['revenue', 'float']]
+        );
 
         // Популярные услуги (топ 5)
         $stmt = $conn->query("SELECT s.service_id, s.name, COUNT(osv.service_id) as count
@@ -95,6 +112,77 @@ class AdminSystemController {
             'recent_orders' => $recentOrders,
             'popular_services' => $popularServices,
             'chart_data' => $chartData
+        ]);
+    }
+
+    // ========== АНАЛИТИКА ПОСЕЩЕНИЙ ==========
+    public static function getAnalytics() {
+        self::checkAdmin();
+
+        // Whitelist, а не подстановка: $_GET уходит в SQL-запросы ниже.
+        $days = (int)($_GET['days'] ?? 7);
+        if (!in_array($days, [7, 30], true)) {
+            echo json_encode(['error' => 'Недопустимый период']);
+            return;
+        }
+
+        $db = new Database();
+        $conn = $db->getConnection();
+
+        // Уники за день — COUNT(DISTINCT visitor_hash). За неделю так не считаются:
+        // соль суточная, хеши одного человека между днями не совпадают. Это
+        // осознанный размен приватности на точность, см. спеку.
+        $stmt = $conn->query(
+            "SELECT COUNT(*) AS visits, COUNT(DISTINCT visitor_hash) AS uniques
+             FROM visits WHERE visited_at::date = CURRENT_DATE"
+        );
+        $today = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $fromDate = date('Y-m-d', strtotime('-' . ($days - 1) . ' days'));
+        $stmt = $conn->prepare(
+            "SELECT visited_at::date::text AS day, COUNT(*) AS visits,
+                    COUNT(DISTINCT visitor_hash) AS uniques
+             FROM visits WHERE visited_at::date >= :from
+             GROUP BY visited_at::date ORDER BY visited_at::date ASC"
+        );
+        $stmt->execute([':from' => $fromDate]);
+        $chartData = self::fillDays(
+            $stmt->fetchAll(PDO::FETCH_ASSOC),
+            $days,
+            ['visits' => ['visits', 'int'], 'uniques' => ['uniques', 'int']]
+        );
+
+        $stmt = $conn->prepare(
+            "SELECT source, COUNT(*) AS count FROM visits
+             WHERE visited_at::date >= :from GROUP BY source ORDER BY count DESC"
+        );
+        $stmt->execute([':from' => $fromDate]);
+        $sources = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $stmt = $conn->prepare(
+            "SELECT device, COUNT(*) AS count FROM visits
+             WHERE visited_at::date >= :from GROUP BY device ORDER BY count DESC"
+        );
+        $stmt->execute([':from' => $fromDate]);
+        $devices = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Топ сайтов-источников. Прямые заходы отсеиваются сами: у них
+        // referer_host IS NULL. Лимит 5 — список для беглого взгляда, не отчёт.
+        $stmt = $conn->prepare(
+            "SELECT referer_host, COUNT(*) AS count FROM visits
+             WHERE visited_at::date >= :from AND referer_host IS NOT NULL
+             GROUP BY referer_host ORDER BY count DESC LIMIT 5"
+        );
+        $stmt->execute([':from' => $fromDate]);
+        $topHosts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'success'    => true,
+            'today'      => ['visits' => (int)$today['visits'], 'uniques' => (int)$today['uniques']],
+            'chart_data' => $chartData,
+            'sources'    => $sources,
+            'devices'    => $devices,
+            'top_hosts'  => $topHosts,
         ]);
     }
 

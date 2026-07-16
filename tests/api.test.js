@@ -10,7 +10,8 @@
 //       docker compose exec -T postgres sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
 //         DELETE FROM order_services WHERE order_id IN (SELECT order_id FROM orders WHERE client_notes LIKE '"'"'test-%'"'"');
 //         DELETE FROM orders WHERE client_notes LIKE '"'"'test-%'"'"';
-//         DELETE FROM clients WHERE phone_number LIKE '"'"'7999555%'"'"';"'
+//         DELETE FROM clients WHERE phone_number LIKE '"'"'7999555%'"'"';
+//         DELETE FROM visits;"'
 import { test, describe, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
@@ -53,6 +54,7 @@ describe('guard: админские роуты без сессии', () => {
     '/admin/order-statuses',
     '/admin/feedbacks',
     '/admin/settings',
+    '/admin/analytics',
   ]
 
   for (const route of adminRoutes) {
@@ -176,6 +178,201 @@ describe('дашборд', () => {
     assert.ok(data.success)
     // Тесты выше создали заказы сегодня — счётчик обязан быть > 0.
     assert.ok(data.stats.today_orders > 0, 'today_orders = 0 при созданных сегодня заказах')
+  })
+
+  test('chart_data: 7 точек, числа, а не строки из PDO', async () => {
+    const cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+    const data = await (await fetch(API + '/admin/dashboard', { headers: { Cookie: cookie } })).json()
+
+    assert.equal(data.chart_data.labels.length, 7)
+    assert.equal(data.chart_data.values.length, 7)
+    assert.equal(data.chart_data.revenue.length, 7)
+    // PDO отдаёт COUNT/SUM строками. Контроллер их приводит — если рефакторинг
+    // приведение потеряет, JSON поедет со строками и тест поймает это здесь.
+    for (const v of data.chart_data.values) assert.equal(typeof v, 'number')
+    for (const r of data.chart_data.revenue) assert.equal(typeof r, 'number')
+  })
+})
+
+describe('GET /admin/analytics', () => {
+  let cookie
+  before(async () => {
+    cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+  })
+
+  const get = (qs) => fetch(API + '/admin/analytics' + qs, { headers: { Cookie: cookie } })
+
+  test('days=7 отдаёт ряд ровно на 7 точек', async () => {
+    const data = await (await get('?days=7')).json()
+    assert.ok(data.success)
+    assert.equal(data.chart_data.labels.length, 7)
+    assert.equal(data.chart_data.visits.length, 7)
+    assert.equal(data.chart_data.uniques.length, 7)
+  })
+
+  test('ряд отдаётся числами, а не строками из PDO', async () => {
+    const data = await (await get('?days=7')).json()
+    for (const v of data.chart_data.visits) assert.equal(typeof v, 'number')
+    for (const u of data.chart_data.uniques) assert.equal(typeof u, 'number')
+    assert.equal(typeof data.today.visits, 'number')
+    assert.equal(typeof data.today.uniques, 'number')
+  })
+
+  test('days=30 отдаёт ряд ровно на 30 точек', async () => {
+    const data = await (await get('?days=30')).json()
+    assert.equal(data.chart_data.labels.length, 30)
+  })
+
+  test('days вне whitelist -> 400, а не подстановка в SQL', async () => {
+    const res = await get('?days=99')
+    assert.equal(res.status, 400)
+  })
+
+  test('без days работает как days=7', async () => {
+    const data = await (await get('')).json()
+    assert.equal(data.chart_data.labels.length, 7)
+  })
+
+  test('top_hosts отдаётся массивом и не содержит прямых заходов', async () => {
+    const data = await (await get('?days=7')).json()
+    assert.ok(Array.isArray(data.top_hosts))
+    // У direct нет хоста (referer_host IS NULL) — в топ сайтов ему попадать нечем.
+    for (const row of data.top_hosts) assert.ok(row.referer_host)
+  })
+})
+
+// Beacon визитов. Referer из заголовка тут бесполезен (на fetch из SPA он равен
+// URL текущей страницы), поэтому источник приходит в теле — см. спеку.
+// Каждый тест берёт свой X-Real-IP: hash = f(ip, ua), значит своя корзина
+// антинакрутки и никакого влияния тестов друг на друга.
+describe('POST /visit: сбор визитов', () => {
+  let cookie
+
+  const visit = (body, headers = {}) =>
+    fetch(API + '/visit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify(body),
+    })
+
+  const analytics = async () =>
+    (await fetch(API + '/admin/analytics?days=7', { headers: { Cookie: cookie } })).json()
+
+  const countBy = (rows, key, val) => Number(rows?.find((r) => r[key] === val)?.count ?? 0)
+
+  const UA_DESKTOP = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0 Safari/537.36'
+  const UA_MOBILE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148'
+
+  before(async () => {
+    cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+  })
+
+  test('отвечает 204 и увеличивает счётчик визитов', async () => {
+    const before = await analytics()
+    const res = await visit({ referrer: '' }, { 'X-Real-IP': '198.51.100.10', 'User-Agent': UA_DESKTOP })
+    assert.equal(res.status, 204)
+    const after = await analytics()
+    assert.equal(after.today.visits - before.today.visits, 1)
+  })
+
+  test('переход с поисковика -> source=search', async () => {
+    const before = await analytics()
+    await visit(
+      { referrer: 'https://yandex.ru/search/?text=детейлинг' },
+      { 'X-Real-IP': '198.51.100.11', 'User-Agent': UA_DESKTOP }
+    )
+    const after = await analytics()
+    assert.equal(countBy(after.sources, 'source', 'search') - countBy(before.sources, 'source', 'search'), 1)
+  })
+
+  test('пустой referrer -> source=direct', async () => {
+    const before = await analytics()
+    await visit({ referrer: '' }, { 'X-Real-IP': '198.51.100.12', 'User-Agent': UA_DESKTOP })
+    const after = await analytics()
+    assert.equal(countBy(after.sources, 'source', 'direct') - countBy(before.sources, 'source', 'direct'), 1)
+  })
+
+  test('переход со своего же сайта -> source=direct, а не other', async () => {
+    const own = env.CORS_ORIGIN
+    const before = await analytics()
+    await visit({ referrer: `${own}/services` }, { 'X-Real-IP': '198.51.100.13', 'User-Agent': UA_DESKTOP })
+    const after = await analytics()
+    assert.equal(countBy(after.sources, 'source', 'direct') - countBy(before.sources, 'source', 'direct'), 1)
+  })
+
+  test('iPhone -> device=mobile', async () => {
+    const before = await analytics()
+    await visit({ referrer: '' }, { 'X-Real-IP': '198.51.100.14', 'User-Agent': UA_MOBILE })
+    const after = await analytics()
+    assert.equal(countBy(after.devices, 'device', 'mobile') - countBy(before.devices, 'device', 'mobile'), 1)
+  })
+
+  test('десктопный User-Agent -> device=desktop', async () => {
+    const before = await analytics()
+    await visit({ referrer: '' }, { 'X-Real-IP': '198.51.100.15', 'User-Agent': UA_DESKTOP })
+    const after = await analytics()
+    assert.equal(countBy(after.devices, 'device', 'desktop') - countBy(before.devices, 'device', 'desktop'), 1)
+  })
+
+  // Потолок — MAX_PER_HOUR в контроллере, сейчас 300. Хеш ответа всегда 204
+  // (и при отказе тоже — накрутчику не сообщаем, где предел), поэтому "записалось
+  // или нет" проверяем только по разнице today.visits, не по HTTP-статусу.
+  // UA внутри цикла заполнения нарочно каждый раз новый: потолок общий на IP
+  // (ip_hash), а не на пару (IP, UA) — до фикса ротация UA его обходила.
+  // 301 запрос — медленный тест (~секунды), но короче не проверить границу
+  // реальной константы: занижать MAX_PER_HOUR ради теста нельзя.
+  // IP — случайный, не из статичного пула остальных тестов файла: корзина
+  // ip_hash копится по часу, и повторный прогон в пределах того же часа
+  // на фиксированном IP застал бы её уже заполненной прошлым прогоном.
+  test('потолок: 300 визитов с одного IP проходят, 301-й — нет, ротация User-Agent не спасает', async () => {
+    const ip = `198.51.100.30-${crypto.randomUUID()}`
+    const before = await analytics()
+    for (let i = 0; i < 300; i++) {
+      await visit({ referrer: '' }, { 'X-Real-IP': ip, 'User-Agent': `bench-ua-${i}` })
+    }
+    const afterFill = await analytics()
+    assert.equal(afterFill.today.visits - before.today.visits, 300, 'не все 300 визитов в пределах потолка записались')
+
+    // Лимит исчерпан. Новый, ранее не встречавшийся User-Agent с того же IP —
+    // ровно сценарий обхода из ревью (curl с ротацией UA).
+    const res = await visit({ referrer: '' }, { 'X-Real-IP': ip, 'User-Agent': 'brand-new-rotated-ua' })
+    assert.equal(res.status, 204)
+    const afterOver = await analytics()
+    assert.equal(
+      afterOver.today.visits - before.today.visits,
+      300,
+      'визит сверх потолка записался — ротация User-Agent обошла лимит'
+    )
+  })
+
+  test('хост реферера длиннее 255 -> 204, а не 500, и без записи в top_hosts', async () => {
+    const longHost = 'a'.repeat(300) + '.com'
+    const before = await analytics()
+    const res = await visit(
+      { referrer: `https://${longHost}/x` },
+      { 'X-Real-IP': '198.51.100.31', 'User-Agent': UA_DESKTOP }
+    )
+    assert.equal(res.status, 204)
+    const after = await analytics()
+    assert.ok(!after.top_hosts.some((r) => r.referer_host === longHost), 'слишком длинный хост попал в top_hosts')
+  })
+
+  test('мусор в теле запроса -> 204, без падения', async () => {
+    const ip = '198.51.100.32'
+    const garbage = [
+      'не json',
+      JSON.stringify({ referrer: 12345 }),
+      JSON.stringify({ referrer: null }),
+      JSON.stringify({ referrer: ['a', 'b'] }),
+    ]
+    for (const rawBody of garbage) {
+      const res = await fetch(API + '/visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Real-IP': ip, 'User-Agent': UA_DESKTOP },
+        body: rawBody,
+      })
+      assert.equal(res.status, 204, `тело ${rawBody} уронило запрос`)
+    }
   })
 })
 
@@ -392,4 +589,32 @@ describe('удалённые мёртвые роуты не воскресли',
       assert.equal(res.status, 404)
     })
   }
+})
+
+// Троттлинг логина считает попытки по IP (RateLimiter::ip() -> HTTP_X_REAL_IP).
+// Контейнерный nginx затирал этот заголовок адресом докер-шлюза, и корзина
+// становилась общей на всех: 10 неудачных попыток кого угодно блокировали вход
+// остальным. Тест ловит именно это — на откаченном фиксе IP-2 получает 429.
+//
+// ⚠️  Если тест падает, корзина докер-шлюза засорена на 15 минут и остальные
+//     тесты с логином админа получат 429. Очистка:
+//     docker compose exec -T postgres sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB -c "DELETE FROM login_attempts;"'
+describe('троттлинг логина: корзины по IP не общие', () => {
+  const badLogin = (ip) =>
+    fetch(API + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Real-IP': ip },
+      body: JSON.stringify({ login: 'nosuchuser', password: 'wrongpassword' }),
+    })
+
+  test('исчерпание лимита одним IP не блокирует другой', async () => {
+    // RateLimiter::MAX_ATTEMPTS = 10 за 15 минут
+    for (let i = 0; i < 11; i++) await badLogin('198.51.100.1')
+
+    const throttled = await badLogin('198.51.100.1')
+    assert.equal(throttled.status, 429, 'лимит по своему же IP не сработал')
+
+    const other = await badLogin('198.51.100.2')
+    assert.notEqual(other.status, 429, 'чужой IP получил 429 — корзина общая на всех')
+  })
 })

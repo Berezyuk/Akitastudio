@@ -244,6 +244,30 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 );
 CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time ON login_attempts (ip_address, attempted_at);
 
+-- Визиты для статистики в админке.
+-- Сырой IP не хранится: два хеша, оба sha256(... + VISIT_SALT + дата).
+-- visitor_hash включает user_agent — считает уников (без UA уники схлопнутся:
+-- у мобильных операторов сотни абонентов сидят за одним IP через CGNAT).
+-- ip_hash — без UA, только по нему считается потолок антинакрутки: раньше
+-- ротация User-Agent с одного IP давала обойти лимит, так как корзина была
+-- привязана к паре (IP, UA).
+-- IP по 152-ФЗ — персональные данные; соль не даёт перебрать диапазон адресов,
+-- суточная компонента не даёт сшить визиты одного человека между днями.
+CREATE TABLE IF NOT EXISTS visits (
+    visit_id     BIGSERIAL PRIMARY KEY,
+    visited_at   TIMESTAMP NOT NULL DEFAULT NOW(),
+    visitor_hash CHAR(64) NOT NULL,
+    ip_hash      CHAR(64) NOT NULL,
+    source       VARCHAR(20) NOT NULL,   -- search | social | direct | other
+    referer_host VARCHAR(255),           -- только хост, без query: в query утекают поисковые запросы
+    device       VARCHAR(10) NOT NULL    -- mobile | desktop
+);
+CREATE INDEX IF NOT EXISTS idx_visits_date ON visits (visited_at);
+-- Второй индекс — под проверку накрутки: она бьёт по ip_hash на каждом визите.
+-- По visitor_hash точечных выборок нет — уники считаются агрегатом
+-- COUNT(DISTINCT visitor_hash) за диапазон дат, такой индекс не ускоряет.
+CREATE INDEX IF NOT EXISTS idx_visits_hash ON visits (ip_hash, visited_at);
+
 -- ─── Индексы ────────────────────────────────────────────────────────────────
 -- Postgres индексирует только PRIMARY KEY и UNIQUE — внешние ключи НЕ индексирует.
 -- Без этих индексов каждый JOIN и фильтр по FK идёт seq scan'ом, а ON DELETE CASCADE
