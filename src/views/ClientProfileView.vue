@@ -309,10 +309,9 @@ const fetchOrders = async () => {
     const data = await res.json()
     if (data.success) {
       orders.value = data.orders
-      // После загрузки заказов подгружаем фото для каждого
-      for (const order of orders.value) {
-        await fetchOrderPhotos(order.order_id)
-      }
+      // Фото по всем заказам параллельно: раньше был await в цикле —
+      // N последовательных round-trip'ов при загрузке ЛК.
+      await Promise.all(orders.value.map(o => fetchOrderPhotos(o.order_id)))
     }
   } catch {} finally {
     loading.value.orders = false

@@ -148,6 +148,12 @@ $routes = [
 
 foreach ($routes as [$routeMethod, $pattern, $handler]) {
     if ($method === $routeMethod && preg_match('#^' . $pattern . '$#', $path, $m)) {
+        // Публичные справочные GET (витрина) редко меняются, но читаются на
+        // каждой загрузке страницы. Короткий кэш срезает повторные запросы;
+        // 60с — приемлемая свежесть (правка в админке видна почти сразу).
+        if ($method === 'GET' && in_array($path, ['settings', 'services', 'portfolio', 'categories', 'car-models'], true)) {
+            header('Cache-Control: public, max-age=60');
+        }
         // Контроллеры сообщают об ошибке через echo json_encode(['error' => ...]) и
         // статус не трогают — клиент получал HTTP 200 и не мог отличить отказ от
         // успеха, не разбирая тело. Проставляем 400 здесь, а не правим ~68 точек:

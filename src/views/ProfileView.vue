@@ -1,16 +1,21 @@
 <script setup>
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { onMounted, onUnmounted, ref, watch, defineAsyncComponent } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
-import AdminDashboard from './admin/AdminDashboard.vue'
-import AdminAnalytics from './admin/AdminAnalytics.vue'
-import AdminServices from './admin/AdminServices.vue'
-import AdminPortfolio from './admin/AdminPortfolio.vue'
-import AdminClients from './admin/AdminClients.vue'
-import AdminOrders from './admin/AdminOrders.vue'
-import AdminSettings from './admin/AdminSettings.vue'
-import AdminFeedbacks from './admin/AdminFeedbacks.vue'
-import AdminGeneral from './admin/AdminGeneral.vue'
+
+// Ленивая загрузка вкладок: раньше все 9 панелей импортировались статически и
+// бандлились в один чанк ProfileView (~320KB, включая chart.js из Dashboard/
+// Analytics). Теперь каждая — свой чанк, грузится при открытии вкладки; chart.js
+// уходит в чанки Dashboard/Analytics и не тянется в начальную загрузку.
+const AdminDashboard = defineAsyncComponent(() => import('./admin/AdminDashboard.vue'))
+const AdminAnalytics = defineAsyncComponent(() => import('./admin/AdminAnalytics.vue'))
+const AdminServices  = defineAsyncComponent(() => import('./admin/AdminServices.vue'))
+const AdminPortfolio = defineAsyncComponent(() => import('./admin/AdminPortfolio.vue'))
+const AdminClients   = defineAsyncComponent(() => import('./admin/AdminClients.vue'))
+const AdminOrders    = defineAsyncComponent(() => import('./admin/AdminOrders.vue'))
+const AdminSettings  = defineAsyncComponent(() => import('./admin/AdminSettings.vue'))
+const AdminFeedbacks = defineAsyncComponent(() => import('./admin/AdminFeedbacks.vue'))
+const AdminGeneral   = defineAsyncComponent(() => import('./admin/AdminGeneral.vue'))
 
 const authStore = useAuthStore()
 const router = useRouter()
