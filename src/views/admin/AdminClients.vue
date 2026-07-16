@@ -101,7 +101,7 @@
                 </div>
                 <div class="text-right">
                   <p class="text-[#fc9303] font-bold">{{ order.total_price?.toLocaleString() }} ₽</p>
-                  <span :class="['px-2 py-0.5 rounded-full text-xs', getStatusClass(order.status_name)]">{{ getStatusName(order.status_name) }}</span>
+                  <span :class="['px-2 py-0.5 rounded-full text-xs', statusColor(order.status_id)]">{{ order.status_name }}</span>
                 </div>
               </div>
             </div>
@@ -258,6 +258,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { API_BASE } from '@/config/api.js'
 import { parseApiDate } from '@/config/date.js'
+import { statusColor } from '@/config/status.js'
 import ThePagination from '@/components/ThePagination.vue'
 import AlertModal from '@/components/admin/AlertModal.vue'
 
@@ -511,22 +512,6 @@ const exportCSV = () => {
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
   return parseApiDate(dateStr).toLocaleDateString('ru-RU')
-}
-
-const getStatusName = (statusName) => {
-  const names = { pending: 'Ожидание', confirmed: 'Подтверждён', in_progress: 'В работе', completed: 'Выполнен', cancelled: 'Отменён' }
-  return names[statusName] || statusName
-}
-
-const getStatusClass = (statusName) => {
-  const classes = {
-    pending: 'bg-yellow-500/20 text-yellow-400',
-    confirmed: 'bg-blue-500/20 text-blue-400',
-    in_progress: 'bg-orange-500/20 text-orange-400',
-    completed: 'bg-green-500/20 text-green-400',
-    cancelled: 'bg-red-500/20 text-red-400'
-  }
-  return classes[statusName] || 'bg-gray-500/20 text-gray-400'
 }
 
 onMounted(() => {

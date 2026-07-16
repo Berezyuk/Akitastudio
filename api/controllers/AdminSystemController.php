@@ -90,7 +90,7 @@ class AdminSystemController {
         $popularServices = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Последние 5 заказов с деталями
-        $stmt = $conn->query("SELECT o.order_id, o.order_date, o.total_price,
+        $stmt = $conn->query("SELECT o.order_id, o.order_date, o.total_price, o.status_id,
                                      c.first_name, c.last_name,
                                      (SELECT STRING_AGG(s.name, ', ') FROM order_services osv JOIN services s ON osv.service_id = s.service_id WHERE osv.order_id = o.order_id) as services,
                                      os.name as status_name

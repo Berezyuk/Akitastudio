@@ -8,7 +8,7 @@
           <p class="text-sm text-gray-400">{{ order?.phone_number }}</p>
           <p class="text-sm text-gray-500">{{ order?.brand_name }} {{ order?.model_name }}</p>
         </div>
-        <button @click="close" class="w-8 h-8 rounded-full hover:bg-gray-800 transition text-gray-400 hover:text-white">✕</button>
+        <button @click="close" aria-label="Закрыть" class="w-8 h-8 rounded-full hover:bg-gray-800 transition text-gray-400 hover:text-white">✕</button>
       </div>
       
       <!-- Содержимое с табами -->
@@ -80,13 +80,14 @@
           </div>
           <div v-else class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div v-for="photo in photos" :key="photo.id" class="bg-gray-800/50 rounded-xl overflow-hidden group relative">
-              <img :src="photo.photo_url" class="w-full h-40 object-cover cursor-pointer" @click="openLightbox(photo)" />
+              <img :src="photo.photo_url" alt="Фото заказа" class="w-full h-40 object-cover cursor-pointer" @click="openLightbox(photo)" />
               <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
                 <p class="text-xs text-gray-300 truncate">{{ photo.caption || 'Без подписи' }}</p>
                
               </div>
-              <button 
-                @click="deletePhoto(photo.id)" 
+              <button
+                @click="deletePhoto(photo.id)"
+                aria-label="Удалить фото"
                 class="absolute top-2 right-2 w-6 h-6 bg-red-500/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition hover:bg-red-600"
               >
                 <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -122,10 +123,10 @@
     <!-- Лайтбокс для просмотра фото -->
     <div v-if="lightboxPhoto" class="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center" @click="lightboxPhoto = null">
       <div class="max-w-[90vw] max-h-[90vh]">
-        <img :src="lightboxPhoto.photo_url" class="max-w-full max-h-[90vh] object-contain" />
+        <img :src="lightboxPhoto.photo_url" alt="Фото заказа" class="max-w-full max-h-[90vh] object-contain" />
         <p class="text-center text-white mt-4">{{ lightboxPhoto.caption }}</p>
       </div>
-      <button @click="lightboxPhoto = null" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 text-white">✕</button>
+      <button @click="lightboxPhoto = null" aria-label="Закрыть" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 text-white">✕</button>
     </div>
   </div>
 </template>

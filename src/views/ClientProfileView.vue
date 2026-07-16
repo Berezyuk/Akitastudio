@@ -78,10 +78,11 @@
                 <div v-if="orderPhotos[order.order_id] && orderPhotos[order.order_id].length > 0" class="mt-3">
                   <div class="text-xs text-gray-400 mb-2">📸 Фотоотчёт ({{ orderPhotos[order.order_id].length }})</div>
                   <div class="flex flex-wrap gap-2">
-                    <img 
-                      v-for="photo in orderPhotos[order.order_id].slice(0, 4)" 
+                    <img
+                      v-for="photo in orderPhotos[order.order_id].slice(0, 4)"
                       :key="photo.id"
                       :src="photo.photo_url"
+                      alt="Фото заказа"
                       class="w-16 h-16 rounded-lg object-cover cursor-pointer hover:opacity-80 transition border border-gray-700"
                       @click="openPhotoGallery(orderPhotos[order.order_id], 0)"
                     />
@@ -186,31 +187,34 @@
     <Transition name="modal">
       <div v-if="galleryPhotos.length > 0 && galleryIndex !== null" class="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center" @click="closePhotoGallery">
         <div class="relative max-w-[90vw] max-h-[90vh]">
-          <img 
-            :src="galleryPhotos[galleryIndex]?.photo_url" 
+          <img
+            :src="galleryPhotos[galleryIndex]?.photo_url"
+            alt="Фото заказа"
             class="max-w-full max-h-[85vh] object-contain rounded-lg"
             @click.stop
           />
           <p class="text-center text-white mt-4 text-sm">{{ galleryPhotos[galleryIndex]?.caption }}</p>
           
           <!-- Кнопки навигации -->
-          <button 
+          <button
             v-if="galleryPhotos.length > 1"
             @click.stop="prevPhoto"
+            aria-label="Предыдущее фото"
             class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 transition flex items-center justify-center text-white"
           >
             ◀
           </button>
-          <button 
+          <button
             v-if="galleryPhotos.length > 1"
             @click.stop="nextPhoto"
+            aria-label="Следующее фото"
             class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 transition flex items-center justify-center text-white"
           >
             ▶
           </button>
-          
+
           <!-- Кнопка закрытия -->
-          <button @click="closePhotoGallery" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 transition text-white text-xl">✕</button>
+          <button @click="closePhotoGallery" aria-label="Закрыть галерею" class="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 transition text-white text-xl">✕</button>
           
           <!-- Индикатор номера фото -->
           <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 px-3 py-1 rounded-full text-sm text-white">
@@ -242,6 +246,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE } from '@/config/api.js'
 import { parseApiDate } from '@/config/date.js'
+import { statusColor as getStatusColor } from '@/config/status.js'
 import AlertModal from '@/components/admin/AlertModal.vue'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
@@ -503,19 +508,6 @@ const formatDate = (dateStr) => {
 const formatPrice = (price) => {
   if (!price) return '0 ₽'
   return Number(price).toLocaleString('ru-RU') + ' ₽'
-}
-
-// Цвет по status_id. Прежняя карта была на английских ключах — не совпадала
-// ни с чем, и каждый бейдж падал в серый fallback.
-const getStatusColor = (statusId) => {
-  const colors = {
-    1: 'bg-yellow-500/20 text-yellow-400',  // Новый
-    2: 'bg-orange-500/20 text-orange-400',  // В работе
-    3: 'bg-green-500/20 text-green-400',    // Готово
-    4: 'bg-blue-500/20 text-blue-400',      // Выдан
-    5: 'bg-red-500/20 text-red-400',        // Отменён
-  }
-  return colors[statusId] || 'bg-gray-500/20 text-gray-400'
 }
 
 onMounted(() => {
