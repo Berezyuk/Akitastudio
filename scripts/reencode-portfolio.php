@@ -7,9 +7,14 @@
 // загрузки уже ужимаются, а эти видео останутся тяжёлыми навсегда.
 //
 // Запуск (только внутри php-контейнера — там ffmpeg и сеть до MinIO):
-//   docker compose cp scripts/reencode-portfolio.php php:/tmp/reencode.php
-//   docker compose exec -T php php /tmp/reencode.php --dry-run
-//   docker compose exec -T php php /tmp/reencode.php
+// require_once ниже резолвится через __DIR__, так что копия скрипта должна
+// лежать рядом со /var/www/api, а не в /tmp — иначе '../api/...' ведёт
+// в несуществующий /api и require валится с "Failed opening required".
+//   docker compose exec -T php mkdir -p /var/www/scripts
+//   docker compose cp scripts/reencode-portfolio.php php:/var/www/scripts/reencode.php
+//   docker compose exec -T php php /var/www/scripts/reencode.php --dry-run
+//   docker compose exec -T php php /var/www/scripts/reencode.php
+//   docker compose exec -T php rm -rf /var/www/scripts
 //
 // Идемпотентен: уже обработанное пропускает. Это не удобство, а требование —
 // без пропуска второй прогон пережмёт пережатое и посадит качество ни за что.
@@ -32,7 +37,15 @@ function probe(string $path): ?array {
     );
     exec($cmd, $out, $code);
     if ($code !== 0 || count($out) < 2) return null;
-    return ['width' => (int)$out[0], 'bitrate' => (int)$out[1]];
+    $bitrateRaw = trim($out[1]);
+    // ffprobe печатает "N/A" вместо битрейта, когда контейнер не хранит
+    // общую длительность (типично для .webm). (int)"N/A" молча даёт 0 —
+    // это читалось бы как "битрейт отличный", и тяжёлое видео пропускалось
+    // бы необработанным. null — отдельный сигнал "неизвестно", не "ноль".
+    return [
+        'width'   => (int)$out[0],
+        'bitrate' => is_numeric($bitrateRaw) ? (int)$bitrateRaw : null,
+    ];
 }
 
 $db = (new Database())->getConnection();
@@ -58,8 +71,20 @@ foreach ($rows as $row) {
         echo "  ПРОПУСК #{$row['id']}: не видео — {$parsed['key']}\n";
         continue;
     }
+    // Скрипт правит только portfolio: order-photos и documents лежат в
+    // MinIO тоже, но их трогать нельзя. video_url сегодня всегда указывает
+    // на portfolio, но это не проверенный контракт — одна строка защищает
+    // необратимую операцию от чужого бакета, если он туда когда-нибудь попадёт.
+    if ($parsed['bucket'] !== 'portfolio') {
+        echo "  ПРОПУСК #{$row['id']}: чужой бакет — {$parsed['bucket']}\n";
+        continue;
+    }
 
-    $orig = tempnam(sys_get_temp_dir(), 'orig_') . '.mp4';
+    // tempnam() сам создаёт файл по возвращённому пути; раньше сюда
+    // дописывалось ".mp4", и удалялся потом только путь с суффиксом —
+    // сам файл от tempnam() оставался на диске мусором на каждый прогон.
+    // Ни ffprobe, ни ffmpeg расширение не требуют.
+    $orig = tempnam(sys_get_temp_dir(), 'orig_');
     // Ходим по внутреннему адресу: publicUrl() отдаёт боевой домен, из
     // контейнера он может быть недоступен.
     $internal = sprintf(
@@ -75,7 +100,40 @@ foreach ($rows as $row) {
         @unlink($orig);
         continue;
     }
-    file_put_contents($orig, $bytes);
+    // MinIO всегда отдаёт Content-Length. При обрыве соединения
+    // file_get_contents() может вернуть не false, а честные усечённые
+    // байты — ffprobe на таком файле часто всё равно даёт exit=0
+    // (moov благодаря +faststart цел, врёт только длительность), и
+    // усечённый файл молча проходит как "оригинал" в бэкап, а обрезанное
+    // видео — поверх боевого объекта. Единственная копия в хранилище —
+    // второго шанса нет, поэтому сверяем длину и не трогаем объект при
+    // расхождении. Пропускаем только эту строку, а не весь скрипт: обрыв
+    // сети — как правило разовая помеха, соседние записи от неё не зависят,
+    // а прервать пакет из-за одного blip — тоже потерять доведённую до
+    // конца работу без причины. Расхождение видно оператору по строке
+    // ОШИБКА и не даёт скрипту тихо считать файл обработанным.
+    $declaredLen = null;
+    foreach ($http_response_header ?? [] as $h) {
+        if (preg_match('/^Content-Length:\s*(\d+)/i', $h, $m)) {
+            $declaredLen = (int)$m[1];
+        }
+    }
+    if ($declaredLen !== null && strlen($bytes) !== $declaredLen) {
+        echo "  ОШИБКА #{$row['id']}: скачано " . strlen($bytes) . " из {$declaredLen} байт"
+            . " (обрыв соединения) — объект не тронут\n";
+        @unlink($orig);
+        continue;
+    }
+    // Возврат file_put_contents() не был проверен: на полном диске он
+    // может записать меньше байт, чем передано, — тот же усечённый
+    // "оригинал" и та же необратимая потеря.
+    $written = file_put_contents($orig, $bytes);
+    if ($written === false || $written !== strlen($bytes)) {
+        echo "  ОШИБКА #{$row['id']}: временный файл записан не полностью"
+            . " (" . ($written === false ? 0 : $written) . " из " . strlen($bytes) . " байт) — объект не тронут\n";
+        @unlink($orig);
+        continue;
+    }
 
     $info = probe($orig);
     if (!$info) {
@@ -87,43 +145,74 @@ foreach ($rows as $row) {
     $sizeBefore = filesize($orig);
     $totalBefore += $sizeBefore;
 
-    if ($info['width'] <= SKIP_MAX_WIDTH && $info['bitrate'] <= SKIP_MAX_BITRATE) {
-        printf("  пропуск  #%-3d %s — уже %dpx / %.1f Мбит/с\n",
-            $row['id'], $parsed['key'], $info['width'], $info['bitrate'] / 1e6);
+    $bitrateKnown = $info['bitrate'] !== null;
+    $bitrateLabel = $bitrateKnown ? sprintf('%.1f Мбит/с', $info['bitrate'] / 1e6) : 'битрейт N/A';
+    // (int)"N/A" молча даёт 0, а 0 <= SKIP_MAX_BITRATE всегда истинно — это и
+    // есть баг: условие пропуска фактически решалось по одной ширине, выдавая
+    // 0.0 Мбит/с для видео с любым реальным битрейтом. Ширина одна не
+    // доказывает, что видео уже прошло наш транскодер (тот всегда даёт
+    // width<=720 И bitrate<=maxrate вместе) — узкий .webm с неизвестным
+    // битрейтом может быть каким угодно тяжёлым. Раз битрейт неизвестен —
+    // не пропускаем: пусть обработается. Идемпотентность не страдает — на
+    // выходе transcodeToH264() всегда честный mp4 с валидной длительностью,
+    // второй прогон уже увидит настоящий битрейт, а не N/A.
+    $skip = $bitrateKnown
+        && $info['width'] <= SKIP_MAX_WIDTH
+        && $info['bitrate'] <= SKIP_MAX_BITRATE;
+
+    if ($skip) {
+        printf("  пропуск  #%-3d %s — уже %dpx / %s\n",
+            $row['id'], $parsed['key'], $info['width'], $bitrateLabel);
         $totalAfter += $sizeBefore;
         $skipped++;
         @unlink($orig);
         continue;
     }
 
-    printf("  обработка #%-3d %s — %dpx / %.1f Мбит/с / %.1f МБ\n",
-        $row['id'], $parsed['key'], $info['width'], $info['bitrate'] / 1e6, $sizeBefore / 1048576);
+    printf("  обработка #%-3d %s — %dpx / %s / %.1f МБ\n",
+        $row['id'], $parsed['key'], $info['width'], $bitrateLabel, $sizeBefore / 1048576);
 
     if ($dryRun) {
+        // Ничего не меняем, но пишем в totalAfter тот же размер — иначе
+        // итоговая строка врёт про сжатие, которого в dry-run не было.
+        $totalAfter += $sizeBefore;
         @unlink($orig);
         continue;
     }
 
-    // Бэкап ДО перекодировки: в бакете единственная копия, исходника загрузки
-    // не существует. Без этого шага откатиться будет некуда.
-    MinioHelper::upload(BACKUP_BUCKET, $parsed['key'], $orig, 'video/mp4');
+    $out = null;
+    try {
+        // Бэкап ДО перекодировки: в бакете единственная копия, исходника
+        // загрузки не существует. Без этого шага откатиться будет некуда.
+        // Если бэкап уже есть — не перезаписываем: это означает, что
+        // предыдущий прогон уже сохранил настоящий оригинал; затирать его
+        // текущим скачанным файлом (который мог быть закачан заново, уже
+        // пережатым, либо после частично упавшего прошлого прогона) —
+        // верный способ похоронить единственную копию исходника.
+        if (!MinioHelper::exists(BACKUP_BUCKET, $parsed['key'])) {
+            MinioHelper::upload(BACKUP_BUCKET, $parsed['key'], $orig, 'video/mp4');
+        } else {
+            echo "    бэкап уже существует, не перезаписываю\n";
+        }
 
-    $out = FfmpegHelper::transcodeToH264($orig, 'video/mp4');
-    if (!$out) {
-        echo "    ОШИБКА: перекодирование не удалось, объект не тронут\n";
+        $out = FfmpegHelper::transcodeToH264($orig, 'video/mp4');
+        if (!$out) {
+            echo "    ОШИБКА: перекодирование не удалось, объект не тронут\n";
+            continue;
+        }
+
+        $sizeAfter = filesize($out);
+        // Тот же ключ: video_url в БД остаётся валидным, миграции не нужно.
+        MinioHelper::upload($parsed['bucket'], $parsed['key'], $out, 'video/mp4');
+        $totalAfter += $sizeAfter;
+
+        printf("    готово: %.1f МБ -> %.1f МБ\n", $sizeBefore / 1048576, $sizeAfter / 1048576);
+    } finally {
+        // Если upload() в бэкап-бакет или в portfolio бросит исключение —
+        // временные файлы всё равно не должны оставаться на диске.
         @unlink($orig);
-        continue;
+        if ($out !== null) @unlink($out);
     }
-
-    $sizeAfter = filesize($out);
-    // Тот же ключ: video_url в БД остаётся валидным, миграции не нужно.
-    MinioHelper::upload($parsed['bucket'], $parsed['key'], $out, 'video/mp4');
-    $totalAfter += $sizeAfter;
-
-    printf("    готово: %.1f МБ -> %.1f МБ\n", $sizeBefore / 1048576, $sizeAfter / 1048576);
-
-    @unlink($orig);
-    @unlink($out);
 }
 
 printf("\nИтого: %.1f МБ -> %.1f МБ (пропущено уже готовых: %d)\n",

@@ -143,6 +143,16 @@ class MinioHelper {
         return self::publicUrl($bucket, $key);
     }
 
+    // ── Проверить существование объекта ───────────────────────────────────────
+    public static function exists(string $bucket, string $key): bool {
+        try {
+            self::client()->headObject(['Bucket' => $bucket, 'Key' => $key]);
+            return true;
+        } catch (AwsException $e) {
+            return false;
+        }
+    }
+
     // ── Удалить объект ────────────────────────────────────────────────────────
     public static function delete(string $bucket, string $key): void {
         self::client()->deleteObject([
