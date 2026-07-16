@@ -32,6 +32,16 @@ class AuthController {
     }
 
     public static function register() {
+    $db = (new Database())->getConnection();
+    // Публичный эндпоинт: без троттла аноним скриптует создание аккаунтов и
+    // перебирает существование логина/телефона (oracle в User::register).
+    if (RateLimiter::tooManyAttempts($db, 'register', 15, 900)) {
+        http_response_code(429);
+        echo json_encode(['error' => 'Слишком много попыток. Попробуйте через 15 минут.']);
+        return;
+    }
+    RateLimiter::hit($db, 'register');
+
     $data = json_decode(file_get_contents('php://input'), true);
 
     // Валидация
@@ -41,8 +51,8 @@ class AuthController {
     }
     
     // Проверка длины пароля
-    if(strlen($data['password']) < 6) {
-        echo json_encode(['error' => 'Пароль должен содержать минимум 6 символов']);
+    if(strlen($data['password']) < 8) {
+        echo json_encode(['error' => 'Пароль должен содержать минимум 8 символов']);
         return;
     }
     

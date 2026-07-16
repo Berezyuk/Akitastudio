@@ -19,6 +19,11 @@ class User {
         $stmt->execute();
         
         if($stmt->rowCount() == 0) {
+            // Прогоняем bcrypt по фиктивному хешу и на несуществующем логине:
+            // иначе неизвестный логин отвечает мгновенно, а известный с неверным
+            // паролем — медленно (bcrypt). Разница по времени выдаёт валидные
+            // логины (user-enumeration). Хеш реальный, чтобы verify честно считал.
+            password_verify($password, '$2y$10$927wzl1rZJeGgMMNIkzPD.gHhyD.PunZ9ZvzQA9AoiK6AEH7jaC/.');
             return ['error' => 'Неверный логин или пароль'];
         }
         

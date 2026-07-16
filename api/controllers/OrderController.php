@@ -2,10 +2,22 @@
 // api/controllers/OrderController.php
 
 require_once __DIR__ . '/../models/Order.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../helpers/RateLimiter.php';
 
 class OrderController {
 
    public static function createOrder() {
+    // Троттл: публичный эндпоинт создаёт заказы (и клиентов-сирот для гостей).
+    // Без лимита аноним флудит таблицу orders.
+    $db = (new Database())->getConnection();
+    if (RateLimiter::tooManyAttempts($db, 'order', 20, 900)) {
+        http_response_code(429);
+        echo json_encode(['error' => 'Слишком много заявок. Попробуйте позже.']);
+        return;
+    }
+    RateLimiter::hit($db, 'order');
+
     $data = json_decode(file_get_contents('php://input'), true) ?? [];
 
     // client_id берём ТОЛЬКО из сессии. Раньше сессия его лишь переопределяла,

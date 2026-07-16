@@ -200,7 +200,13 @@ class MinioHelper {
 
     // ── Генерировать уникальный ключ объекта ──────────────────────────────────
     public static function generateKey(string $prefix, string $originalName): string {
+        // Расширение из клиентского имени — по whitelist. Content-Type всё равно
+        // пиннится по finfo, но не даём ключу оканчиваться на .php/.html/что угодно.
         $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'pdf'];
+        if (!in_array($ext, $allowed, true)) {
+            $ext = 'bin';
+        }
         return rtrim($prefix, '/') . '/' . bin2hex(random_bytes(8)) . '_' . time() . '.' . $ext;
     }
 }

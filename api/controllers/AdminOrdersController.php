@@ -60,7 +60,7 @@ class AdminOrdersController {
 
     // Получить услуги с прогрессом для конкретного заказа
     public static function getOrderServicesWithProgress($orderId) {
-        $admin = requireRole('admin');
+        $admin = requireAdmin();
 
         $db = (new Database())->getConnection();
 
@@ -83,7 +83,7 @@ class AdminOrdersController {
 
     // Обновить прогресс услуги
     public static function updateServiceProgress($orderId, $serviceId) {
-        $admin = requireRole('admin');
+        $admin = requireAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
 
         $progress = (int)$data['progress_percent'];
@@ -134,7 +134,7 @@ class AdminOrdersController {
 
     // Загрузить фото для заказа → MinIO
     public static function uploadOrderPhoto($orderId) {
-        requireRole('admin');
+        requireAdmin();
 
         if (!isset($_FILES['photo']) || $_FILES['photo']['error'] !== UPLOAD_ERR_OK) {
             echo json_encode(['error' => 'Ошибка загрузки файла']);
@@ -188,7 +188,7 @@ class AdminOrdersController {
 
     // Получить все фото по заказу (админ)
     public static function getOrderPhotos($orderId) {
-        $admin = requireRole('admin');
+        $admin = requireAdmin();
 
         $db = (new Database())->getConnection();
 
@@ -214,7 +214,7 @@ class AdminOrdersController {
 
     // Удалить фото из MinIO и БД
     public static function deleteOrderPhoto($photoId) {
-        requireRole('admin');
+        requireAdmin();
         session_write_close(); // отпускаем session-lock до MinIO delete
 
         $db   = (new Database())->getConnection();
