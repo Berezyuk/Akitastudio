@@ -586,12 +586,19 @@ git commit -m "fix: autoplay качал видео целиком в обход 
 Не шаг плана — памятка на момент выката. **Порядок обязателен.**
 
 1. **Выкатить код** (Task 1, 4): `git pull`, `docker compose down && docker compose up -d`, `npm run build:prerender`.
-2. **Перекодировать существующие** (Task 2) — до кеша:
+2. **Перекодировать существующие** (Task 2) — до кеша.
+
+   Копию скрипта класть **рядом с `/var/www/api`, а не в `/tmp`**: `require_once` внутри
+   резолвится через `__DIR__`, и из `/tmp` путь `../api/...` ведёт в несуществующий `/api`
+   — прогон падает с `Failed opening required`. Те же команды продублированы в шапке
+   самого скрипта.
+
    ```bash
-   docker compose cp scripts/reencode-portfolio.php php:/tmp/reencode.php
-   docker compose exec -T php php /tmp/reencode.php --dry-run    # посмотреть
-   docker compose exec -T php php /tmp/reencode.php              # сделать
-   docker compose exec -T php rm -f /tmp/reencode.php
+   docker compose exec -T php mkdir -p /var/www/scripts
+   docker compose cp scripts/reencode-portfolio.php php:/var/www/scripts/reencode.php
+   docker compose exec -T php php /var/www/scripts/reencode.php --dry-run   # посмотреть
+   docker compose exec -T php php /var/www/scripts/reencode.php             # сделать
+   docker compose exec -T php rm -rf /var/www/scripts
    ```
    Проверить глазами: сайт открывается, видео в портфолио играют.
 3. **Только теперь — `Cache-Control`** (Task 3): перенести `location /portfolio/` из `docs/nginx-host.conf` в конфиг на сервере, `nginx -t`, `systemctl reload nginx`.
