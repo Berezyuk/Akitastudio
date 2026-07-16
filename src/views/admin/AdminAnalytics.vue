@@ -92,7 +92,7 @@ onUnmounted(() => {
     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
       <div>
         <h2 class="text-2xl font-bold text-white">Аналитика</h2>
-        <p class="text-sm text-gray-400 mt-1">Посещаемость сайта. Боты не считаются.</p>
+        <p class="text-sm text-gray-400 mt-1">Посещаемость сайта. Считаются только браузеры с JS.</p>
       </div>
       <div class="flex gap-2">
         <button

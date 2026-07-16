@@ -11,7 +11,9 @@ class AdminSystemController {
     // Дни без строк БД не возвращает, а график обязан иметь точку на каждый день —
     // иначе он врёт формой. Общий добивщик для дашборда и аналитики.
     // $fields: ['ключ_ответа' => ['колонка_в_выборке', 'int'|'float']].
-    // Тип обязателен: PDO отдаёт COUNT/SUM строками, а в JSON нужны числа.
+    // Тип обязателен: PDO отдаёт COUNT нативным integer, а SUM(numeric) — строкой
+    // (например '788000.00'). (float) для SUM не косметика, а обязательный каст;
+    // (int) для COUNT — для единообразия ответа.
     private static function fillDays(array $rows, int $days, array $fields): array {
         $byDate = array_column($rows, null, 'day');
         $out = ['labels' => []];
