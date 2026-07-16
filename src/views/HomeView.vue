@@ -211,6 +211,36 @@ const portfolioVideoRefs = ref({})
 const portfolioVideoErrors = ref({})
 let portfolioObserver = null
 
+// Ленивая загрузка видео «о нас» — паттерн из AboutView, но через template ref,
+// а не querySelectorAll: тот селектор в HomeView подхватил бы ещё и видео всех
+// карточек ServiceCard (тоже data-lazy-video), а querySelector внутри самого
+// ServiceCard (рендерится в v-for) нашёл бы чужое видео — первое в документе.
+// Раньше тут стоял autoplay вместе с preload="none": autoplay побеждает, и
+// браузер качал файл сразу, на первом же экране.
+//
+// Элемент видео пересоздаётся при смене :key="aboutVideoUrl" (Vue снимает
+// старый узел и монтирует новый), поэтому наблюдатель собирается через
+// ref-колбэк, а не один раз в onMounted: колбэк вызывается с null при
+// размонтировании старого узла и с элементом при монтировании нового —
+// это и есть точка (пере)подписки/отписки.
+let aboutVideoObserver = null
+
+const setAboutVideoRef = (el) => {
+  aboutVideoObserver?.disconnect()
+  aboutVideoObserver = null
+  if (!el) return
+  aboutVideoObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) entry.target.play().catch(() => {})
+        else entry.target.pause()
+      })
+    },
+    { threshold: 0.25 }
+  )
+  aboutVideoObserver.observe(el)
+}
+
 const setPortfolioVideoRef = (el, id) => {
   // См. PortfolioView: без delete остаётся ссылка на оторванный <video>.
   if (el) portfolioVideoRefs.value[id] = el
@@ -298,6 +328,7 @@ onUnmounted(() => {
   window.removeEventListener("keydown", handleKeydown);
   if (rafId) cancelAnimationFrame(rafId);
   portfolioObserver?.disconnect()
+  aboutVideoObserver?.disconnect()
 });
 </script>
 
@@ -529,7 +560,7 @@ onUnmounted(() => {
             <div class="relative rounded-2xl overflow-hidden shadow-2xl w-full">
               <video
                 :key="aboutVideoUrl"
-                autoplay
+                :ref="setAboutVideoRef"
                 muted
                 loop
                 playsinline
