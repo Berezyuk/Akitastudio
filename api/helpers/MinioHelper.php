@@ -36,6 +36,11 @@ class MinioHelper {
                 'endpoint'                => $endpoint,
                 'use_path_style_endpoint' => true,
                 'credentials'             => self::credentials(),
+                // Без таймаута зависший MinIO вешает запрос (и FPM-воркер)
+                // навсегда. connect — MinIO в той же Docker-сети, отвечает
+                // мгновенно; timeout щедрый под заливку крупного видео (до 200 МБ).
+                'http'                    => ['connect_timeout' => 3, 'timeout' => 60],
+                'retries'                 => 1,
             ]);
         }
         return self::$client;

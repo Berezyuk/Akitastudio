@@ -479,7 +479,7 @@ onMounted(() => {
                   <template v-else>{{ catMediaPreview ? 'Заменить медиа' : 'Загрузить медиа' }}</template>
                 </span>
                 <input type="file" class="hidden"
-                       accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
+                       accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
                        :disabled="catMediaUploading"
                        @change="uploadCatMedia">
               </label>

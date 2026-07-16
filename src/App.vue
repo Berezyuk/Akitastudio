@@ -21,6 +21,7 @@ const isAdmin = computed(() => route.path.startsWith('/admin'))
 <style scoped>
 .app {
   min-height: 100vh;
+  min-height: 100dvh; /* iOS Safari: 100vh включает зону под адресбаром → прыжок layout */
   display: flex;
   flex-direction: column;
 }

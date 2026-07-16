@@ -257,6 +257,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { API_BASE } from '@/config/api.js'
+import { parseApiDate } from '@/config/date.js'
 import ThePagination from '@/components/ThePagination.vue'
 import AlertModal from '@/components/admin/AlertModal.vue'
 
@@ -507,7 +508,7 @@ const exportCSV = () => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
-  return new Date(dateStr).toLocaleDateString('ru-RU')
+  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
 }
 
 const getStatusName = (statusName) => {

@@ -142,7 +142,7 @@ onMounted(fetchSettings)
           Видео не загружено — используется файл по умолчанию
         </div>
 
-        <input ref="fileInput" type="file" class="hidden" accept="video/mp4,video/webm,video/ogg" @change="onFileSelect" />
+        <input ref="fileInput" type="file" class="hidden" accept="video/mp4" @change="onFileSelect" />
 
         <button
           @click="fileInput.click()"

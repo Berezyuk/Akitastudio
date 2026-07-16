@@ -128,6 +128,11 @@ class AdminServicesController {
             return;
         }
 
+        // Отпускаем session-lock до долгого I/O (MinIO delete + транскод + upload),
+        // иначе параллельные запросы того же браузера сериализуются. Ниже сессия
+        // не пишется. См. uploadPortfolioMedia.
+        session_write_close();
+
         $cat = new ServiceCategory();
 
         // Удаляем старое медиа
@@ -175,6 +180,7 @@ class AdminServicesController {
     // DELETE /api/admin/service-categories/:id/media
     public static function deleteCategoryMedia($id) {
         self::checkAdmin();
+        session_write_close(); // отпускаем session-lock до MinIO delete
         $cat = new ServiceCategory();
         $existing = $cat->getMediaUrl($id);
         if ($existing) {

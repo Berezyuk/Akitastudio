@@ -156,6 +156,10 @@ class AdminOrdersController {
             return;
         }
 
+        // Отпускаем session-lock до заливки в MinIO, иначе параллельные запросы
+        // того же браузера сериализуются. Ниже сессия не пишется.
+        session_write_close();
+
         $key = MinioHelper::generateKey("orders/{$orderId}", $file['name']);
 
         try {
@@ -211,6 +215,7 @@ class AdminOrdersController {
     // Удалить фото из MinIO и БД
     public static function deleteOrderPhoto($photoId) {
         requireRole('admin');
+        session_write_close(); // отпускаем session-lock до MinIO delete
 
         $db   = (new Database())->getConnection();
         $stmt = $db->prepare("SELECT photo_url FROM order_photos WHERE id = :id");
