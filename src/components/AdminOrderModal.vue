@@ -134,7 +134,6 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
-import { parseApiDate } from '@/config/date.js'
 import AlertModal from '@/components/admin/AlertModal.vue'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 
@@ -273,10 +272,6 @@ const close = () => {
   emit('close')
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return ''
-  return parseApiDate(dateStr).toLocaleDateString('ru-RU') + ' ' + parseApiDate(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-}
 
 watch(() => props.visible, (newVal) => {
   if (newVal && props.order) {

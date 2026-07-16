@@ -100,7 +100,7 @@
                   <p class="text-sm">Услуги: {{ order.services || '—' }}</p>
                 </div>
                 <div class="text-right">
-                  <p class="text-[#fc9303] font-bold">{{ order.total_price?.toLocaleString() }} ₽</p>
+                  <p class="text-[#fc9303] font-bold">{{ formatPrice(order.total_price) }}</p>
                   <span :class="['px-2 py-0.5 rounded-full text-xs', statusColor(order.status_id)]">{{ order.status_name }}</span>
                 </div>
               </div>
@@ -257,7 +257,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { API_BASE } from '@/config/api.js'
-import { parseApiDate } from '@/config/date.js'
+import { formatDate } from '@/config/date.js'
+import { formatPrice } from '@/config/format.js'
 import { statusColor } from '@/config/status.js'
 import ThePagination from '@/components/ThePagination.vue'
 import AlertModal from '@/components/admin/AlertModal.vue'
@@ -509,10 +510,6 @@ const exportCSV = () => {
   window.open(`${API_BASE}/admin/clients/export?${params.toString()}`, '_blank')
 }
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '—'
-  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
-}
 
 onMounted(() => {
   fetchClients()

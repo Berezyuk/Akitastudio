@@ -7,3 +7,19 @@ export function parseApiDate(value) {
   if (value == null) return value
   return new Date(typeof value === 'string' ? value.replace(' ', 'T') : value)
 }
+
+// "16.07.2026" (ru). Пустое/битое → fallback. Была скопирована по вьюхам.
+export function formatDate(value, fallback = '—') {
+  if (!value) return fallback
+  const d = parseApiDate(value)
+  return d && !isNaN(d) ? d.toLocaleDateString('ru-RU') : fallback
+}
+
+// "16.07.2026 14:30". Для карточки заказа.
+export function formatDateTime(value, fallback = '') {
+  if (!value) return fallback
+  const d = parseApiDate(value)
+  if (!d || isNaN(d)) return fallback
+  return d.toLocaleDateString('ru-RU') + ' ' +
+    d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}

@@ -228,6 +228,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 import Chart from "chart.js/auto";
 import { API_BASE } from '@/config/api.js'
 import { statusColor } from '@/config/status.js'
+import { formatPrice } from '@/config/format.js'
 
 const stats = ref({});
 const newOrdersToday = ref(0);
@@ -356,10 +357,6 @@ const renderChart = (chartData) => {
   });
 };
 
-const formatPrice = (price) => {
-  if (!price && price !== 0) return "0 ₽";
-  return price.toLocaleString() + " ₽";
-};
 
 onMounted(() => {
   fetchDashboard();
