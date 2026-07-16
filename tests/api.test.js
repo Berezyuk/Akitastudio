@@ -583,6 +583,31 @@ describe('order/create: отказ не оставляет клиента-сир
   })
 })
 
+describe('загрузка видео: отказ перекодирования не пропускает сырьё', () => {
+  // Фикстура: настоящий ftyp-заголовок (finfo распознаёт как video/mp4 и пускает
+  // через проверку MIME), дальше мусор — ffmpeg разобрать не может.
+  // transcodeToH264() вернёт null. До фикса контроллер в этом случае молча
+  // заливал сырой оригинал в MinIO и отвечал success: true.
+  test('видео, которое ffmpeg не смог перекодировать -> отказ, ничего не залито', async () => {
+    const cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+
+    const bytes = readFileSync(new URL('./fixtures/broken-video.mp4', import.meta.url))
+    const form = new FormData()
+    form.append('media', new Blob([bytes], { type: 'video/mp4' }), 'broken-video.mp4')
+
+    const res = await fetch(API + '/admin/portfolio/upload', {
+      method: 'POST',
+      headers: { Cookie: cookie },
+      body: form,
+    })
+    const data = await res.json()
+
+    assert.equal(res.status, 400, `ожидали отказ, а не тихую заливку сырья: ${JSON.stringify(data)}`)
+    assert.ok(!data.success, `success: true при неудавшемся перекодировании: ${JSON.stringify(data)}`)
+    assert.ok(!data.url, `в ответе есть url — значит сырьё всё же уехало в хранилище: ${JSON.stringify(data)}`)
+  })
+})
+
 describe('удалённые мёртвые роуты не воскресли', () => {
   for (const route of ['/admin/employees', '/car-brands', '/user/cars', '/admin/orders/export']) {
     test(`${route} -> 404`, async () => {
