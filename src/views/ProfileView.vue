@@ -84,7 +84,7 @@ const handleLogout = async () => {
     <!-- Шапка для мобильных устройств (бургер) -->
     <div v-if="isMobile" class="md:hidden sticky top-0 z-30 bg-black/80 backdrop-blur-md px-4 py-3 flex items-center justify-between border-b border-gray-800">
       <h2 class="text-lg font-bold text-[#fc9303]">AKITA CONTROL</h2>
-      <button @click="mobileMenuOpen = true" class="text-white focus:outline-none">
+      <button @click="mobileMenuOpen = true" aria-label="Открыть меню" class="text-white focus:outline-none">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
         </svg>
@@ -120,7 +120,8 @@ const handleLogout = async () => {
         </div>
         <button 
           v-if="!isMobile"
-          @click="sidebarCollapsed = !sidebarCollapsed" 
+          @click="sidebarCollapsed = !sidebarCollapsed"
+          :aria-label="sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'"
           class="text-gray-400 hover:text-white transition-colors"
           :class="isMobile ? 'ml-auto' : ''"
         >
@@ -129,7 +130,7 @@ const handleLogout = async () => {
             <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7m-8-14l7 7-7 7" />
           </svg>
         </button>
-        <button v-if="isMobile && mobileMenuOpen" @click="mobileMenuOpen = false" class="text-gray-400 hover:text-white">
+        <button v-if="isMobile && mobileMenuOpen" @click="mobileMenuOpen = false" aria-label="Закрыть меню" class="text-gray-400 hover:text-white">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>

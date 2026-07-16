@@ -83,23 +83,23 @@
         <span class="text-sm text-gray-400 mr-2">Активные фильтры:</span>
         <span v-if="filters.search" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg text-sm text-[#fc9303]">
           Поиск: {{ filters.search }}
-          <button @click="filters.search = ''" class="hover:text-white">×</button>
+          <button @click="filters.search = ''" class="hover:text-white" aria-label="Убрать фильтр">×</button>
         </span>
         <span v-if="filters.service !== 'all'" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg text-sm text-[#fc9303]">
           Услуга: {{ filters.service }}
-          <button @click="filters.service = 'all'" class="hover:text-white">×</button>
+          <button @click="filters.service = 'all'" class="hover:text-white" aria-label="Убрать фильтр">×</button>
         </span>
         <span v-if="filters.status !== 'all'" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg text-sm text-[#fc9303]">
           Статус: {{ statuses.find(s => s.status_id == filters.status)?.name || filters.status }}
-          <button @click="filters.status = 'all'" class="hover:text-white">×</button>
+          <button @click="filters.status = 'all'" class="hover:text-white" aria-label="Убрать фильтр">×</button>
         </span>
         <span v-if="filters.dateFrom" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg text-sm text-[#fc9303]">
           С {{ formatDateSimple(filters.dateFrom) }}
-          <button @click="filters.dateFrom = ''" class="hover:text-white">×</button>
+          <button @click="filters.dateFrom = ''" class="hover:text-white" aria-label="Убрать фильтр">×</button>
         </span>
         <span v-if="filters.dateTo" class="inline-flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-lg text-sm text-[#fc9303]">
           По {{ formatDateSimple(filters.dateTo) }}
-          <button @click="filters.dateTo = ''" class="hover:text-white">×</button>
+          <button @click="filters.dateTo = ''" class="hover:text-white" aria-label="Убрать фильтр">×</button>
         </span>
       </div>
     </div>
@@ -155,11 +155,16 @@
           </tr>
         </thead>
         <tbody>
-          <tr 
+          <tr
             v-for="order in pagedOrders"
-            :key="order.order_id" 
-            class="border-b border-gray-800 hover:bg-gray-800/30 transition cursor-pointer group"
+            :key="order.order_id"
+            class="border-b border-gray-800 hover:bg-gray-800/30 transition cursor-pointer group focus:outline-none focus:bg-gray-800/50"
+            tabindex="0"
+            role="button"
+            :aria-label="`Заказ №${order.order_id}, открыть управление`"
             @click="openOrderModal(order)"
+            @keydown.enter="openOrderModal(order)"
+            @keydown.space.prevent="openOrderModal(order)"
           >
             <td class="p-4" @click.stop>
               {{ order.first_name }} {{ order.last_name }}<br>
@@ -225,6 +230,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import AdminOrderModal from '@/components/AdminOrderModal.vue'
 import { API_BASE } from '@/config/api.js'
 import { parseApiDate } from '@/config/date.js'
+import { statusColor as getStatusColor } from '@/config/status.js'
 import ThePagination from '@/components/ThePagination.vue'
 import AlertModal from '@/components/admin/AlertModal.vue'
 
@@ -508,17 +514,6 @@ const formatDateSimple = (dateStr) => {
 const formatDateForCSV = (dateStr) => {
   if (!dateStr) return ''
   return parseApiDate(dateStr).toLocaleDateString('ru-RU')
-}
-
-const getStatusColor = (statusId) => {
-  const colors = {
-    1: 'bg-yellow-500/20 text-yellow-400',
-    2: 'bg-orange-500/20 text-orange-400',
-    3: 'bg-blue-500/20 text-blue-400',
-    4: 'bg-green-500/20 text-green-400',
-    5: 'bg-red-500/20 text-red-400'
-  }
-  return colors[statusId] || 'bg-gray-500/20 text-gray-400'
 }
 
 const getStatusName = (statusName) => statusName || '—'

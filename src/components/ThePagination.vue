@@ -31,6 +31,7 @@ const pages = computed(() => {
       <button
         @click="emit('update:page', page - 1)"
         :disabled="page <= 1"
+        aria-label="Предыдущая страница"
         class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
       >←</button>
 
@@ -46,6 +47,7 @@ const pages = computed(() => {
       <button
         @click="emit('update:page', page + 1)"
         :disabled="page >= totalPages"
+        aria-label="Следующая страница"
         class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition"
       >→</button>
     </div>

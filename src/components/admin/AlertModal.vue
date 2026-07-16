@@ -1,5 +1,8 @@
 <script setup>
-defineProps({
+import { ref, toRef } from 'vue'
+import { useFocusTrap } from '@/composables/useFocusTrap'
+
+const props = defineProps({
   show:    { type: Boolean, required: true },
   title:   { type: String, default: 'Ошибка' },
   message: { type: String, default: '' },
@@ -7,6 +10,11 @@ defineProps({
   okLabel: { type: String, default: 'Закрыть' },
 })
 const emit = defineEmits(['close'])
+
+// Общий примитив: чинит a11y везде, где показывают Alert. Запираем фокус
+// (Tab не уходит на страницу под модалкой), Esc закрывает.
+const panel = ref(null)
+useFocusTrap(toRef(props, 'show'), panel)
 </script>
 
 <template>
@@ -15,8 +23,16 @@ const emit = defineEmits(['close'])
       v-if="show"
       class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       @click.self="emit('close')"
+      @keydown.esc="emit('close')"
     >
-      <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-sm p-6">
+      <div
+        ref="panel"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title"
+        tabindex="-1"
+        class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-sm p-6"
+      >
         <div class="flex justify-center mb-4">
           <div
             class="w-12 h-12 rounded-full flex items-center justify-center"

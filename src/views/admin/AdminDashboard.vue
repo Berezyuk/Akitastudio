@@ -209,10 +209,10 @@
                 <span
                   :class="[
                     'px-2 py-0.5 rounded-full text-xs whitespace-nowrap',
-                    getStatusClass(order.status_name),
+                    statusColor(order.status_id),
                   ]"
                 >
-                  {{ getStatusName(order.status_name) }}
+                  {{ order.status_name }}
                 </span>
               </div>
             </div>
@@ -227,6 +227,7 @@
 import { ref, onMounted, onUnmounted } from "vue";
 import Chart from "chart.js/auto";
 import { API_BASE } from '@/config/api.js'
+import { statusColor } from '@/config/status.js'
 
 const stats = ref({});
 const newOrdersToday = ref(0);
@@ -358,28 +359,6 @@ const renderChart = (chartData) => {
 const formatPrice = (price) => {
   if (!price && price !== 0) return "0 ₽";
   return price.toLocaleString() + " ₽";
-};
-
-const getStatusName = (statusName) => {
-  const names = {
-    pending: "Ожидание",
-    confirmed: "Подтверждён",
-    in_progress: "В работе",
-    completed: "Выполнен",
-    cancelled: "Отменён",
-  };
-  return names[statusName] || statusName;
-};
-
-const getStatusClass = (statusName) => {
-  const classes = {
-    pending: "bg-yellow-500/20 text-yellow-400",
-    confirmed: "bg-blue-500/20 text-blue-400",
-    in_progress: "bg-orange-500/20 text-orange-400",
-    completed: "bg-green-500/20 text-green-400",
-    cancelled: "bg-red-500/20 text-red-400",
-  };
-  return classes[statusName] || "bg-gray-500/20 text-gray-400";
 };
 
 onMounted(() => {

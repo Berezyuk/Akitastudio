@@ -1,5 +1,8 @@
 <script setup>
-defineProps({
+import { ref, toRef } from 'vue'
+import { useFocusTrap } from '@/composables/useFocusTrap'
+
+const props = defineProps({
   show:    { type: Boolean, required: true },
   title:   { type: String, default: 'Подтвердите действие' },
   message: { type: String, default: '' },
@@ -7,6 +10,10 @@ defineProps({
   cancelLabel:  { type: String, default: 'Отмена' },
 })
 const emit = defineEmits(['confirm', 'cancel'])
+
+// Фокус запираем, Esc = отмена (безопасный дефолт для confirm-диалога).
+const panel = ref(null)
+useFocusTrap(toRef(props, 'show'), panel)
 </script>
 
 <template>
@@ -15,8 +22,16 @@ const emit = defineEmits(['confirm', 'cancel'])
       v-if="show"
       class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       @click.self="emit('cancel')"
+      @keydown.esc="emit('cancel')"
     >
-      <div class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-sm p-6">
+      <div
+        ref="panel"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title"
+        tabindex="-1"
+        class="bg-gray-900 rounded-2xl border border-gray-800 w-full max-w-sm p-6"
+      >
         <!-- Иконка -->
         <div class="flex justify-center mb-4">
           <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
