@@ -61,6 +61,11 @@ CREATE TABLE IF NOT EXISTS order_statuses (
 
 CREATE TABLE IF NOT EXISTS orders (
     order_id     SERIAL PRIMARY KEY,
+    -- Идемпотентность: клиент шлёт UUID на попытку отправки. Повтор (double-submit,
+    -- ретрай сети, resubmit из истории) с тем же ключом не создаёт второй заказ —
+    -- UNIQUE ловит дубль, бэкенд возвращает уже созданный. NULL допустим (старые
+    -- клиенты / прямой API без ключа), UNIQUE разрешает много NULL.
+    idempotency_key UUID UNIQUE,
     client_id    INT REFERENCES clients(client_id) ON DELETE SET NULL,
     brand_id     INT REFERENCES car_brands(brand_id) ON DELETE SET NULL,
     model_id     INT REFERENCES car_models(model_id) ON DELETE SET NULL,
