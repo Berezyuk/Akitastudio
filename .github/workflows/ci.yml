@@ -1,0 +1,34 @@
+name: CI
+
+# Прогоняется на каждый PR и push в main. Ловит то, что не требует живого стенда:
+# юниты (vitest), сборку фронта, синтаксис PHP. HTTP-смоук (tests/api.test.js)
+# сюда НЕ входит — ему нужен поднятый стек с БД/MinIO (см. CLAUDE.md).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Frontend (unit + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run build
+
+  php-lint:
+    name: PHP lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+      # Синтаксис всех контроллеров/моделей/хелперов. vendor исключаем — чужой код.
+      - run: find api -name '*.php' -not -path '*/vendor/*' -print0 | xargs -0 -n1 -P4 php -l
