@@ -36,6 +36,17 @@ if ($isHttps || filter_var(getenv('SESSION_COOKIE_SECURE'), FILTER_VALIDATE_BOOL
     ini_set('session.cookie_secure', '1');
 }
 session_start();
+// Лок сессии (files-хендлер) держится до конца запроса. SPA шлёт пачку
+// параллельных запросов ОДНОЙ сессии — они сериализуются на flock, и каждый
+// ждущий запрос занимает FPM-воркер. Воркеров всего 5 → пара вкладок/устройств
+// исчерпывают пул, и сервер перестаёт отвечать ВСЕМ (подтверждено нагрузкой:
+// сторонний клиент 15ms → 394ms под 30 запросами одной сессии).
+//
+// Отпускаем лок сразу: $_SESSION остаётся читаемым в памяти до конца запроса,
+// поэтому все гварды-читатели (authenticate/requireAdmin) работают как прежде.
+// Три места, которые ПИШУТ сессию, переоткрывают её сами: User::login,
+// User::logout, ProfileController::updateProfile.
+session_write_close();
 
 $corsOrigin = getenv('CORS_ORIGIN') ?: 'http://localhost:5173';
 header('Content-Type: application/json');

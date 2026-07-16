@@ -44,6 +44,10 @@ $stmt->bindParam(':user_id', $user['user_id']);
 $stmt->execute();
 $userData = $stmt->fetch();
 
+// index.php закрыл сессию сразу после старта (см. там) — переоткрываем, чтобы
+// записать логин. Без этого session_regenerate_id/$_SESSION[...] на закрытой
+// сессии не сохранятся.
+session_start();
 // Новый ID сессии при смене привилегий — против фиксации сессии.
 session_regenerate_id(true);
 
@@ -65,6 +69,9 @@ return [
     }
     
     public function logout() {
+        // index.php закрыл сессию сразу после старта — переоткрываем, чтобы
+        // session_destroy() отработал на реальной сессии.
+        session_start();
         // session_destroy() сам по себе не чистит $_SESSION и не гасит cookie.
         $_SESSION = [];
         if (ini_get('session.use_cookies')) {
