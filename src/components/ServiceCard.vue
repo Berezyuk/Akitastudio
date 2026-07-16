@@ -37,13 +37,36 @@ const toggleContent = () => {
   isOpen.value = !isOpen.value
 }
 
+// Ленивая загрузка видео категории — паттерн из AboutView, но через template
+// ref, а не document.querySelector: ServiceCard рендерится в v-for
+// (HomeView.vue), и глобальный селектор нашёл бы чужое видео — первое в DOM.
+// Раньше стоял autoplay без preload вовсе: каждая карточка с видео качала файл
+// целиком сразу. Сейчас не стреляло только потому, что медиа категорий не залито
+// ни одной — мина заряжалась в тот день, когда админ загрузит первое видео.
+const videoEl = ref(null)
+let videoObserver = null
+
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
+
+  if (videoEl.value) {
+    videoObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) entry.target.play().catch(() => {})
+          else entry.target.pause()
+        })
+      },
+      { threshold: 0.25 }
+    )
+    videoObserver.observe(videoEl.value)
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
+  videoObserver?.disconnect()
 })
 </script>
 
@@ -62,7 +85,7 @@ onUnmounted(() => {
     @keydown.enter.prevent="toggleContent"
     @keydown.space.prevent="toggleContent"
   >
-    <video v-if="isVideo" :src="imageUrl" class="services_img" autoplay muted loop playsinline></video>
+    <video v-if="isVideo" :src="imageUrl" ref="videoEl" class="services_img" muted loop playsinline preload="none"></video>
     <img v-else :src="imageUrl" :alt="title" class="services_img" />
     <h4 class="services_title">{{ title }}</h4>
     <div class="card_hover-content" :class="{ show: isOpen }">

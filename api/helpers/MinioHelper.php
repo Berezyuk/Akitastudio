@@ -143,6 +143,24 @@ class MinioHelper {
         return self::publicUrl($bucket, $key);
     }
 
+    // ── Проверить существование объекта ───────────────────────────────────────
+    // false — только для честного "объекта нет" (404/NoSuchKey). Всё остальное
+    // (таймаут, 500, 403) пробрасываем: вызывающий код (скрипт перекодировки)
+    // использует exists() как гвард "не перезаписывать существующий бэкап", и
+    // транзиентная ошибка headObject, молча превращённая в false, читалась бы
+    // как "бэкапа нет" — и он был бы затёрт поверх реального.
+    public static function exists(string $bucket, string $key): bool {
+        try {
+            self::client()->headObject(['Bucket' => $bucket, 'Key' => $key]);
+            return true;
+        } catch (AwsException $e) {
+            if ($e->getStatusCode() === 404 || str_contains($e->getAwsErrorCode() ?? '', 'NotFound')) {
+                return false;
+            }
+            throw $e;
+        }
+    }
+
     // ── Удалить объект ────────────────────────────────────────────────────────
     public static function delete(string $bucket, string $key): void {
         self::client()->deleteObject([
