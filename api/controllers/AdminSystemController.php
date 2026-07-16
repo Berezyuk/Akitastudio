@@ -275,6 +275,11 @@ class AdminSystemController {
         if ($transcodedPath) {
             $uploadPath = $transcodedPath;
             $uploadMime = 'video/mp4';
+        } else {
+            // ffmpeg не смог обработать файл — заливать необработанный оригинал
+            // нельзя (любой вес, звук, не готов для мобильного канала).
+            echo json_encode(['success' => false, 'error' => 'Не удалось обработать видео. Попробуйте другой файл']);
+            return;
         }
 
         $key = MinioHelper::generateKey('site', $transcodedPath ? 'video.mp4' : $file['name']);

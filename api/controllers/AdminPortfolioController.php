@@ -82,6 +82,11 @@ class AdminPortfolioController {
             if ($transcodedPath) {
                 $uploadPath = $transcodedPath;
                 $uploadMime = 'video/mp4';
+            } else {
+                // ffmpeg не смог обработать файл — заливать необработанный оригинал
+                // нельзя (любой вес, звук, не готов для мобильного канала).
+                echo json_encode(['error' => 'Не удалось обработать видео. Попробуйте другой файл']);
+                return;
             }
         }
 
