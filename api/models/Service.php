@@ -98,7 +98,16 @@ class Service {
         $query = "DELETE FROM services WHERE service_id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
-        return ['success' => $stmt->execute()];
+        // FK RESTRICT: услуга в order_services (истории заказов) не удаляется.
+        // Без перехвата execute() бросал → голый 500 вместо понятного ответа.
+        try {
+            return ['success' => $stmt->execute()];
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23503') {
+                return ['success' => false, 'error' => 'Услуга используется в заказах и не может быть удалена. Отключите её вместо удаления.'];
+            }
+            throw $e;
+        }
     }
 
     public function getByCategory($categoryId) {

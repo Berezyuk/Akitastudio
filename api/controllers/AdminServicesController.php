@@ -19,6 +19,7 @@ class AdminServicesController {
     public static function addService() {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
+        if (self::negativePrice($data)) { echo json_encode(['error' => 'Цена не может быть отрицательной']); return; }
         $service = new Service();
         $result = $service->create($data);
         echo json_encode($result);
@@ -27,9 +28,16 @@ class AdminServicesController {
     public static function updateService($id) {
         self::checkAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
+        if (self::negativePrice($data)) { echo json_encode(['error' => 'Цена не может быть отрицательной']); return; }
         $service = new Service();
         $result = $service->update($id, $data);
         echo json_encode($result);
+    }
+
+    // base_price NULL допустим («по запросу»); отрицательная — нет (иначе уходит
+    // в total_price заказов). Дублируется CHECK-констрейнтом в БД как backstop.
+    private static function negativePrice($data): bool {
+        return isset($data['base_price']) && $data['base_price'] !== '' && (float)$data['base_price'] < 0;
     }
 
     public static function deleteService($id) {
@@ -92,15 +100,16 @@ class AdminServicesController {
     public static function deleteServiceCategory($id) {
         self::checkAdmin();
         $cat = new ServiceCategory();
-        // Удаляем медиа из MinIO если есть
+        // Сначала пытаемся удалить саму категорию: при FK-блоке (услуги в заказах)
+        // она останется — и медиа сносить нельзя, иначе живая категория теряет файл.
         $existing = $cat->getMediaUrl($id);
-        if ($existing) {
+        $result = $cat->delete($id);
+        if (!empty($result['success']) && $existing) {
             $parsed = MinioHelper::parseUrl($existing);
             if ($parsed) {
                 try { MinioHelper::delete($parsed['bucket'], $parsed['key']); } catch (\Exception $e) {}
             }
         }
-        $result = $cat->delete($id);
         echo json_encode($result);
     }
 
@@ -135,14 +144,10 @@ class AdminServicesController {
 
         $cat = new ServiceCategory();
 
-        // Удаляем старое медиа
+        // Старое медиа запоминаем, но удаляем ТОЛЬКО после успешной заливки нового
+        // и записи в БД. Раньше удаляли здесь, до транскода/заливки: сбой ниже
+        // уничтожал старый объект, а home_media_url продолжал на него ссылаться.
         $existing = $cat->getMediaUrl($id);
-        if ($existing) {
-            $parsed = MinioHelper::parseUrl($existing);
-            if ($parsed) {
-                try { MinioHelper::delete($parsed['bucket'], $parsed['key']); } catch (\Exception $e) {}
-            }
-        }
 
         $uploadPath = $file['tmp_name'];
         $uploadMime = $realMime;
@@ -174,6 +179,15 @@ class AdminServicesController {
         }
 
         $cat->updateMedia($id, $url);
+
+        // Новое залито и записано — теперь безопасно снести старый объект.
+        if ($existing) {
+            $parsed = MinioHelper::parseUrl($existing);
+            if ($parsed) {
+                try { MinioHelper::delete($parsed['bucket'], $parsed['key']); } catch (\Exception $e) {}
+            }
+        }
+
         echo json_encode(['success' => true, 'url' => $url]);
     }
 
