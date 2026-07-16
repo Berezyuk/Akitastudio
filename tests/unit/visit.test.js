@@ -33,4 +33,14 @@ describe('shouldTrackVisit', () => {
     expect(shouldTrackVisit(NOW, 'сломали руками')).toBe(true)
     expect(shouldTrackVisit(NOW, '')).toBe(true)
   })
+
+  test('navigator.webdriver — визит не считается, даже первый заход', () => {
+    expect(shouldTrackVisit(NOW, null, true)).toBe(false)
+    expect(shouldTrackVisit(NOW, NOW - 31 * 60 * 1000, true)).toBe(false)
+  })
+
+  test('isAutomated не задан или false — поведение живого браузера не меняется', () => {
+    expect(shouldTrackVisit(NOW, null, false)).toBe(true)
+    expect(shouldTrackVisit(NOW, null)).toBe(true)
+  })
 })

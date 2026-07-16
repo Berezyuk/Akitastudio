@@ -75,7 +75,7 @@ $routes = [
     ['POST',   'validate-car',                       fn($m) => CarValidationController::validateCar()],
     ['POST',   'car-brand-suggest',                  fn($m) => CarValidationController::suggestBrand()],
     ['POST',   'feedback',                           fn($m) => FeedbackController::sendFeedback()],
-    ['POST',   'visit',                             fn($m) => VisitController::track()],
+    ['POST',   'visit',                              fn($m) => VisitController::track()],
     ['GET',    'car-models',                         fn($m) => CarController::getModels()],
     ['GET',    'categories',                         fn($m) => CategoryController::getCategories()],
 
@@ -90,7 +90,7 @@ $routes = [
 
     // ── Админ: дашборд/пароль ──
     ['GET',    'admin/dashboard',                    fn($m) => AdminSystemController::getDashboardStats()],
-    ['GET',    'admin/analytics',                   fn($m) => AdminSystemController::getAnalytics()],
+    ['GET',    'admin/analytics',                    fn($m) => AdminSystemController::getAnalytics()],
     ['POST',   'admin/change-password',              fn($m) => AdminSystemController::changePassword()],
 
     // ── Админ: обратная связь ──

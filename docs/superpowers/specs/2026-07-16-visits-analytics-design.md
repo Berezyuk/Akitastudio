@@ -143,11 +143,12 @@ IP по 152-ФЗ — персональные данные. Соль (`VISIT_SAL
 
 Новый `api/controllers/VisitController.php`, метод `track()`:
 
-1. `device` — regex `/Mobile|Android|iPhone|iPad/i` по `User-Agent` → `mobile` | `desktop`
-2. `source` — по хосту из `document.referrer` (тело запроса):
+1. `device` — regex `/Mobile|Android|iPhone|iPad|iPod/i` по `User-Agent` → `mobile` | `desktop`
+2. `source` — по хосту из `document.referrer` (тело запроса), домен заякорен в конце
+   хоста (`$`), чтобы `yandex.ru.evil.com` не засчитался как поисковик:
    - пусто или свой хост → `direct`
-   - `yandex|google|bing|mail|duckduckgo` → `search`
-   - `vk|t.me|telegram|instagram|youtube` → `social`
+   - `yandex|google|bing|mail|duckduckgo|rambler` → `search`
+   - `vk|t|telegram|instagram|youtube|facebook|ok` → `social`
    - иначе → `other`
 3. `visitor_hash` и `ip_hash` — по формулам выше
 4. Ответ `204`, без тела
@@ -204,14 +205,14 @@ IP по 152-ФЗ — персональные данные. Соль (`VISIT_SAL
 ### Beacon
 
 Логика окна — чистая функция в новом `src/config/visit.js` (рядом с `api.js`):
-`shouldTrackVisit(now, last)` → `boolean`. Отдельный файл не ради красоты: внутри
-`main.js` её не позвать из теста, а это единственная тут арифметика, способная
-тихо соврать.
+`shouldTrackVisit(now, last, isAutomated)` → `boolean`. Отдельный файл не ради
+красоты: внутри `main.js` её не позвать из теста, а это единственная тут
+арифметика, способная тихо соврать.
 
 В `src/main.js`, после `app.mount('#app')`:
 
 ```
-если shouldTrackVisit(Date.now(), localStorage.lastVisit):
+если shouldTrackVisit(Date.now(), localStorage.lastVisit, navigator.webdriver === true):
     apiFetch('/visit', { method: 'POST', body: JSON.stringify({ referrer: document.referrer }) })
         .catch(() => {})          // статистика не роняет сайт
     localStorage.lastVisit = Date.now()
@@ -222,6 +223,16 @@ IP по 152-ФЗ — персональные данные. Соль (`VISIT_SAL
 
 Метка времени обновляется независимо от исхода запроса: иначе при лежащем API
 beacon уйдёт на каждой навигации.
+
+**Пре-рендер не считается визитом.** `npm run build:prerender`
+(`scripts/prerender.mjs`) гоняет `main.js` целиком в headless Chrome через
+Puppeteer — без защиты каждый деплой писал бы в `visits` фейковый визит
+(`source=direct`) с IP сборочной машины. `shouldTrackVisit(now, last,
+isAutomated)` получает третий аргумент — `navigator.webdriver === true` из
+`main.js`. Флаг ставят браузеры, управляемые WebDriver-протоколом
+(Selenium/Puppeteer/Playwright, в т.ч. наш prerender); Googlebot и прочие
+JS-краулеры WebDriver не используют и продолжают считаться, как и было
+задумано изначально.
 
 ### Вкладка (не роут — так устроена админка)
 
@@ -253,13 +264,17 @@ beacon уйдёт на каждой навигации.
 - `POST /api/visit` отвечает 204 и увеличивает счётчик визитов
 - источник: `referrer: 'https://yandex.ru/search'` → `search`; пусто → `direct`; свой хост → `direct`
 - устройство: iPhone-`User-Agent` → `mobile`; десктопный → `desktop`
-- лимит накрутки: 31-й запрос с тем же хешем за час не увеличивает счётчик
+- лимит накрутки: 300 визитов с одного `ip_hash` за час проходят, 301-й — нет,
+  и ротация `User-Agent` потолок не обходит (хеш общий на IP, без UA)
 - `?days=99` не проходит whitelist
 
 `tests/unit/` (vitest) — только то, что действительно JS:
 - окно визита: `shouldTrackVisit(now, last)` — пусто → true, 29 минут → false,
   31 минута → true. Чистая функция в `src/config/visit.js`, чтобы её вообще
   можно было позвать из теста (в `main.js` она недостижима).
+- `isAutomated=true` — визит не считается независимо от окна (пре-рендер,
+  см. «Пре-рендер не считается визитом» выше); `isAutomated` не задан или
+  `false` — поведение живого браузера не меняется.
 
 ⚠️  Тесты пишут в `visits` на dev-стенде и не убирают за собой — как и остальной
 `api.test.js`. Команда очистки добавляется в шапку файла:
