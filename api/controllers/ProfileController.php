@@ -213,8 +213,11 @@ class ProfileController {
         $stmt->bindParam(':user_id', $user['user_id']);
         $stmt->execute();
 
-        // Обновляем имя в сессии
+        // Обновляем имя в сессии. index.php закрыл сессию сразу после старта —
+        // переоткрываем, чтобы запись сохранилась, и закрываем обратно.
+        session_start();
         $_SESSION['name'] = $firstName . ' ' . $lastName;
+        session_write_close();
 
         echo json_encode(['success' => true]);
     }
