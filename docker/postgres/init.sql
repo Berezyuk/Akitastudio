@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS clients (
     first_name   VARCHAR(100) NOT NULL,
     last_name    VARCHAR(100) NOT NULL DEFAULT '',
     patronymic   VARCHAR(100),
-    phone_number VARCHAR(20),
+    phone_number VARCHAR(20) UNIQUE,
     email        VARCHAR(255),
     created_at   TIMESTAMP NOT NULL DEFAULT NOW()
 );
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS services (
     category_id      INT REFERENCES service_categories(category_id) ON DELETE CASCADE,
     name             VARCHAR(255) NOT NULL,
     description      TEXT,
-    base_price       NUMERIC(10,2) DEFAULT NULL,
+    base_price       NUMERIC(10,2) DEFAULT NULL CHECK (base_price >= 0),
     duration_minutes INT DEFAULT NULL,
     is_active        BOOLEAN NOT NULL DEFAULT TRUE,
     icon_url         VARCHAR(255),
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS orders (
     desired_time TIME,
     client_notes TEXT,
     admin_notes  TEXT,
-    total_price  NUMERIC(10,2) NOT NULL DEFAULT 0,
+    total_price  NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (total_price >= 0),
     prepayment   NUMERIC(10,2) NOT NULL DEFAULT 0,
     notes        TEXT
 );
@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS order_services (
     id              SERIAL PRIMARY KEY,
     order_id        INT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
     service_id      INT NOT NULL REFERENCES services(service_id) ON DELETE RESTRICT,
-    price_at_moment NUMERIC(10,2) NOT NULL DEFAULT 0
+    price_at_moment NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (price_at_moment >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS order_services_progress (
@@ -289,7 +289,8 @@ CREATE INDEX IF NOT EXISTS idx_car_models_brand_id   ON car_models (brand_id);
 CREATE INDEX IF NOT EXISTS idx_services_category_id  ON services (category_id);
 
 -- Клиенты: findOrCreate ищет по нормализованному телефону при каждой заявке
-CREATE INDEX IF NOT EXISTS idx_clients_phone_number ON clients (phone_number);
+-- phone_number теперь UNIQUE (см. таблицу clients) — уникальный констрейнт сам
+-- создаёт индекс, отдельный idx_clients_phone_number не нужен.
 CREATE INDEX IF NOT EXISTS idx_clients_user_id      ON clients (user_id);
 
 -- ─── Seed: администратор ────────────────────────────────────────────────────

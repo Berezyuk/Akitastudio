@@ -88,6 +88,16 @@ class ServiceCategory {
         $query = "DELETE FROM service_categories WHERE category_id = :id";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':id', $id);
-        return ['success' => $stmt->execute()];
+        // Удаление каскадит в services (ON DELETE CASCADE), а те могут быть в
+        // order_services (RESTRICT) — тогда весь DELETE падает FK-нарушением.
+        // Перехватываем → понятный ответ вместо 500.
+        try {
+            return ['success' => $stmt->execute()];
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23503') {
+                return ['success' => false, 'error' => 'В категории есть услуги из истории заказов — удалить нельзя.'];
+            }
+            throw $e;
+        }
     }
 }

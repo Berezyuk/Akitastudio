@@ -172,15 +172,26 @@ class AdminOrdersController {
 
         $db = (new Database())->getConnection();
 
-        $stmt = $db->prepare(
-            "INSERT INTO order_photos (order_id, photo_url, caption, uploaded_by, sort_order)
-             VALUES (:order_id, :photo_url, :caption, 'admin',
-             (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM order_photos WHERE order_id = :order_id))"
-        );
-        $stmt->bindParam(':order_id',  $orderId);
-        $stmt->bindParam(':photo_url', $photoUrl);
-        $stmt->bindParam(':caption',   $caption);
-        $stmt->execute();
+        // INSERT под try/catch: объект уже в MinIO. Если запись в БД падает
+        // (под ERRMODE_EXCEPTION execute() бросает), без компенсации остаётся
+        // объект-сирота в бакете и необработанный 500. Сносим объект и отдаём
+        // чистую ошибку.
+        try {
+            $stmt = $db->prepare(
+                "INSERT INTO order_photos (order_id, photo_url, caption, uploaded_by, sort_order)
+                 VALUES (:order_id, :photo_url, :caption, 'admin',
+                 (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM order_photos WHERE order_id = :order_id))"
+            );
+            $stmt->bindParam(':order_id',  $orderId);
+            $stmt->bindParam(':photo_url', $photoUrl);
+            $stmt->bindParam(':caption',   $caption);
+            $stmt->execute();
+        } catch (Exception $e) {
+            error_log('order_photos INSERT error: ' . $e->getMessage());
+            try { MinioHelper::delete('order-photos', $key); } catch (Exception $e2) {}
+            echo json_encode(['error' => 'Не удалось сохранить фото']);
+            return;
+        }
 
         // Клиенту — подписанная ссылка: бакет приватный, прямой URL не откроется.
         echo json_encode(['success' => true, 'photo_url' => MinioHelper::refreshUrl($photoUrl)]);
