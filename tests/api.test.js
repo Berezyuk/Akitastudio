@@ -660,4 +660,34 @@ describe('загрузка видео: перекодирование под м�
     const audio = probe(key, '-select_streams a -show_entries stream=codec_type -of csv=p=0')
     assert.equal(audio, '', 'звуковая дорожка осталась — -an не применился')
   })
+
+  // scale='min(720,iw)':-2 — -2 авто-выравнивает только вычисляемую сторону
+  // (высоту), а явно заданная ширина min(720,iw) чётности не гарантирует.
+  // Если исходник уже ⩽720 и с нечётной шириной, min(720,iw) возвращает эту
+  // нечётную ширину как есть, yuv420p требует чётности по обеим осям —
+  // ffmpeg падает ("width not divisible by 2"), transcodeToH264() отдаёт
+  // null, и все три контроллера в этом случае молча заливают необработанный
+  // оригинал (без ресайза, без потолка битрейта, со звуком).
+  test('нечётная ширина 201x357 не валит перекодирование — результат чётный и без звука', async () => {
+    const file = readFileSync(new URL('./fixtures/odd-width-201x357.mp4', import.meta.url))
+    const form = new FormData()
+    form.append('media', new Blob([file], { type: 'video/mp4' }), 'odd.mp4')
+
+    const res = await fetch(API + '/admin/portfolio/upload', {
+      method: 'POST',
+      headers: { Cookie: cookie },
+      body: form,
+    })
+    const data = await res.json()
+    assert.ok(data.success, `загрузка не удалась: ${JSON.stringify(data)}`)
+
+    const key = new URL(data.url).pathname.replace(/^\//, '')
+
+    const width = probe(key, '-select_streams v:0 -show_entries stream=width -of csv=p=0')
+    assert.ok(Number(width) % 2 === 0, `ширина ${width} нечётная — scale не чинит чётность`)
+    assert.ok(Number(width) <= 720, `ширина ${width} > 720 — scale не применился`)
+
+    const audio = probe(key, '-select_streams a -show_entries stream=codec_type -of csv=p=0')
+    assert.equal(audio, '', 'звуковая дорожка осталась — transcodeToH264 упал, залился необработанный оригинал')
+  })
 })
