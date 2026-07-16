@@ -11,6 +11,7 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 const userName = computed(() => authStore.user?.name || 'Профиль')
 
 const logout = async () => {
+    mobileMenuOpen.value = false // иначе мобильное меню-оверлей висит поверх главной после выхода
     await authStore.logout()
     router.push('/')
 }

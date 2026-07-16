@@ -422,6 +422,13 @@ const submitReschedule = async () => {
     return
   }
 
+  // Часы работы — как в booking (раньше перенос принимал любое время).
+  const t = rescheduleForm.value.desired_time
+  if (t < '10:00' || t > '20:00') {
+    showAlert('Некорректное время', 'Студия работает с 10:00 до 20:00. Выберите время в этом диапазоне.')
+    return
+  }
+
   loading.value.reschedule = true
   try {
     const res = await fetch(`${API_BASE}/user/orders/${rescheduleModal.value.orderId}/reschedule`, {

@@ -592,8 +592,9 @@ const handleSubmit = async () => {
     return
   }
   if (form.value.desiredTime) {
-    const hour = parseInt(form.value.desiredTime.split(':')[0])
-    if (hour < 10 || hour >= 20) {
+    // Строковое сравнение HH:MM: допускает ровно 20:00 (max="20:00"), режет позже.
+    const t = form.value.desiredTime
+    if (t < '10:00' || t > '20:00') {
       errorMessage.value = 'Студия работает с 10:00 до 20:00. Выберите время в этом диапазоне.'
       return
     }
