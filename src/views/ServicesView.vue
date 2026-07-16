@@ -268,6 +268,13 @@ const selectService = (service) => {
   router.push({ path: '/booking', query: { service_id: service.service_id } })
 }
 
+// Описание идёт в v-html, а редактируется в админке. Без экранирования
+// <img src=x onerror=...> в описании = stored XSS у каждого посетителя.
+// Экранируем пользовательский текст, статичную разметку строим сами.
+const esc = (s) => String(s).replace(/[&<>"']/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+))
+
 const formatDescription = (description) => {
   if (!description) return '<p class="text-gray-400">Описание отсутствует</p>'
 
@@ -284,14 +291,14 @@ const formatDescription = (description) => {
           inList = true
         }
         const content = trimmed.substring(1).trim()
-        html += `<li class="flex items-start gap-2"><span class="text-[#fc9303] mt-1" aria-hidden="true">•</span><span>${content}</span></li>`
+        html += `<li class="flex items-start gap-2"><span class="text-[#fc9303] mt-1" aria-hidden="true">•</span><span>${esc(content)}</span></li>`
       } else {
         if (inList) {
           html += '</ul>'
           inList = false
         }
         if (trimmed) {
-          html += `<p class="mb-3">${trimmed}</p>`
+          html += `<p class="mb-3">${esc(trimmed)}</p>`
         }
       }
     })
@@ -301,7 +308,7 @@ const formatDescription = (description) => {
   }
 
   const paragraphs = description.split('\n').filter(p => p.trim())
-  return paragraphs.map(p => `<p class="mb-3">${p.trim()}</p>`).join('')
+  return paragraphs.map(p => `<p class="mb-3">${esc(p.trim())}</p>`).join('')
 }
 
 const formatDuration = (minutes) => {

@@ -49,7 +49,7 @@ class AdminPortfolioController {
     // POST /api/admin/portfolio/upload  (multipart, поле 'media')
     // Возвращает { success: true, url: '...' } — URL вставляется в поле video_url формы.
     public static function uploadPortfolioMedia() {
-        requireRole('admin');
+        requireAdmin();
 
         if (!isset($_FILES['media']) || $_FILES['media']['error'] !== UPLOAD_ERR_OK) {
             echo json_encode(['error' => 'Ошибка загрузки файла']);
