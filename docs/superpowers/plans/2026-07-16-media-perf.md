@@ -346,8 +346,9 @@ docker compose exec -T php sh -c 'cd /var/www && php ../scripts/reencode-portfol
 Если путь не сходится — найти, куда примонтирован репозиторий в php-контейнере (`docker compose config | grep -A3 'php:' | grep volumes -A3`), и запускать оттуда. `docker-compose.yml` монтирует `./api:/var/www/api`, то есть `scripts/` внутрь контейнера **не примонтирован** — это ожидаемо. Тогда копировать скрипт внутрь на время прогона:
 
 ```bash
-docker compose cp scripts/reencode-portfolio.php php:/tmp/reencode.php
-docker compose exec -T php php /tmp/reencode.php --dry-run
+docker compose exec -T php mkdir -p /var/www/scripts
+docker compose cp scripts/reencode-portfolio.php php:/var/www/scripts/reencode.php
+docker compose exec -T php php /var/www/scripts/reencode.php --dry-run
 ```
 
 Expected: список записей с их текущими размерами; строка «РЕЖИМ ПРОСМОТРА»; ничего не изменилось.
@@ -355,7 +356,7 @@ Expected: список записей с их текущими размерам�
 - [ ] **Step 3: Прогнать по-настоящему**
 
 ```bash
-docker compose exec -T php php /tmp/reencode.php
+docker compose exec -T php php /var/www/scripts/reencode.php
 ```
 Expected: для каждого видео строка `готово: X МБ -> Y МБ`, итог вида `~230 МБ -> ~45 МБ`.
 
@@ -364,7 +365,7 @@ Expected: для каждого видео строка `готово: X МБ ->
 - [ ] **Step 4: Проверить идемпотентность**
 
 ```bash
-docker compose exec -T php php /tmp/reencode.php
+docker compose exec -T php php /var/www/scripts/reencode.php
 ```
 Expected: **каждая** строка — `пропуск ... уже 720px / 1.5 Мбит/с`, ни одной `обработка`. Итог: «пропущено уже готовых: N» равно числу видео.
 
@@ -388,7 +389,7 @@ Expected: витрина — `200` и новый (меньший) размер; 
 - [ ] **Step 6: Убрать временную копию скрипта**
 
 ```bash
-docker compose exec -T php rm -f /tmp/reencode.php
+docker compose exec -T php rm -rf /var/www/scripts
 ```
 
 - [ ] **Step 7: Commit**
