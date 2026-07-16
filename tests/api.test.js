@@ -15,6 +15,7 @@
 import { test, describe, before } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { execSync } from 'node:child_process'
 
 const API = process.env.API_BASE || 'http://localhost:8000/api'
 
@@ -616,5 +617,47 @@ describe('троттлинг логина: корзины по IP не общи�
 
     const other = await badLogin('198.51.100.2')
     assert.notEqual(other.status, 429, 'чужой IP получил 429 — корзина общая на всех')
+  })
+})
+
+// Видео портфолио показываются в карточке шириной максимум 320 CSS-пикселей,
+// без звука и без контролов. До этого фикса FfmpegHelper не масштабировал их
+// вовсе: в бакет уезжало 1080x1920 на 4.7-7.2 Мбит/с, по 12-22 МБ за штуку —
+// больше типичного мобильного канала. Тест ловит откат параметров обратно.
+describe('загрузка видео: перекодирование под мобильный канал', () => {
+  let cookie
+  before(async () => {
+    cookie = await loginCookie(env.ADMIN_LOGIN, env.ADMIN_PASSWORD)
+  })
+
+  // ffprobe живёт в php-контейнере, на хосте его нет. Внутри контейнера
+  // localhost:9000 — его собственный localhost, а не MinIO, поэтому ходим
+  // по имени сервиса из compose-сети.
+  const probe = (key, args) =>
+    execSync(
+      `docker compose exec -T php ffprobe -v error ${args} "http://minio:9000/${key}"`,
+      { encoding: 'utf8' }
+    ).trim()
+
+  test('1080x1920 ужимается до ширины <=720 и лишается звука', async () => {
+    const file = readFileSync(new URL('./fixtures/portrait-1080x1920.mp4', import.meta.url))
+    const form = new FormData()
+    form.append('media', new Blob([file], { type: 'video/mp4' }), 'portrait.mp4')
+
+    const res = await fetch(API + '/admin/portfolio/upload', {
+      method: 'POST',
+      headers: { Cookie: cookie },
+      body: form,
+    })
+    const data = await res.json()
+    assert.ok(data.success, `загрузка не удалась: ${JSON.stringify(data)}`)
+
+    const key = new URL(data.url).pathname.replace(/^\//, '')
+
+    const width = probe(key, '-select_streams v:0 -show_entries stream=width -of csv=p=0')
+    assert.ok(Number(width) <= 720, `ширина ${width} > 720 — scale не применился`)
+
+    const audio = probe(key, '-select_streams a -show_entries stream=codec_type -of csv=p=0')
+    assert.equal(audio, '', 'звуковая дорожка осталась — -an не применился')
   })
 })
