@@ -39,6 +39,11 @@ prod: prerender
 	@echo "Ожидание готовности PostgreSQL..."
 	@until [ "$$(docker inspect --format='{{.State.Health.Status}}' akita_postgres)" = "healthy" ]; do sleep 1; done
 	@$(MAKE) migrate
+	# --build пересоздаёт контейнер php с НОВЫМ IP в docker-сети, а nginx (образ не
+	# менялся) остаётся со старым закешированным адресом апстрима → 502 Bad Gateway
+	# на /api/. frontend держит frontend.conf на bind-mount — правки конфига без
+	# рестарта не подхватываются. Перезапуск обоих чинит и то, и другое.
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml restart nginx frontend
 	@echo "Прод обновлён. Снаружи отдаёт хостовой nginx: https://akita-studio.ru"
 
 # Прогон всех SQL-миграций из docker/postgres/migrations по порядку имён.
