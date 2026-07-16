@@ -177,6 +177,15 @@ class AdminOrdersController {
         // объект-сирота в бакете и необработанный 500. Сносим объект и отдаём
         // чистую ошибку.
         try {
+            $db->beginTransaction();
+
+            // Сериализуем нумерацию sort_order по конкретному заказу. Без этого
+            // две параллельные заливки в один заказ читали одинаковый MAX и
+            // получали одинаковый sort_order (порядок фото становился неопределён).
+            // Advisory-lock держится до commit; заливки в РАЗНЫЕ заказы друг друга
+            // не блокируют (ключ = order_id).
+            $db->prepare("SELECT pg_advisory_xact_lock(:oid)")->execute([':oid' => $orderId]);
+
             $stmt = $db->prepare(
                 "INSERT INTO order_photos (order_id, photo_url, caption, uploaded_by, sort_order)
                  VALUES (:order_id, :photo_url, :caption, 'admin',
@@ -186,7 +195,10 @@ class AdminOrdersController {
             $stmt->bindParam(':photo_url', $photoUrl);
             $stmt->bindParam(':caption',   $caption);
             $stmt->execute();
+
+            $db->commit();
         } catch (Exception $e) {
+            if ($db->inTransaction()) $db->rollBack();
             error_log('order_photos INSERT error: ' . $e->getMessage());
             try { MinioHelper::delete('order-photos', $key); } catch (Exception $e2) {}
             echo json_encode(['error' => 'Не удалось сохранить фото']);
