@@ -86,7 +86,7 @@ class AdminOrdersController {
         $admin = requireAdmin();
         $data = json_decode(file_get_contents('php://input'), true);
 
-        $progress = (int)$data['progress_percent'];
+        $progress = (int)($data['progress_percent'] ?? 0);
         if($progress < 0) $progress = 0;
         if($progress > 100) $progress = 100;
 

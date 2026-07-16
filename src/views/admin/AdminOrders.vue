@@ -348,6 +348,7 @@ const sortedAndFilteredOrders = computed(() => {
         bVal = b.order_date
     }
 
+    if (aVal === bVal) return 0 // равные — стабильный порядок (иначе тай-брейки скачут)
     if (sortOrder.value === 'asc') {
       return aVal > bVal ? 1 : -1
     } else {

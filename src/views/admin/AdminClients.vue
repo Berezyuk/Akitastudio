@@ -321,8 +321,10 @@ const validateDateTime = () => {
     return false
   }
   if (newOrder.value.desired_time) {
-    const hour = parseInt(newOrder.value.desired_time.split(':')[0])
-    if (hour < 10 || hour >= 20) {
+    // Строковое сравнение HH:MM корректно для zero-padded времени и допускает
+    // ровно 20:00 (раньше hour >= 20 резал закрывающий слот, хотя max="20:00").
+    const t = newOrder.value.desired_time
+    if (t < '10:00' || t > '20:00') {
       showAlert('Некорректное время', 'Студия работает с 10:00 до 20:00. Выберите время в этом диапазоне.')
       newOrder.value.desired_time = ''
       return false

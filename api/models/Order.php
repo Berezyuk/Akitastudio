@@ -26,30 +26,10 @@ class Order {
         return ['error' => 'Выберите хотя бы одну услугу'];
     }
 
-    // Если передан client_id, используем его
-    if (!empty($data['client_id'])) {
-        $clientId = $data['client_id'];
-        // Проверка существования клиента
-        $stmt = $this->conn->prepare("SELECT client_id FROM clients WHERE client_id = :id");
-        $stmt->bindParam(':id', $clientId);
-        $stmt->execute();
-        if (!$stmt->fetch()) {
-            return ['error' => 'Клиент не найден'];
-        }
-    } else {
-        // Создание нового клиента
-        $clientModel = new Client();
-        $client = $clientModel->findOrCreate([
-            'first_name' => $data['client_name'],
-            'last_name' => $data['client_lastname'] ?? '',
-            'phone_number' => preg_replace('/[^0-9]/', '', $data['client_phone']),
-            'email' => $data['client_email'] ?? null
-        ]);
-        if (!$client['success']) return ['error' => 'Ошибка создания клиента'];
-        $clientId = $client['client_id'];
-    }
-
-    // 2. Марка и модель
+    // Марка и модель — ДО создания клиента. Раньше findOrCreate клиента шёл
+    // выше этих проверок: новый телефон + пустая марка/битый service_id →
+    // клиент вставлен, заказ нет → сирота в БД. Всё, что может дать отказ
+    // (авто, услуги), считаем первым; клиента создаём последним.
     $carBrandModel = new CarBrand();
     $brandResult = $carBrandModel->findOrCreateByName($data['car_brand'] ?? '');
     if (!$brandResult['success']) return ['error' => 'Ошибка с маркой'];
@@ -60,7 +40,7 @@ class Order {
     if (!$modelResult['success']) return ['error' => 'Ошибка с моделью'];
     $modelId = $modelResult['model_id'];
 
-    // 3. Расчёт общей суммы
+    // Расчёт общей суммы (тоже до клиента).
     // Раньше цикл молча пропускал всё, что не нашлось (`if ($service)` без else):
     // несуществующий id давал заказ на 0 ₽ без единой услуги, а частичный список
     // тихо занижал сумму. Любой нерезолвнутый id — теперь отказ.
@@ -82,6 +62,29 @@ class Order {
         $price = $service['base_price'] ?? 0;
         $totalPrice += $price;
         $servicesData[] = ['id' => $serviceId, 'price' => $price];
+    }
+
+    // Клиент — ПОСЛЕДНИМ, когда марка/модель/услуги уже проверены (нет сирот).
+    if (!empty($data['client_id'])) {
+        $clientId = $data['client_id'];
+        // Проверка существования клиента
+        $stmt = $this->conn->prepare("SELECT client_id FROM clients WHERE client_id = :id");
+        $stmt->bindParam(':id', $clientId);
+        $stmt->execute();
+        if (!$stmt->fetch()) {
+            return ['error' => 'Клиент не найден'];
+        }
+    } else {
+        // Создание нового клиента
+        $clientModel = new Client();
+        $client = $clientModel->findOrCreate([
+            'first_name' => $data['client_name'],
+            'last_name' => $data['client_lastname'] ?? '',
+            'phone_number' => preg_replace('/[^0-9]/', '', $data['client_phone']),
+            'email' => $data['client_email'] ?? null
+        ]);
+        if (!$client['success']) return ['error' => 'Ошибка создания клиента'];
+        $clientId = $client['client_id'];
     }
 
     // 5. Создаём ОДИН заказ

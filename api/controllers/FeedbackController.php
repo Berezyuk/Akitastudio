@@ -30,7 +30,7 @@ class FeedbackController {
         $phone = preg_replace('/[^0-9]/', '', $data['phone']);
         
         // Обрезаем длинные сообщения до 255 символов
-        $message = mb_substr($data['message'], 0, 255);
+        $message = mb_substr($data['message'] ?? '', 0, 255);
         
         $db = new Database();
         $conn = $db->getConnection();
