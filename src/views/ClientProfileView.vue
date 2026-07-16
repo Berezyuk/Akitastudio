@@ -245,7 +245,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE } from '@/config/api.js'
-import { parseApiDate } from '@/config/date.js'
+import { formatDate } from '@/config/date.js'
+import { formatPrice } from '@/config/format.js'
 import { statusColor as getStatusColor } from '@/config/status.js'
 import AlertModal from '@/components/admin/AlertModal.vue'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
@@ -499,15 +500,6 @@ const canCancel = (order) => {
 
 const canReschedule = (order) => order.status_id < 3
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '—'
-  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
-}
-
-const formatPrice = (price) => {
-  if (!price) return '0 ₽'
-  return Number(price).toLocaleString('ru-RU') + ' ₽'
-}
 
 onMounted(() => {
   fetchOrders()

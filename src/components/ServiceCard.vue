@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { isVideo as isVideoUrl } from '@/config/format.js'
 
 const props = defineProps({
   imageUrl: {
@@ -17,7 +18,7 @@ const props = defineProps({
   },
 })
 
-const isVideo = computed(() => /\.(mp4|webm|ogg)(\?|$)/i.test(props.imageUrl))
+const isVideo = computed(() => isVideoUrl(props.imageUrl))
 
 // Определяем мобильное устройство (ширина < 768px)
 const isMobile = ref(false)

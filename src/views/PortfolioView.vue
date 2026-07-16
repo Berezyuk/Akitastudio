@@ -120,6 +120,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useHead } from '@unhead/vue'
 import { API_BASE } from '@/config/api.js'
+import { isVideo } from '@/config/format.js'
 
 useHead({
   title: 'Примеры работ — Портфолио Akita Studio',
@@ -235,7 +236,6 @@ const fetchPortfolio = async () => {
   }
 }
 
-const isVideo = (url) => /\.(mp4|webm|ogg)(\?|$)/i.test(url || '')
 
 const getYouTubeId = (url) => {
   if (!url) return null

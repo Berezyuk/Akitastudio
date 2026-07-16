@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch, nextTick } from "vue";
 import { useHead } from '@unhead/vue'
 import ServiceCard from "../components/ServiceCard.vue";
 import { API_BASE } from '@/config/api.js'
+import { maskPhoneInput } from '@/config/phone.js'
 import { useFocusTrap } from '@/composables/useFocusTrap'
 
 useHead({
@@ -130,32 +131,8 @@ const showFeedbackModal = (type, title, message) => {
   feedbackModal.value = { show: true, type, title, message }
 }
 
-const applyPhoneMask = (digits) => {
-  if (!digits) return ''
-  let r = '+7 (' + digits.slice(0, 3)
-  if (digits.length >= 3) r += ')'
-  if (digits.length > 3) r += ' ' + digits.slice(3, 6)
-  if (digits.length > 6) r += '-' + digits.slice(6, 8)
-  if (digits.length > 8) r += '-' + digits.slice(8, 10)
-  return r
-}
-
 const formatPhone = (e) => {
-  const prevFormatted = feedbackForm.value.phone
-
-  let raw = e.target.value.replace(/\D/g, '')
-  if (raw.startsWith('7') || raw.startsWith('8')) raw = raw.slice(1)
-  raw = raw.slice(0, 10)
-
-  let result = applyPhoneMask(raw)
-
-  // Пользователь удалил разделитель — форматтер его восстановил.
-  // Дополнительно удаляем предыдущую цифру, чтобы дать возможность стереть.
-  if (result === prevFormatted && e.target.value.length < prevFormatted.length && raw.length > 0) {
-    raw = raw.slice(0, -1)
-    result = applyPhoneMask(raw)
-  }
-
+  const result = maskPhoneInput(e.target.value, feedbackForm.value.phone)
   feedbackForm.value.phone = result
   e.target.value = result
 }

@@ -229,8 +229,9 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import AdminOrderModal from '@/components/AdminOrderModal.vue'
 import { API_BASE } from '@/config/api.js'
-import { parseApiDate } from '@/config/date.js'
+import { parseApiDate, formatDate } from '@/config/date.js'
 import { statusColor as getStatusColor } from '@/config/status.js'
+import { formatPrice, formatPriceCSV } from '@/config/format.js'
 import ThePagination from '@/components/ThePagination.vue'
 import AlertModal from '@/components/admin/AlertModal.vue'
 
@@ -392,13 +393,6 @@ const totalAmount = computed(() => {
   return sum
 })
 
-const formatPrice = (price) => {
-  if (!price && price !== 0) return '0 ₽'
-  const num = parseFloat(price)
-  if (isNaN(num)) return '0 ₽'
-  return num.toLocaleString('ru-RU') + ' ₽'
-}
-
 const sortBy = (field) => {
   if (sortField.value === field) {
     sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
@@ -494,27 +488,10 @@ const exportFilteredCSV = () => {
   URL.revokeObjectURL(url)
 }
 
-const formatPriceForCSV = (price) => {
-  if (!price && price !== 0) return '0'
-  const num = parseFloat(price)
-  if (isNaN(num)) return '0'
-  return num.toString().replace('.', ',')
-}
+const formatPriceForCSV = formatPriceCSV
 
-const formatDate = (dateStr) => {
-  if (!dateStr) return '—'
-  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
-}
-
-const formatDateSimple = (dateStr) => {
-  if (!dateStr) return ''
-  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
-}
-
-const formatDateForCSV = (dateStr) => {
-  if (!dateStr) return ''
-  return parseApiDate(dateStr).toLocaleDateString('ru-RU')
-}
+const formatDateSimple = (d) => formatDate(d, '')
+const formatDateForCSV = (d) => formatDate(d, '')
 
 const getStatusName = (statusName) => statusName || '—'
 

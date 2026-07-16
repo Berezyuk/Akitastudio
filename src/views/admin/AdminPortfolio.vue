@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { API_BASE } from '@/config/api.js'
+import { isVideo } from '@/config/format.js'
 import ConfirmModal from '@/components/admin/ConfirmModal.vue'
 import AlertModal from '@/components/admin/AlertModal.vue'
 
@@ -181,7 +182,6 @@ const deleteItem = async (id, title) => {
 }
 
 // Определяем тип медиа по URL для предпросмотра
-const isVideo = (url) => /\.(mp4|webm|ogg)(\?|$)/i.test(url)
 
 onMounted(() => {
   fetchCategories()

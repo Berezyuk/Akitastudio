@@ -270,6 +270,7 @@ import { useFocusTrap } from '@/composables/useFocusTrap'
 import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import { API_BASE } from '@/config/api.js'
+import { maskPhoneInput } from '@/config/phone.js'
 import { useAuthStore } from '@/stores/auth'
 
 useHead({
@@ -317,26 +318,8 @@ const form = ref({
 const agreed = ref(false)
 const privacyPdfUrl = ref('')
 
-const applyPhoneMask = (digits) => {
-  if (!digits) return ''
-  let r = '+7 (' + digits.slice(0, 3)
-  if (digits.length >= 3) r += ')'
-  if (digits.length > 3) r += ' ' + digits.slice(3, 6)
-  if (digits.length > 6) r += '-' + digits.slice(6, 8)
-  if (digits.length > 8) r += '-' + digits.slice(8, 10)
-  return r
-}
-
 const formatPhone = (e) => {
-  const prevFormatted = form.value.phone
-  let raw = e.target.value.replace(/\D/g, '')
-  if (raw.startsWith('7') || raw.startsWith('8')) raw = raw.slice(1)
-  raw = raw.slice(0, 10)
-  let result = applyPhoneMask(raw)
-  if (result === prevFormatted && e.target.value.length < prevFormatted.length && raw.length > 0) {
-    raw = raw.slice(0, -1)
-    result = applyPhoneMask(raw)
-  }
+  const result = maskPhoneInput(e.target.value, form.value.phone)
   form.value.phone = result
   e.target.value = result
 }
